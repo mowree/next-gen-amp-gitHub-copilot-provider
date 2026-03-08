@@ -1,0 +1,52 @@
+name: "fix-commit-trailers"
+description: "Squash all commits into one with correct co-author trailers"
+version: "1.0.0"
+
+steps:
+  - id: "show-current"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== Current log ==="
+      git log --oneline
+    output: "before_log"
+
+  - id: "reset-and-recommit"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      ROOT=$(git rev-list --max-parents=0 HEAD)
+      echo "Root commit: $ROOT"
+      git reset --soft "$ROOT"
+      git commit -F .amplifier/commit-msg.txt
+    output: "commit_result"
+
+  - id: "force-push"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git push --force origin main
+    output: "push_result"
+
+  - id: "verify"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== Final log (full) ==="
+      git log -1 --format=full
+    output: "final_log"
+
+  - id: "summary"
+    type: "bash"
+    command: |
+      echo "=== BEFORE ==="
+      echo "{{before_log}}"
+      echo ""
+      echo "=== COMMIT RESULT ==="
+      echo "{{commit_result}}"
+      echo ""
+      echo "=== PUSH RESULT ==="
+      echo "{{push_result}}"
+      echo ""
+      echo "=== AFTER (full) ==="
+      echo "{{final_log}}"

@@ -1,0 +1,10 @@
+Initial scaffold: amplifier-module-provider-github-copilot
+
+Three-Medium Architecture provider skeleton for GitHub Copilot.
+Includes contracts (v2.1), feature specs, module specs, and
+dev-machine recipes for autonomous implementation.
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

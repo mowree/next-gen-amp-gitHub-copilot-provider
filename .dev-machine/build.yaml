@@ -1,0 +1,159 @@
+# =============================================================================
+# provider-github-copilot-build: The Development Machine Outer Loop
+# =============================================================================
+#
+# This is the meta-recipe -- the "machine" itself. It reads project state,
+# dispatches fresh working sessions, and loops until the project is complete
+# or a blocker is hit.
+#
+# Each working session starts with zero context, reads STATE.yaml and
+# CONTEXT-TRANSFER.md, does a bounded batch of work (3 features),
+# persists all state back to files, and exits.
+#
+# Usage:
+#   amplifier recipe execute .dev-machine/build.yaml
+#
+# =============================================================================
+
+name: "provider-github-copilot-build"
+description: "Outer orchestration loop for the provider-github-copilot development machine. Reads state, dispatches working sessions, persists progress across context windows."
+version: "1.0.0"
+author: "provider-github-copilot Development Machine"
+tags: ["orchestration", "meta-recipe", "development-machine", "provider-github-copilot"]
+
+context:
+  state_file: "./STATE.yaml"
+  context_file: "./CONTEXT-TRANSFER.md"
+  specs_dir: "./specs"
+  status: "healthy"
+  session_count: "0"
+
+steps:
+  # ---------------------------------------------------------------------------
+  # Step 0: Container safety check -- refuse to run on bare host
+  # ---------------------------------------------------------------------------
+  - id: "container-check"
+    type: "bash"
+    command: |
+      # Check if running inside a container
+      if [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ]; then
+          echo "=========================================="
+          echo "ERROR: DEV MACHINE NOT RUNNING IN CONTAINER"
+          echo "=========================================="
+          echo ""
+          echo "Running dev-machine recipes outside a container is DANGEROUS."
+          echo "Autonomous agents have unrestricted filesystem access and can"
+          echo "damage files outside the project directory."
+          echo ""
+          echo "Use: ./run-dev-machine.sh"
+          echo "Or:  docker compose run --rm dev-machine"
+          echo ""
+          echo "To bypass this check (NOT RECOMMENDED):"
+          echo "  export DEV_MACHINE_ALLOW_HOST=1"
+          echo "=========================================="
+          if [ -z "${DEV_MACHINE_ALLOW_HOST:-}" ]; then
+              exit 1
+          fi
+          echo "WARNING: DEV_MACHINE_ALLOW_HOST is set. Proceeding on bare host."
+          echo "YOU ACCEPT ALL RISKS OF FILESYSTEM DAMAGE."
+      fi
+      echo "Container check passed."
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 1: Read STATE.yaml and check for blockers
+  # ---------------------------------------------------------------------------
+  - id: "read-state"
+    type: "bash"
+    command: |
+      python3 << 'PYEOF'
+      import json, yaml
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+          blockers = state.get("blockers", [])
+          result = {
+              "phase": state.get("phase", 0),
+              "phase_name": state.get("phase_name", "unknown"),
+              "epoch": state.get("epoch", 0),
+              "next_action": state.get("next_action", ""),
+              "blocker_count": len(blockers),
+              "blockers": blockers,
+              "status": "blocked" if blockers else "healthy"
+          }
+          print(json.dumps(result))
+      except Exception as e:
+          print(json.dumps({
+              "status": "blocked",
+              "blockers": ["Failed to read STATE.yaml: " + str(e)],
+              "blocker_count": 1
+          }))
+      PYEOF
+    output: "initial_state"
+    parse_json: true
+
+  # ---------------------------------------------------------------------------
+  # Step 2: If blockers exist, print them and fail
+  # ---------------------------------------------------------------------------
+  - id: "check-health"
+    type: "bash"
+    condition: "{{initial_state.status}} == 'blocked'"
+    command: |
+      echo "BLOCKED: Cannot proceed. Blockers found:"
+      printf '%s\n' '{{initial_state.blockers}}'
+      echo ""
+      printf '%s\n' "Resolve blockers in ./STATE.yaml and re-run."
+      exit 1
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 3: Main work loop -- calls sub-recipe per iteration
+  #
+  # Each iteration: orient (read state) -> working session -> post-session check.
+  # Loop exits when status becomes "blocked" or max iterations reached.
+  # ---------------------------------------------------------------------------
+  - id: "work-loop"
+    type: "recipe"
+    recipe: "./.dev-machine/iteration.yaml"
+    context:
+      state_file: "./STATE.yaml"
+      context_file: "./CONTEXT-TRANSFER.md"
+      specs_dir: "./specs"
+      session_count: "{{session_count}}"
+    output: "iteration_result"
+    parse_json: true
+    timeout: 4200
+    on_error: "continue"
+    while_condition: "{{status}} == 'healthy'"
+    max_while_iterations: 50
+    break_when: "{{status}} != 'healthy'"
+    update_context:
+      status: "{{iteration_result.iteration_result.status}}"
+      session_count: "{{iteration_result.iteration_result.session_count}}"
+
+  # ---------------------------------------------------------------------------
+  # Step 4: Final summary
+  # ---------------------------------------------------------------------------
+  - id: "final-summary"
+    type: "bash"
+    command: |
+      echo ""
+      echo "========================================"
+      echo "  provider-github-copilot Development Machine -- Run Complete"
+      echo "========================================"
+      echo ""
+      echo "  Sessions completed: {{session_count}}"
+      echo "  Final status:       {{status}}"
+      echo ""
+      if [ "{{status}}" = "blocked" ]; then
+        echo "  Stopped: BLOCKERS detected"
+        echo "  Check ./STATE.yaml for blocker details."
+      else
+        echo "  Stopped: work loop exit (max iterations or no more work)"
+      fi
+      echo ""
+      echo "  State file:    ./STATE.yaml"
+      echo "  Context file:  ./CONTEXT-TRANSFER.md"
+      echo ""
+      echo "========================================"
+    output: "summary"

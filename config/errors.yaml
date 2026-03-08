@@ -1,0 +1,16 @@
+# Error Translation Policy
+# Contract: contracts/error-hierarchy.md
+# 
+# This file defines SDK error → domain error mappings.
+# The Python code consumes this config; it does not hardcode mappings.
+#
+# See GOLDEN_VISION_V2.md for the target structure.
+
+version: "1.0"
+
+# Placeholder - to be populated during Phase 0 Day 2
+error_mappings: []
+
+default:
+  kernel_error: ProviderUnavailableError
+  retryable: true

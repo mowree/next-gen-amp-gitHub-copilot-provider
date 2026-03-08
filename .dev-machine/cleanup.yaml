@@ -1,0 +1,19 @@
+name: "cleanup"
+description: "Stage deleted git-setup.yaml and push"
+version: "1.0.0"
+
+steps:
+  - id: "commit-cleanup"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git add -A
+      git commit -m "chore: remove temporary setup recipes" \
+        --trailer "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+      git push origin main
+      echo ""
+      echo "=== Done ==="
+      git log --oneline -3
+      echo ""
+      echo "Repo: https://github.com/mowree/next-gen-amp-gitHub-copilot-provider"
+    on_error: "fail"

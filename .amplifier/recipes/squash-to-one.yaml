@@ -1,0 +1,44 @@
+name: "squash-to-one"
+description: "Create a single orphan commit with all files and correct trailers"
+version: "1.0.0"
+
+steps:
+  - id: "show-state"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== Current log ==="
+      git log --oneline
+      echo ""
+      echo "=== HEAD commit message ==="
+      git log -1 --format="%B"
+    output: "before_state"
+
+  - id: "orphan-squash"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git checkout --orphan temp_squash
+      git add -A
+      git commit -F .amplifier/commit-msg.txt
+      git branch -D main
+      git branch -m main
+    output: "squash_result"
+
+  - id: "force-push"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git push --force origin main
+    output: "push_result"
+
+  - id: "verify"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== git log --oneline ==="
+      git log --oneline
+      echo ""
+      echo "=== git log -1 --format=full ==="
+      git log -1 --format=full
+    output: "final_state"

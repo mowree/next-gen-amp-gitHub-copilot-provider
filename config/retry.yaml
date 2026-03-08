@@ -1,0 +1,28 @@
+# Retry and Circuit Breaker Policy
+# Contract: contracts/behaviors.md
+#
+# This file defines retry behavior and circuit breaker limits.
+# The Python code consumes this config; it does not hardcode values.
+#
+# See GOLDEN_VISION_V2.md for the target structure.
+
+version: "1.0"
+
+retry:
+  max_attempts: 3
+  backoff:
+    strategy: exponential_with_jitter
+    base_delay_ms: 1000
+    max_delay_ms: 30000
+    jitter_factor: 0.1
+
+circuit_breaker:
+  soft_turn_limit: 3
+  hard_turn_limit: 10
+  timeout_buffer_seconds: 5.0
+
+streaming:
+  event_queue_size: 256
+  ttft_warning_ms: 5000
+  max_gap_warning_ms: 5000
+  max_gap_error_ms: 30000

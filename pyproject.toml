@@ -1,0 +1,64 @@
+[project]
+name = "amplifier-module-provider-github-copilot"
+version = "0.1.0"
+description = "GitHub Copilot provider for Amplifier - Three-Medium Architecture"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+dependencies = [
+    # GitHub Copilot CLI SDK
+    # - Minimum: 0.1.32 (session.disconnect() replaces destroy())
+    # - Maximum: <0.2.0 (review SDK assumption tests before upgrading)
+    "github-copilot-sdk>=0.1.32,<0.2.0",
+    # Note: amplifier-core is provided by Amplifier runtime when module is loaded
+    # Listed here for type hints only; not installed at runtime
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.3.0",
+    "pyright>=1.1.350",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.21",
+    # For testing: amplifier-core types
+    "amplifier-core @ git+https://github.com/microsoft/amplifier-core",
+]
+
+[project.entry-points."amplifier.modules"]
+provider-github-copilot = "amplifier_module_provider_github_copilot:mount"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amplifier_module_provider_github_copilot"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "UP",    # pyupgrade
+]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+include = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

@@ -1,0 +1,141 @@
+# =============================================================================
+# provider-github-copilot -- Machine State
+# =============================================================================
+# This file is the single source of truth for project status.
+# Updated at every state transition. Any fresh session reads this to orient.
+#
+# WARNING: This project is managed by an autonomous development machine.
+# Do NOT implement features or fix code directly. Run the recipes instead:
+#   amplifier recipe execute .dev-machine/build.yaml
+# See AGENTS.md for full instructions.
+#
+# Rules:
+# - Update after EVERY feature (not batched)
+# - Never two features without a state update between them
+# - Blockers list halts the machine when present
+# =============================================================================
+
+phase: 1
+phase_name: "Phase 0 -- SDK Adapter + Core Modules"
+epoch: 1
+next_action: "Implement F-001 (SDK Adapter skeleton) then F-002 (Error translation)"
+blockers: []
+completed_features: []
+
+architecture_spec:
+  status: "approved"
+  path: "./debates/GOLDEN_VISION_V2.md"
+
+module_specs: {}
+  # Module specs to be created as features are implemented
+
+features:
+  # Day 2: SDK Adapter + Error Translation
+  F-001-sdk-adapter-skeleton:
+    name: "SDK Adapter Skeleton"
+    module: "sdk_adapter"
+    status: "ready"
+    spec: "specs/features/F-001-sdk-adapter-skeleton.md"
+    depends_on: []
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Create the SDK adapter layer - the membrane where all SDK imports live"
+
+  F-002-error-translation:
+    name: "Error Translation"
+    module: "error_translation"
+    status: "ready"
+    spec: "specs/features/F-002-error-translation.md"
+    depends_on: ["F-001-sdk-adapter-skeleton"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Config-driven error translation using kernel types"
+
+  # Day 3: Session Factory + Tool Parsing
+  F-003-session-factory:
+    name: "Session Factory with Deny Hook"
+    module: "session_factory"
+    status: "ready"
+    spec: "specs/features/F-003-session-factory.md"
+    depends_on: ["F-001-sdk-adapter-skeleton"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Ephemeral session creation with preToolUse deny hook"
+
+  F-004-tool-parsing:
+    name: "Tool Parsing Module"
+    module: "tool_parsing"
+    status: "ready"
+    spec: "specs/features/F-004-tool-parsing.md"
+    depends_on: ["F-001-sdk-adapter-skeleton"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Extract tool calls from SDK response, return as kernel ToolCall types"
+
+  # Day 4: Streaming + Event Bridge
+  F-005-event-translation:
+    name: "Event Translation"
+    module: "streaming"
+    status: "ready"
+    spec: "specs/features/F-005-event-translation.md"
+    depends_on: ["F-001-sdk-adapter-skeleton"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Config-driven event classification (BRIDGE/CONSUME/DROP)"
+
+  F-006-streaming-handler:
+    name: "Streaming Handler"
+    module: "streaming"
+    status: "ready"
+    spec: "specs/features/F-006-streaming-handler.md"
+    depends_on: ["F-005-event-translation", "F-004-tool-parsing"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Accumulate streaming events into final response"
+
+  # Day 5: Provider + Completion + Integration
+  F-007-completion-lifecycle:
+    name: "Completion Lifecycle"
+    module: "completion"
+    status: "ready"
+    spec: "specs/features/F-007-completion-lifecycle.md"
+    depends_on: ["F-003-session-factory", "F-006-streaming-handler", "F-002-error-translation"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "Full LLM call lifecycle: create session, stream response, destroy session"
+
+  F-008-provider-orchestrator:
+    name: "Provider Orchestrator"
+    module: "provider"
+    status: "ready"
+    spec: "specs/features/F-008-provider-orchestrator.md"
+    depends_on: ["F-007-completion-lifecycle"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "4 methods + 1 property Provider Protocol implementation"
+
+  F-009-integration-verification:
+    name: "Integration Verification"
+    module: "tests"
+    status: "ready"
+    spec: "specs/features/F-009-integration-verification.md"
+    depends_on: ["F-008-provider-orchestrator"]
+    started_at: null
+    completed_at: null
+    commit: null
+    description: "End-to-end integration tests against mock SDK"
+
+meta:
+  project: "provider-github-copilot"
+  created: "2026-03-08T22:09:54Z"
+  total_features_completed: 0
+  last_updated: "2026-03-08T22:09:54Z"
+  last_session: null

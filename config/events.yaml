@@ -1,0 +1,23 @@
+# Event Bridge Classification
+# Contract: contracts/event-vocabulary.md
+#
+# This file classifies SDK events into BRIDGE/CONSUME/DROP.
+# The Python code consumes this config; it does not hardcode classifications.
+#
+# See GOLDEN_VISION_V2.md for the target structure.
+
+version: "1.0"
+
+# Placeholder - to be populated during Phase 0 Day 4
+event_classifications:
+  bridge: []
+  consume: []
+  drop: []
+
+finish_reason_map:
+  end_turn: STOP
+  stop: STOP
+  tool_use: TOOL_USE
+  max_tokens: LENGTH
+  content_filter: CONTENT_FILTER
+  _default: ERROR
