@@ -10,6 +10,50 @@
 
 ---
 
+## Session 2026-03-09T03:37Z -- F-007 Implemented
+
+### Work Completed
+
+**F-007: Completion Lifecycle** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/completion.py` - ~180 lines
+- `tests/test_completion.py` - 17 tests for completion lifecycle
+- `specs/features/F-007-completion-lifecycle.md` - Feature specification
+
+**Key components:**
+- `CompletionRequest` dataclass: prompt, model, tools, max_tokens, temperature
+- `CompletionConfig` dataclass: session_config, event_config, error_config
+- `complete()` async generator: yields DomainEvent for each bridged SDK event
+- `complete_and_collect()` convenience wrapper: returns AccumulatedResponse
+
+### Key Design Decisions
+
+1. **Async generator pattern**: `complete()` yields events during streaming, allowing caller to process them incrementally.
+
+2. **Dependency injection for testing**: `sdk_create_fn` parameter allows mock session injection for tests.
+
+3. **try/finally for cleanup**: Session is ALWAYS destroyed in finally block, even on error.
+
+4. **Error translation at boundary**: All SDK exceptions caught and translated to kernel LLMError types.
+
+5. **Config loading deferred**: Event and error configs loaded lazily if not provided via CompletionConfig.
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors, 2 expected warnings for skeleton stubs)
+- New tests: 17 tests for completion lifecycle
+
+### For Human to Verify
+```bash
+cd /workspace && uv run pytest tests/test_completion.py -v
+```
+
+### Next Steps
+1. Run: `uv run pytest tests/ -v` to verify all tests pass
+2. Commit F-007 implementation
+3. Continue with F-008 (Provider Orchestrator) which depends on F-007
+
+---
+
 ## Session 2026-03-09T03:17Z -- F-006 Implemented
 
 ### Work Completed
