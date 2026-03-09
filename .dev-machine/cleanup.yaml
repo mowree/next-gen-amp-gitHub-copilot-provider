@@ -8,8 +8,7 @@ steps:
     command: |
       cd /home/mowrim/projects/next-get-provider-github-copilot
       git add -A
-      git commit -m "chore: remove temporary setup recipes" \
-        --trailer "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+      git commit -m "chore: remove temporary setup recipes"
       git push origin main
       echo ""
       echo "=== Done ==="
