@@ -132,6 +132,24 @@ steps:
       - Do NOT read FEATURE-ARCHIVE.yaml or SESSION-ARCHIVE.md -- they are append-only archives.
       - The post-session step auto-archives completed features and old sessions.
 
+      ## Error Recovery Hierarchy (BEFORE adding blockers)
+
+      1. **Self-fix attempt** -- Try to resolve the issue yourself (2-3 attempts max)
+      2. **Expert agent consultation** -- Delegate ANALYSIS (not execution) to specialists:
+         - foundation:bug-hunter for debugging
+         - amplifier:amplifier-expert for Amplifier questions
+         - python-dev:code-intel for Python code understanding
+         - foundation:zen-architect for design decisions
+      3. **Alternative approach** -- If same operation fails twice, try different method
+      4. **Blocker (LAST RESORT)** -- Only add blocker after recovery attempts fail
+
+      ## Critical Execution Rules
+
+      - EXECUTE git commands DIRECTLY in your session (never delegate git to sub-agents)
+      - DELEGATE only for ANALYSIS/REVIEW tasks (sub-agents have no bash access)
+      - LSP ONLY on Python files (*.py) -- skip for YAML/Markdown/JSON
+      - If LSP fails, fall back to grep/read_file
+
       IF BLOCKED: add blocker to ./STATE.yaml blockers list, update ./CONTEXT-TRANSFER.md, stop.
       IF DEGRADATION DETECTED (repeating yourself, losing coherence): commit work, update state, stop.
 

@@ -95,10 +95,19 @@ and constraints before writing any code.
 
 ### 7. Commit
 
+Execute git commands DIRECTLY in your session (never delegate git execution):
+
 ```bash
 git add -A
 git commit -m "feat(<module>): <feature-name>"
 ```
+
+**Git Commit Fallback Strategies (if commit fails):**
+
+1. Check if files are staged: `git status`
+2. Check git config: `git config user.email && git config user.name`
+3. Try with explicit author: `GIT_AUTHOR_NAME="Amplifier" GIT_AUTHOR_EMAIL="amplifier@dev" git commit -m "msg"`
+4. If push fails, continue without push (human will push later)
 
 ### 8. Mark Done
 
@@ -155,6 +164,40 @@ When stopping:
 - Don't batch state updates to the end
 - Don't assume context from a "previous conversation" -- you have none
 - Don't modify specs without authorization
+- Don't delegate git/bash execution to sub-agents (they can't execute)
+- Don't use LSP on non-Python files (will fail)
+
+## Error Recovery Hierarchy
+
+Before adding a blocker to STATE.yaml, try these in order:
+
+1. **Self-fix attempt** -- Try to resolve the issue yourself (2-3 attempts max)
+2. **Expert agent consultation** -- Delegate to specialist agents for analysis:
+   - `foundation:bug-hunter` for debugging
+   - `amplifier:amplifier-expert` for Amplifier ecosystem questions
+   - `python-dev:code-intel` for Python code understanding
+   - `foundation:zen-architect` for design decisions
+3. **Alternative approach** -- If same operation fails twice, try different method
+4. **Blocker (last resort)** -- Only add blocker if recovery fails
+
+**Key principle:** Leverage expert agents for ANALYSIS, then execute solutions yourself.
+
+## Agent Delegation Rules
+
+**DELEGATE for analysis/review:**
+- Code review (fresh sub-agent with context_depth="none")
+- Architecture assessment
+- Bug investigation
+
+**NEVER DELEGATE for execution:**
+- Git commands (add, commit, push)
+- Bash commands
+- File modifications
+
+**LSP Restrictions:**
+- ONLY use LSP on Python files (*.py)
+- Skip LSP for YAML, Markdown, JSON (will fail)
+- If LSP fails, fall back to grep/read_file
 
 ## Factored File Structure
 

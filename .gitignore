@@ -42,3 +42,7 @@ mydocs/
 
 # uv
 uv.lock
+
+# Local dev-machine infrastructure
+.dev-machine/Dockerfile
+.dev-machine/docker-run.sh
