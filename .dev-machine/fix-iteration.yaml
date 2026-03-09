@@ -28,7 +28,7 @@ steps:
   - id: "read-errors"
     type: "bash"
     command: |
-      cd /home/mowrim/projects/next-get-provider-github-copilot
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       ITER=$(({{iteration}} + 1))
       echo "=== FIX ITERATION $ITER ==="
 
@@ -55,7 +55,7 @@ steps:
     agent: "self"
     prompt: |
       You are a HEALTH CHECK FIX SESSION for the provider-github-copilot project.
-      Working directory: /home/mowrim/projects/next-get-provider-github-copilot
+      Working directory: /workspace (or /home/mowrim/projects/next-get-provider-github-copilot if on host)
       This is fix iteration {{error_context.iteration}}.
 
       YOUR MISSION: Fix all build errors and test failures.
@@ -112,16 +112,16 @@ steps:
   - id: "verify"
     type: "bash"
     command: |
-      cd /home/mowrim/projects/next-get-provider-github-copilot
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       ITER={{error_context.iteration}}
       echo "=== POST-FIX VERIFICATION (iteration $ITER) ==="
 
       # Run build
-      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1) || true
+      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1)
       BUILD_EXIT=$?
 
       # Run tests
-      TEST_OUTPUT=$(uv run pytest tests/ -v 2>&1) || true
+      TEST_OUTPUT=$(uv run pytest tests/ -v 2>&1)
       TEST_EXIT=$?
 
       # Update SCRATCH.md with verification results

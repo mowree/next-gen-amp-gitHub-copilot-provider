@@ -1,0 +1,45 @@
+name: "commit-debug"
+description: "Commit with verbose output to debug"
+version: "1.0.3"
+
+steps:
+  - id: "show-status"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== PWD ==="
+      pwd
+      echo "=== GIT STATUS BEFORE ==="
+      git status
+      echo "=== GIT ADD ==="
+      git add -A
+      echo "=== GIT STATUS AFTER ADD ==="
+      git status
+    on_error: "continue"
+
+  - id: "commit"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git commit -m "feat: F-005 event translation + dev-machine fixes
+
+      - F-005: Config-driven event translation (BRIDGE/CONSUME/DROP)
+      - dev-machine: Auto-healing, git commits in iteration loop, path fallbacks
+      - State updates for F-004/F-005 progress
+
+      🤖 Generated with Amplifier
+
+      Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>"
+      echo "=== COMMIT EXIT CODE: $? ==="
+    on_error: "fail"
+
+  - id: "push"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git push origin main
+      echo "=== PUSH EXIT CODE: $? ==="
+      echo ""
+      echo "=== Final git log ==="
+      git log --oneline -10
+    on_error: "fail"

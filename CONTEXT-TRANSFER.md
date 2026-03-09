@@ -10,6 +10,89 @@
 
 ---
 
+## Session 2026-03-09T03:17Z -- F-006 Implemented
+
+### Work Completed
+
+**F-006: Streaming Handler** (IMPLEMENTED)
+- Extended `src/amplifier_module_provider_github_copilot/streaming.py` with ~100 additional lines
+- Added `AccumulatedResponse` dataclass for accumulated streaming data
+- Added `StreamingAccumulator` class with `add()`, `get_result()`, `is_complete`
+- 12 new tests in `tests/test_streaming.py` for accumulator behavior
+
+**Spec file created:**
+- `specs/features/F-006-streaming-handler.md`
+
+### Key Design Decisions
+
+1. **AccumulatedResponse separates text and thinking**: `text_content` and `thinking_content` are separate fields, accumulated based on `block_type` of CONTENT_DELTA events.
+
+2. **Tool calls collected as list[dict]**: Each TOOL_CALL event's data dict is appended directly to `tool_calls` list. No further parsing at accumulator level.
+
+3. **Completion signals**: Both `TURN_COMPLETE` and `ERROR` mark the accumulator as complete. TURN_COMPLETE extracts `finish_reason` from data.
+
+4. **None block_type defaults to text**: CONTENT_DELTA with `block_type=None` accumulates to `text_content` (not thinking).
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors)
+- New tests: 12 tests for StreamingAccumulator
+
+### Next Steps
+1. Run: `uv run pytest tests/ -v` to verify all tests pass
+2. Commit F-006 implementation  
+3. Continue with F-007 (Completion Lifecycle) which depends on F-006
+
+---
+
+## Session 2026-03-09T01:37Z -- F-004 + F-005 Implemented
+
+### Work Completed
+
+**F-004: Tool Parsing Module** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/tool_parsing.py` - ~80 lines
+- `tests/test_tool_parsing.py` - 12 tests for tool call extraction
+- `ToolCall` dataclass with `arguments` field (NOT `input` per kernel contract E3)
+- `parse_tool_calls(response)` function handles dict and string arguments
+- JSON parsing with proper error handling (ValueError on invalid JSON)
+
+**F-005: Event Translation** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/streaming.py` - ~170 lines
+- `config/events.yaml` - Event classification config (BRIDGE/CONSUME/DROP)
+- `tests/test_streaming.py` - 20+ tests for event classification and translation
+- `DomainEventType` enum: CONTENT_DELTA, TOOL_CALL, USAGE_UPDATE, TURN_COMPLETE, SESSION_IDLE, ERROR
+- `EventClassification` enum: BRIDGE, CONSUME, DROP
+- Wildcard pattern matching via fnmatch for drop patterns (e.g., `tool_result_*`)
+- Unknown events logged with warning and dropped
+
+**Spec files created:**
+- `specs/features/F-004-tool-parsing.md`
+- `specs/features/F-005-event-translation.md`
+
+### Key Design Decisions
+
+1. **ToolCall uses `arguments` not `input`**: Per kernel contract correction E3, ToolCall has `arguments: dict[str, Any]` field.
+
+2. **Config-driven event classification**: Event routing is declarative via `config/events.yaml`. BRIDGE events become DomainEvents, CONSUME/DROP return None.
+
+3. **translate_event takes dict**: To satisfy pyright strict mode, `translate_event(sdk_event: dict[str, Any], config)` requires dict input. Objects must be converted to dict before calling.
+
+4. **Wildcard drop patterns**: Uses fnmatch for pattern matching (e.g., `tool_result_*`, `debug_*`, `mcp_*`).
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors, 2 expected warnings for skeleton stubs)
+
+### Previous Session Commit
+Commit 6cdaa7c committed F-001 + F-002 + F-003 successfully.
+
+### Next Steps
+1. Run: `uv run pytest tests/ -v` to verify all tests pass
+2. Commit F-004 + F-005 implementation
+3. Continue with F-006 (Streaming Handler) which depends on F-004 + F-005
+
+---
+
 ## Session 2026-03-09T01:08Z -- F-003 Implemented
 
 ### Work Completed

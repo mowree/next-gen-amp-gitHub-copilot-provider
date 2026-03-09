@@ -6,7 +6,7 @@ steps:
   - id: "commit-cleanup"
     type: "bash"
     command: |
-      cd /home/mowrim/projects/next-get-provider-github-copilot
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       git add -A
       git commit -m "chore: remove temporary setup recipes"
       git push origin main

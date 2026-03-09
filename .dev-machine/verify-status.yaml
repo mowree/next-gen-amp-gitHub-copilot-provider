@@ -1,0 +1,25 @@
+name: "verify-status"
+description: "Show actual git status and recent commits"
+version: "1.0.0"
+
+steps:
+  - id: "show-status"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== CURRENT BRANCH ==="
+      git branch --show-current
+      echo ""
+      echo "=== GIT STATUS ==="
+      git status --short
+      echo ""
+      echo "=== RECENT COMMITS (last 10) ==="
+      git log --oneline -10
+      echo ""
+      echo "=== REMOTE STATUS ==="
+      git remote -v
+      echo ""
+      echo "=== DIFF FROM ORIGIN ==="
+      git fetch origin 2>/dev/null || echo "fetch failed"
+      git log origin/main..HEAD --oneline 2>/dev/null || echo "no diff or fetch failed"
+    on_error: "continue"

@@ -27,6 +27,9 @@ context:
   specs_dir: "./specs"
   status: "healthy"
   session_count: "0"
+  heal_status:
+    status: "healthy"
+    message: ""
 
 steps:
   # ---------------------------------------------------------------------------
@@ -93,16 +96,54 @@ steps:
     parse_json: true
 
   # ---------------------------------------------------------------------------
-  # Step 2: If blockers exist, print them and fail
+  # Step 2: If blockers exist, run health-check to auto-fix
   # ---------------------------------------------------------------------------
-  - id: "check-health"
+  - id: "auto-heal"
+    type: "recipe"
+    condition: "{{initial_state.status}} == 'blocked'"
+    recipe: "./health-check.yaml"
+    context:
+      state_file: "./STATE.yaml"
+      context_file: "./CONTEXT-TRANSFER.md"
+    output: "heal_result"
+    timeout: 1800
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 2b: Re-read state after heal attempt
+  # ---------------------------------------------------------------------------
+  - id: "recheck-state"
     type: "bash"
     condition: "{{initial_state.status}} == 'blocked'"
     command: |
-      echo "BLOCKED: Cannot proceed. Blockers found:"
-      printf '%s\n' '{{initial_state.blockers}}'
+      python3 << 'PYEOF'
+      import json, yaml
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+          blockers = state.get("blockers", [])
+          if blockers:
+              print(json.dumps({"status": "blocked", "message": "Health check could not fix blockers"}))
+          else:
+              print(json.dumps({"status": "healthy", "message": "Blockers resolved by health check"}))
+      except Exception as e:
+          print(json.dumps({"status": "blocked", "message": str(e)}))
+      PYEOF
+    output: "heal_status"
+    parse_json: true
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 2c: Only fail if heal didn't work
+  # ---------------------------------------------------------------------------
+  - id: "check-health"
+    type: "bash"
+    condition: "{{initial_state.status}} == 'blocked' and {{heal_status.status}} == 'blocked'"
+    command: |
+      echo "BLOCKED: Health check could not resolve blockers."
+      echo "{{heal_status.message}}"
       echo ""
-      printf '%s\n' "Resolve blockers in ./STATE.yaml and re-run."
+      echo "Manual intervention required. Check ./STATE.yaml"
       exit 1
     on_error: "fail"
 
@@ -114,7 +155,7 @@ steps:
   # ---------------------------------------------------------------------------
   - id: "work-loop"
     type: "recipe"
-    recipe: "./.dev-machine/iteration.yaml"
+    recipe: "./iteration.yaml"
     context:
       state_file: "./STATE.yaml"
       context_file: "./CONTEXT-TRANSFER.md"

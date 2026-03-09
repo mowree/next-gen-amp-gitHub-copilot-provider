@@ -66,7 +66,7 @@ steps:
   - id: "module-health-check"
     type: "bash"
     command: |
-      cd /home/mowrim/projects/next-get-provider-github-copilot
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== MODULE HEALTH CHECK ==="
       THRESHOLD=400
       OVERSIZED=""
@@ -120,8 +120,8 @@ steps:
         * BOTH must pass before proceeding.
         * Spawn a fresh sub-agent for antagonistic review (give it the spec + your diff)
         * Fix any review issues found
-        * Commit: feat(<module>): <description>
-        * Update ./STATE.yaml to mark it done with commit hash
+        * Mark implementation complete in STATE.yaml (status: "implemented")
+        * Commits will be handled by post-session cleanup (git may not be available in container)
       - Update ./CONTEXT-TRANSFER.md with decisions made and work completed
 
       ## Important: Files are Factored (Do NOT Read Archives)
@@ -157,7 +157,7 @@ steps:
       What you don't write down is lost forever.
 
       ## SAFETY CONSTRAINTS (MANDATORY -- NEVER VIOLATE)
-      - Your working directory is /home/mowrim/projects/next-get-provider-github-copilot. Do NOT read, write, or execute commands on files outside this directory.
+      - Your working directory is /workspace (or /home/mowrim/projects/next-get-provider-github-copilot if on host). Do NOT read, write, or execute commands on files outside this directory.
       - FORBIDDEN commands: rm -rf, find -delete, any command targeting paths outside your working directory
       - Do NOT cd to .., ~, /, or any path outside /home/mowrim/projects/next-get-provider-github-copilot
       - Do NOT access: ~/.ssh/, ~/.amplifier/keys.env, .env files, *.pem, *.key, or any credential files
@@ -173,7 +173,7 @@ steps:
   - id: "build-check"
     type: "bash"
     command: |
-      cd /home/mowrim/projects/next-get-provider-github-copilot
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== POST-SESSION BUILD CHECK ==="
       if uv run ruff check src/ && uv run pyright src/ 2>&1; then
         echo '{"build_status": "clean"}'
@@ -273,6 +273,23 @@ steps:
       except Exception as e:
           print(json.dumps({"status": "blocked", "session_count": "{{session_count}}", "error": str(e)}))
       PYEOF
+
+      # --- Git commit completed work ---
+      echo "Checking for uncommitted work..."
+      if [ -n "$(git status --porcelain)" ]; then
+        echo "Staging and committing changes..."
+        git add -A
+        COMMIT_MSG="feat: autonomous implementation progress - Session $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        git commit -m "$COMMIT_MSG" || echo "Commit failed (maybe nothing to commit)"
+        
+        # Push if we have a remote
+        if git remote | grep -q origin; then
+          echo "Pushing to origin..."
+          git push origin main || echo "Push failed - will retry next iteration"
+        fi
+      else
+        echo "No changes to commit"
+      fi
 
       # --- Empty session cleanup ---
       SESSIONS_DIR="$HOME/.amplifier/sessions"

@@ -70,15 +70,15 @@ steps:
   - id: "initial-check"
     type: "bash"
     command: |
-      cd /home/mowrim/projects/next-get-provider-github-copilot
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== HEALTH CHECK -- INITIAL SCAN ==="
 
       # Run build and capture output
-      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1) || true
+      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1)
       BUILD_EXIT=$?
 
       # Run tests and capture output
-      TEST_OUTPUT=$(uv run pytest tests/ -v 2>&1) || true
+      TEST_OUTPUT=$(uv run pytest tests/ -v 2>&1)
       TEST_EXIT=$?
 
       # Write findings to SCRATCH.md for the fixing session
@@ -141,7 +141,7 @@ steps:
   # ---------------------------------------------------------------------------
   - id: "fix-loop"
     type: "recipe"
-    recipe: "./.dev-machine/fix-iteration.yaml"
+    recipe: "./fix-iteration.yaml"
     context:
       project_dir: "/home/mowrim/projects/next-get-provider-github-copilot"
       iteration: "{{iteration}}"
@@ -165,5 +165,5 @@ steps:
       echo "=== HEALTH CHECK COMPLETE ==="
       echo "Final status: {{status}}"
       echo "Iterations used: {{iteration}}"
-      cat /home/mowrim/projects/next-get-provider-github-copilot/SCRATCH.md 2>/dev/null || echo "(no SCRATCH.md)"
+      cat ./SCRATCH.md 2>/dev/null || echo "(no SCRATCH.md)" 2>/dev/null || echo "(no SCRATCH.md)"
     output: "final_output"

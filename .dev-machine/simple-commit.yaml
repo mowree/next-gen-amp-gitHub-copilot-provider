@@ -1,0 +1,14 @@
+name: "simple-commit"
+description: "Simple commit with single line message"
+version: "1.0.0"
+
+steps:
+  - id: "do-commit"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git add -A
+      git commit -m "feat: F-005 event translation + dev-machine fixes" --trailer "Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>"
+      git push origin main
+      git log --oneline -5
+    on_error: "fail"
