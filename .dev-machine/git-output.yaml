@@ -1,0 +1,20 @@
+name: "git-output"
+description: "Write git status to a file for verification"
+version: "1.0.0"
+
+steps:
+  - id: "capture-status"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GIT STATUS $(date -u +%Y-%m-%dT%H:%M:%SZ) ===" > /tmp/git-output.txt
+      git status >> /tmp/git-output.txt
+      echo "" >> /tmp/git-output.txt
+      echo "=== RECENT COMMITS ===" >> /tmp/git-output.txt
+      git log --oneline -10 >> /tmp/git-output.txt
+      echo "" >> /tmp/git-output.txt
+      echo "=== UNCOMMITTED FILES ===" >> /tmp/git-output.txt
+      git status --porcelain >> /tmp/git-output.txt
+      cp /tmp/git-output.txt ./GIT-STATUS-NOW.txt
+      cat ./GIT-STATUS-NOW.txt
+    on_error: "fail"
