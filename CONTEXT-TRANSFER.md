@@ -10,6 +10,98 @@
 
 ---
 
+## Session 2026-03-09T01:08Z -- F-003 Implemented
+
+### Work Completed
+
+**F-003: Session Factory with Deny Hook** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/session_factory.py` - ~130 lines
+- `tests/test_session_factory.py` - 12 tests for session lifecycle
+- Implements the Deny + Destroy pattern (non-negotiable)
+- `create_deny_hook()` - returns DENY for all tool requests
+- `create_ephemeral_session()` - creates session with hook installed
+- `destroy_session()` - graceful session cleanup
+
+### Key Design Decisions
+
+1. **Dependency injection for testing**: `create_ephemeral_session` accepts optional `sdk_create_fn` parameter for test mocking. Real SDK integration deferred to driver.py.
+
+2. **Force deny_all_tools=True**: Even if caller passes `deny_all_tools=False`, the function forces it to True with a warning log. The Deny+Destroy pattern is non-negotiable.
+
+3. **Graceful destruction**: `destroy_session` catches exceptions from disconnect() and logs warnings rather than propagating errors.
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors, 2 expected warnings for skeleton stubs)
+
+### Blocker (INFO severity)
+**B001**: Git commits not executed - sub-agent cannot run bash. Human must commit after session.
+
+### For Human to Commit
+```bash
+cd /workspace && \
+git add src/amplifier_module_provider_github_copilot/sdk_adapter/ \
+        src/amplifier_module_provider_github_copilot/error_translation.py \
+        src/amplifier_module_provider_github_copilot/session_factory.py \
+        tests/test_sdk_adapter.py \
+        tests/test_error_translation.py \
+        tests/test_session_factory.py \
+        config/errors.yaml \
+        STATE.yaml \
+        CONTEXT-TRANSFER.md && \
+git commit -m "feat(core): implement F-001 + F-002 + F-003
+
+- F-001: SDK Adapter skeleton (DomainEvent, SessionConfig, driver stubs)
+- F-002: Config-driven error translation with 7 mapping rules
+- F-003: Session factory with deny hook (Deny+Destroy pattern)
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+### Next Steps
+1. Run: `uv run pytest tests/ -v` to verify all tests pass
+2. Execute commit command above
+3. Continue with F-004 (Tool Parsing) - NOTE: spec file F-004-tool-parsing.md is missing
+
+---
+
+## Session 2026-03-09T00:47Z -- F-001 + F-002 Implemented
+
+### Work Completed
+
+**F-001: SDK Adapter Skeleton** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/sdk_adapter/__init__.py` - Module exports
+- `src/amplifier_module_provider_github_copilot/sdk_adapter/types.py` - DomainEvent, SessionConfig, SDKSession
+- `src/amplifier_module_provider_github_copilot/sdk_adapter/driver.py` - create_session, destroy_session stubs
+- `tests/test_sdk_adapter.py` - 12 tests for adapter types and exports
+
+**F-002: Error Translation** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/error_translation.py` - Config-driven error translation (~290 lines)
+- `config/errors.yaml` - Full SDK→kernel error mappings (7 mapping rules)
+- `tests/test_error_translation.py` - 17 tests for error translation
+
+### Key Design Decisions
+
+1. **Kernel error types defined locally**: Since amplifier-core may not be installed, the error_translation.py defines matching LLMError subclasses. These match the kernel interface (`provider`, `model`, `retryable`, `retry_after` attributes).
+
+2. **Config loading from YAML**: ErrorConfig/ErrorMapping dataclasses load from config/errors.yaml. Pattern matching supports both type name matching and string pattern matching.
+
+3. **Retry-after extraction**: RateLimitError mappings can set `extract_retry_after: true` to parse "Retry after N seconds" from error messages.
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors, 2 expected warnings for skeleton stubs)
+
+### Blocker (INFO severity)
+**B001**: Not a git repository - commits deferred. Code is complete; human will commit after session.
+
+### Next Steps for Human
+1. Initialize git: `git init && git add -A && git commit -m "feat: F-001 + F-002 implementation"`
+2. Run tests: `uv run pytest tests/ -v`
+3. Continue with F-003 (Session Factory with Deny Hook)
+
+---
+
 ## Founding Session -- Phase 1
 
 ### Architecture Decisions

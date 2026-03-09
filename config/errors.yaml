@@ -1,15 +1,49 @@
 # Error Translation Policy
 # Contract: contracts/error-hierarchy.md
 # 
-# This file defines SDK error → domain error mappings.
+# This file defines SDK error → kernel error mappings.
 # The Python code consumes this config; it does not hardcode mappings.
 #
 # See GOLDEN_VISION_V2.md for the target structure.
 
 version: "1.0"
 
-# Placeholder - to be populated during Phase 0 Day 2
-error_mappings: []
+error_mappings:
+  - sdk_patterns: ["AuthenticationError", "InvalidTokenError", "PermissionDeniedError"]
+    string_patterns: ["401", "403", "unauthorized", "permission denied"]
+    kernel_error: AuthenticationError
+    retryable: false
+
+  - sdk_patterns: ["RateLimitError"]
+    string_patterns: ["429", "rate limit"]
+    kernel_error: RateLimitError
+    retryable: true
+    extract_retry_after: true
+
+  - sdk_patterns: ["QuotaExceededError"]
+    string_patterns: ["quota exceeded", "billing"]
+    kernel_error: QuotaExceededError
+    retryable: false
+
+  - sdk_patterns: ["TimeoutError", "RequestTimeoutError"]
+    string_patterns: ["timeout", "timed out"]
+    kernel_error: LLMTimeoutError
+    retryable: true
+
+  - sdk_patterns: ["ContentFilterError", "SafetyError"]
+    string_patterns: ["content filter", "safety", "blocked"]
+    kernel_error: ContentFilterError
+    retryable: false
+
+  - sdk_patterns: ["ConnectionError", "ProcessExitedError"]
+    string_patterns: ["connection refused", "process exited"]
+    kernel_error: NetworkError
+    retryable: true
+
+  - sdk_patterns: ["ModelNotFoundError"]
+    string_patterns: ["model not found", "404"]
+    kernel_error: NotFoundError
+    retryable: false
 
 default:
   kernel_error: ProviderUnavailableError
