@@ -24,6 +24,10 @@ from pathlib import Path
 
 import yaml
 
+# TODO(amplifier-core): Replace fallback error classes below with imports from
+# amplifier_core.llm_errors once amplifier-core is a project dependency.
+# See: contracts/error-hierarchy.md
+
 
 # Define fallback error types that match kernel interface
 # These are used when amplifier-core is not installed (testing scenarios)
