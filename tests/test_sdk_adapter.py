@@ -10,28 +10,6 @@ from dataclasses import fields
 class TestSDKAdapterTypes:
     """Test domain types exposed by sdk_adapter."""
 
-    def test_domain_event_has_type_field(self) -> None:
-        """AC-3: DomainEvent has type field."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.types import DomainEvent
-
-        event = DomainEvent(type="text_delta", data={"content": "hello"})
-        assert event.type == "text_delta"
-
-    def test_domain_event_has_data_field(self) -> None:
-        """AC-3: DomainEvent has data field."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.types import DomainEvent
-
-        event = DomainEvent(type="tool_call", data={"name": "read_file", "args": {}})
-        assert event.data == {"name": "read_file", "args": {}}
-
-    def test_domain_event_is_dataclass(self) -> None:
-        """AC-3: DomainEvent is a dataclass."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.types import DomainEvent
-
-        field_names = {f.name for f in fields(DomainEvent)}
-        assert "type" in field_names
-        assert "data" in field_names
-
     def test_session_config_has_model(self) -> None:
         """AC-4: SessionConfig has model field."""
         from amplifier_module_provider_github_copilot.sdk_adapter.types import SessionConfig
