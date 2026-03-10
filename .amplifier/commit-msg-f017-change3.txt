@@ -1,0 +1,9 @@
+refactor(F-017): remove duplicate DomainEvent from types.py
+
+- Remove DomainEvent dataclass from sdk_adapter/types.py
+- Remove TestSDKAdapterTypes DomainEvent tests from test_sdk_adapter.py
+- The streaming.py DomainEvent is the canonical version used in production
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>

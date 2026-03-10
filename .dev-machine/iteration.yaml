@@ -175,16 +175,16 @@ steps:
     command: |
       cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== POST-SESSION BUILD CHECK ==="
-      # ruff --exit-zero makes warnings non-fatal; pyright exit 0 = clean
-      uv run ruff check src/ --exit-zero
-      PYRIGHT_EXIT=0
+      # Both ruff and pyright must pass - no --exit-zero (catch errors early)
+      RUFF_EXIT=0; PYRIGHT_EXIT=0
+      uv run ruff check src/ 2>&1 || RUFF_EXIT=$?
       uv run pyright src/ 2>&1 || PYRIGHT_EXIT=$?
-      if [ "$PYRIGHT_EXIT" -eq 0 ]; then
+      if [ "$RUFF_EXIT" -eq 0 ] && [ "$PYRIGHT_EXIT" -eq 0 ]; then
         echo '{"build_status": "clean"}'
       else
-        echo "BUILD FAILED -- pyright exit=$PYRIGHT_EXIT"
+        echo "BUILD FAILED -- ruff exit=$RUFF_EXIT pyright exit=$PYRIGHT_EXIT"
         echo "Adding blocker to ./STATE.yaml..."
-        python3 -c "import yaml,datetime;f=open('./STATE.yaml');s=yaml.safe_load(f);f.close();b=s.get('blockers') or [];b.append({'description':'Build failed after working session','since':datetime.datetime.now().isoformat(),'severity':'high'});s['blockers']=b;f=open('./STATE.yaml','w');yaml.dump(s,f,default_flow_style=False,sort_keys=False);f.close()"
+        python3 -c "import yaml,datetime;f=open('./STATE.yaml');s=yaml.safe_load(f);f.close();b=s.get('blockers') or [];b.append({'description':'Build failed: ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT','since':datetime.datetime.now().isoformat(),'severity':'high'});s['blockers']=b;f=open('./STATE.yaml','w');yaml.dump(s,f,default_flow_style=False,sort_keys=False);f.close()"
         echo '{"build_status": "failed"}'
       fi
     output: "build_result"
@@ -283,7 +283,11 @@ steps:
       if [ -n "$(git status --porcelain)" ]; then
         echo "Staging and committing changes..."
         git add -A
-        COMMIT_MSG="feat: autonomous implementation progress - Session $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        COMMIT_MSG="feat: autonomous implementation progress - Session $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>"
         git commit -m "$COMMIT_MSG" || echo "Commit failed (maybe nothing to commit)"
         
         # Push if we have a remote

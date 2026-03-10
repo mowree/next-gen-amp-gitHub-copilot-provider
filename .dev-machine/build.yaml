@@ -173,7 +173,78 @@ steps:
       session_count: "{{iteration_result.iteration_result.session_count}}"
 
   # ---------------------------------------------------------------------------
-  # Step 4: Final summary
+  # Step 4: Completion Gate -- MUST pass before phase can be declared complete
+  # Runs all checks without short-circuit, aggregates results
+  # ---------------------------------------------------------------------------
+  - id: "completion-gate"
+    type: "bash"
+    condition: "{{status}} == 'complete'"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo ""
+      echo "========================================"
+      echo "  COMPLETION GATE: Full Verification"
+      echo "========================================"
+      echo ""
+      
+      # Run ALL checks - no short-circuit
+      set +e
+      RUFF_EXIT=0; PYRIGHT_EXIT=0; TEST_EXIT=0
+      
+      echo "--- Lint Check (ruff) ---"
+      uv run ruff check src/ 2>&1
+      RUFF_EXIT=$?
+      echo "  Exit code: $RUFF_EXIT"
+      echo ""
+      
+      echo "--- Type Check (pyright) ---"
+      uv run pyright src/ 2>&1
+      PYRIGHT_EXIT=$?
+      echo "  Exit code: $PYRIGHT_EXIT"
+      echo ""
+      
+      echo "--- Test Suite (pytest) ---"
+      uv run pytest tests/ -v 2>&1
+      TEST_EXIT=$?
+      echo "  Exit code: $TEST_EXIT"
+      echo ""
+      
+      # Aggregate results
+      if [ "$RUFF_EXIT" -eq 0 ] && [ "$PYRIGHT_EXIT" -eq 0 ] && [ "$TEST_EXIT" -eq 0 ]; then
+        echo "========================================"
+        echo "  COMPLETION GATE: PASSED"
+        echo "  Phase verified clean - all checks passed"
+        echo "========================================"
+        echo '{"gate": "passed", "ruff": 0, "pyright": 0, "pytest": 0}'
+      else
+        echo "========================================"
+        echo "  COMPLETION GATE: FAILED"
+        echo "  ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT pytest=$TEST_EXIT"
+        echo "========================================"
+        
+        # Add blocker to STATE.yaml
+        python3 -c "
+import yaml, datetime
+with open('./STATE.yaml') as f: s = yaml.safe_load(f)
+b = s.get('blockers') or []
+b.append({
+    'description': 'Completion gate failed: ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT pytest=$TEST_EXIT',
+    'since': datetime.datetime.now().isoformat(),
+    'severity': 'high'
+})
+s['blockers'] = b
+with open('./STATE.yaml', 'w') as f: yaml.dump(s, f, default_flow_style=False, sort_keys=False)
+"
+        echo '{"gate": "failed", "ruff": '$RUFF_EXIT', "pyright": '$PYRIGHT_EXIT', "pytest": '$TEST_EXIT'}'
+        exit 1
+      fi
+    output: "gate_result"
+    parse_json: true
+    timeout: 600
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 5: Final summary
   # ---------------------------------------------------------------------------
   - id: "final-summary"
     type: "bash"
@@ -189,6 +260,8 @@ steps:
       if [ "{{status}}" = "blocked" ]; then
         echo "  Stopped: BLOCKERS detected"
         echo "  Check ./STATE.yaml for blocker details."
+      elif [ "{{status}}" = "complete" ]; then
+        echo "  PHASE COMPLETE - Verified by completion gate"
       else
         echo "  Stopped: work loop exit (max iterations or no more work)"
       fi

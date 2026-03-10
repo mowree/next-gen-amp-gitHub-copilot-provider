@@ -1,0 +1,22 @@
+name: "commit-f017-change2"
+description: "Commit F-017 Change 2: unify deny hooks - keep async, remove sync duplicate"
+version: "1.0.0"
+
+steps:
+  - id: "stage-files"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git add src/amplifier_module_provider_github_copilot/session_factory.py
+      git add src/amplifier_module_provider_github_copilot/completion.py
+      git add tests/test_session_factory.py
+      git add tests/test_deny_hook_breach_detector.py
+      git status --short
+    output: "stage_result"
+
+  - id: "do-commit"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      git commit -F .amplifier/commit-msg-f017-change2.txt
+    output: "commit_result"

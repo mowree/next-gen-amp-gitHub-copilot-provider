@@ -1,0 +1,13 @@
+feat(F-010): implement create_session() with SDK integration
+
+Replace NotImplementedError stub with real SDK integration:
+- Calls _get_client() to get singleton CopilotClient
+- Builds hooks dict with deny_hook as on_pre_tool_use
+- Passes empty tools list (NEVER register SDK tools - they bypass hooks)
+- Passes model from config to client.create_session()
+
+Tests: test_create_session.py covers all behaviors
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>

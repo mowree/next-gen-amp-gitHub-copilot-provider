@@ -1,93 +1,108 @@
-phase: 1
-phase_name: Phase 0 -- SDK Adapter + Core Modules
-epoch: 8
-next_action: Run tests and commit all Phase 0 work
+phase: 2
+phase_name: Phase 1 -- SDK Integration + Real Implementation
+epoch: 2
+next_action: Implement F-010 (SDK Client Wrapper) then F-011 (Loop Controller)
 blockers:
-- description: Build failed after working session
-  since: '2026-03-09T03:49:51.614560'
+- description: 'Build failed: ruff=2 pyright=2'
+  since: '2026-03-09T07:37:41.006301'
   severity: high
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
 - F-003-session-factory
+- F-004-tool-parsing
+- F-005-event-translation
+- F-006-streaming-handler
+- F-007-completion-lifecycle
+- F-008-provider-orchestrator
+- F-009-integration-verification
 architecture_spec:
   status: approved
   path: ./debates/GOLDEN_VISION_V2.md
 module_specs: {}
 features:
-  F-004-tool-parsing:
-    name: Tool Parsing Module
-    module: tool_parsing
+  F-010-sdk-client-wrapper:
+    name: SDK Client Wrapper
+    module: sdk_adapter
     status: implemented
-    spec: specs/features/F-004-tool-parsing.md
-    depends_on:
-    - F-001-sdk-adapter-skeleton
-    started_at: '2026-03-09T01:30:00Z'
-    completed_at: '2026-03-09T01:40:00Z'
+    spec: specs/features/F-010-sdk-client-wrapper.md
+    depends_on: []
+    started_at: '2026-03-09T07:20:00Z'
+    completed_at: '2026-03-09T07:40:00Z'
     commit: null
-    description: Extract tool calls from SDK response, return as kernel ToolCall types
-  F-005-event-translation:
-    name: Event Translation
-    module: streaming
+    description: Wrapper around copilot.CopilotClient with lifecycle management
+  F-011-loop-controller:
+    name: Loop Controller
+    module: sdk_adapter
     status: implemented
-    spec: specs/features/F-005-event-translation.md
+    spec: specs/features/F-011-loop-controller.md
     depends_on:
-    - F-001-sdk-adapter-skeleton
-    started_at: '2026-03-09T01:35:00Z'
-    completed_at: '2026-03-09T01:42:00Z'
+    - F-010-sdk-client-wrapper
+    started_at: '2026-03-09T07:25:00Z'
+    completed_at: '2026-03-09T07:40:00Z'
     commit: null
-    description: Config-driven event classification (BRIDGE/CONSUME/DROP)
-  F-006-streaming-handler:
-    name: Streaming Handler
-    module: streaming
-    status: implemented
-    spec: specs/features/F-006-streaming-handler.md
+    description: Controls SDK internal agent loop with circuit breaker
+  F-012-tool-capture-strategy:
+    name: Tool Capture Strategy
+    module: sdk_adapter
+    status: ready
+    spec: specs/features/F-012-tool-capture-strategy.md
     depends_on:
-    - F-005-event-translation
-    - F-004-tool-parsing
-    started_at: '2026-03-09T03:15:00Z'
-    completed_at: '2026-03-09T03:20:00Z'
+    - F-011-loop-controller
+    started_at: null
+    completed_at: null
     commit: null
-    description: Accumulate streaming events into final response
-  F-007-completion-lifecycle:
-    name: Completion Lifecycle
+    description: Captures tool calls with first-turn-only strategy
+  F-013-event-router:
+    name: SDK Event Router
+    module: sdk_adapter
+    status: ready
+    spec: specs/features/F-013-event-router.md
+    depends_on:
+    - F-011-loop-controller
+    - F-012-tool-capture-strategy
+    started_at: null
+    completed_at: null
+    commit: null
+    description: Routes SDK events to handlers, coordinates loop control
+  F-014-real-sdk-integration:
+    name: Real SDK Integration
+    module: sdk_adapter
+    status: ready
+    spec: specs/features/F-014-real-sdk-integration.md
+    depends_on:
+    - F-010-sdk-client-wrapper
+    - F-013-event-router
+    started_at: null
+    completed_at: null
+    commit: null
+    description: Wire SDK adapter stubs to actual copilot SDK calls
+  F-015-completion-wiring:
+    name: Completion Module Wiring
     module: completion
-    status: implemented
-    spec: specs/features/F-007-completion-lifecycle.md
+    status: ready
+    spec: specs/features/F-015-completion-wiring.md
     depends_on:
-    - F-003-session-factory
-    - F-006-streaming-handler
-    - F-002-error-translation
-    started_at: '2026-03-09T03:34:00Z'
-    completed_at: '2026-03-09T03:37:00Z'
+    - F-014-real-sdk-integration
+    started_at: null
+    completed_at: null
     commit: null
-    description: 'Full LLM call lifecycle: create session, stream response, destroy session'
-  F-008-provider-orchestrator:
-    name: Provider Orchestrator
-    module: provider
-    status: implemented
-    spec: specs/features/F-008-provider-orchestrator.md
-    depends_on:
-    - F-007-completion-lifecycle
-    started_at: '2026-03-09T03:40:00Z'
-    completed_at: '2026-03-09T03:45:00Z'
-    commit: null
-    description: 4 methods + 1 property Provider Protocol implementation
-  F-009-integration-verification:
-    name: Integration Verification
+    description: Wire completion module to use real SDK adapter
+  F-016-e2e-integration-tests:
+    name: E2E Integration Tests
     module: tests
-    status: implemented
-    spec: specs/features/F-009-integration-verification.md
+    status: ready
+    spec: specs/features/F-016-e2e-integration-tests.md
     depends_on:
-    - F-008-provider-orchestrator
-    started_at: '2026-03-09T03:46:00Z'
-    completed_at: '2026-03-09T03:52:00Z'
+    - F-015-completion-wiring
+    started_at: null
+    completed_at: null
     commit: null
-    description: End-to-end integration tests against mock SDK
+    description: Full end-to-end tests against real Copilot SDK
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
   total_features_completed: 9
-  last_updated: '2026-03-09T03:52:00Z'
-  last_session: '2026-03-09T03:52:00Z'
-last_session: '2026-03-09T03:49:51.680484+00:00'
+  last_updated: '2026-03-09T07:40:00Z'
+  last_session: '2026-03-09T07:40:00Z'
+last_session: '2026-03-09T07:37:41.075582+00:00'

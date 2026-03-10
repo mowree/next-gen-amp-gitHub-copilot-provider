@@ -60,7 +60,7 @@ class AccumulatedResponse:
 
     text_content: str = ""
     thinking_content: str = ""
-    tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    tool_calls: list[dict[str, Any]] = field(default_factory=lambda: [])
     usage: dict[str, Any] | None = None
     finish_reason: str | None = None
     error: dict[str, Any] | None = None

@@ -1,0 +1,21 @@
+name: "commit-task2"
+description: "Commit create_session implementation for F-010 Task 2"
+version: "1.0.0"
+
+steps:
+  - id: "check-perms"
+    type: "bash"
+    command: |
+      ls -la /home/mowrim/projects/next-get-provider-github-copilot/.git/objects/ | head -10
+      whoami
+      stat /home/mowrim/projects/next-get-provider-github-copilot/.git/objects/
+    output: "perms_result"
+
+  - id: "do-commit"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      GIT_OBJECT_DIRECTORY=$(git rev-parse --git-dir)/objects
+      echo "Git objects dir: $GIT_OBJECT_DIRECTORY"
+      git commit -F .amplifier/commit-msg-task2.txt
+    output: "commit_result"

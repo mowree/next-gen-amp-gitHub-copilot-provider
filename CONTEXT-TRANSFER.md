@@ -10,6 +10,71 @@
 
 ---
 
+## Session 2026-03-09T07:37Z -- F-010 + F-011 Implemented
+
+### Work Completed
+
+**F-010: SDK Client Wrapper** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/sdk_adapter/client.py` - ~270 lines
+- `tests/test_sdk_client.py` - ~365 lines, 20+ tests
+- `AuthStatus` frozen dataclass with 4 fields
+- `CopilotSessionWrapper` opaque SDK session handle
+- `CopilotClientWrapper` with `get_auth_status()`, `session()`, `list_models()`, `close()`
+- Injected-or-auto-init client pattern (owned vs injected)
+- Lazy CopilotClient initialization via env token
+
+**F-011: Loop Controller** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/sdk_adapter/loop_control.py` - ~134 lines
+- `tests/test_loop_control.py` - ~287 lines, 25+ tests
+- `LoopState` dataclass with `elapsed_seconds` property
+- `LoopController` with `on_turn_start()`, `should_abort()`, `request_abort()`
+- Circuit breaker: trips when `turn_count > max_turns`
+- Hard limit: `SDK_MAX_TURNS_HARD_LIMIT = 10` via `min()` enforcement
+- Abort callback invoked exactly once (idempotent)
+
+### Key Design Decisions
+
+1. **Owned vs injected client**: `CopilotClientWrapper(sdk_client=...)` for tests; no argument = lazy auto-init. Only auto-initialized clients are stopped on `close()`.
+
+2. **Hard limit enforcement**: `LoopController.__init__` applies `min(max_turns, SDK_MAX_TURNS_HARD_LIMIT)` to prevent misconfiguration. Evidence: session a1a0af17 ran 305 turns.
+
+3. **Auth status when client not initialized**: No client + has token → `is_authenticated=None` (unknown). No client + no token → `is_authenticated=False` (definitive).
+
+4. **Abort callback idempotency**: `_abort_callback_invoked` flag prevents double-invocation even when `request_abort()` called multiple times or circuit trips repeatedly.
+
+5. **TYPE_CHECKING block removed**: Empty `if TYPE_CHECKING: pass` was dead code, removed.
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors, 2 pre-existing warnings in driver.py skeleton stubs)
+- `tests/test_sdk_client.py` - 20+ tests covering all 5 ACs
+- `tests/test_loop_control.py` - 25+ tests covering all 5 ACs + 3 edge cases
+
+### For Human to Commit
+```bash
+cd /home/mowrim/projects/next-get-provider-github-copilot && \
+git add src/amplifier_module_provider_github_copilot/sdk_adapter/client.py \
+        src/amplifier_module_provider_github_copilot/sdk_adapter/loop_control.py \
+        tests/test_sdk_client.py \
+        tests/test_loop_control.py \
+        specs/features/F-010-sdk-client-wrapper.md \
+        specs/features/F-011-loop-controller.md \
+        STATE.yaml \
+        CONTEXT-TRANSFER.md && \
+git commit -m "feat(sdk): implement F-010 SDK Client Wrapper + F-011 Loop Controller
+
+- F-010: CopilotClientWrapper with owned/injected lifecycle, auth status
+- F-011: LoopController circuit breaker with hard limit enforcement
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+### Next Steps
+1. F-012: Tool Capture Strategy (depends on F-011) - ready to implement
+2. F-013: SDK Event Router (depends on F-011, F-012)
+
+---
+
 ## Session 2026-03-09T03:52Z -- F-009 Implemented (Phase 0 Complete!)
 
 ### Work Completed

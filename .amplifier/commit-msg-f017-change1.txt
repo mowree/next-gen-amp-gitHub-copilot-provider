@@ -1,0 +1,13 @@
+refactor(F-017): delete driver.py and rewire session_factory
+
+- Remove _driver_create_session() from session_factory.py
+- Replace no-sdk_create_fn branch with ProviderUnavailableError raise
+- Delete sdk_adapter/driver.py (80 lines removed)
+- Update sdk_adapter/__init__.py to export CopilotClientWrapper/CopilotSessionWrapper
+- Delete tests/test_driver_singleton.py, test_create_session.py, test_destroy_session.py
+- Update test_sdk_adapter.py: remove TestSDKAdapterDriver, add new export tests
+- Update test_ephemeral_session_wiring.py: replace _driver_create_session monkeypatching
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>

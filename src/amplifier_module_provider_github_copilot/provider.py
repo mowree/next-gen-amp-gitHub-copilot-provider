@@ -22,7 +22,6 @@ from typing import Any
 
 from .completion import (
     AccumulatedResponse,
-    CompletionConfig,
     CompletionRequest,
     complete_and_collect,
 )
@@ -63,7 +62,7 @@ class ChatRequest:
 
     messages: list[dict[str, Any]]
     model: str | None = None
-    tools: list[dict[str, Any]] = field(default_factory=list)
+    tools: list[dict[str, Any]] = field(default_factory=lambda: [])
     max_tokens: int | None = None
     temperature: float | None = None
 

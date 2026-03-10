@@ -1,0 +1,8 @@
+docs(F-017): add TODO for amplifier-core error class migration
+
+Add TODO comment in error_translation.py pointing to future migration
+of fallback error classes to imports from amplifier_core.llm_errors.
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>

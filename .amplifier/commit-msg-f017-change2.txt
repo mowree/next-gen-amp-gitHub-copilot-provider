@@ -1,0 +1,11 @@
+refactor(F-017): unify deny hooks - keep async, remove sync duplicate
+
+- Remove sync create_deny_hook() returning {"action": "DENY"} (wrong SDK format)
+- Rename _create_deny_hook() to create_deny_hook() (remove leading underscore)
+- Remove redundant deny hook registration from completion.py (session_factory handles it)
+- Update tests to verify async hook returning permissionDecision key
+- Update test_deny_hook_breach_detector.py to use public create_deny_hook
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>

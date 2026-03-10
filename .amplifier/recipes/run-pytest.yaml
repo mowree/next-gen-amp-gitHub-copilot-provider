@@ -1,0 +1,11 @@
+name: "run-pytest"
+description: "Run pytest for verification"
+version: "1.0.0"
+
+steps:
+  - id: "run-tests"
+    type: "bash"
+    command: |
+      cd /home/mowrim/projects/next-get-provider-github-copilot
+      uv run python -m pytest tests/test_session_factory.py tests/test_deny_hook_breach_detector.py -v --tb=short 2>&1; exit 0
+    output: "test_result"
