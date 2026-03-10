@@ -442,7 +442,7 @@ The trade-off: Interactive mode is safer but slower. Autonomous mode is faster b
 |--------|-------|
 | Features completed | 9 (F-001 through F-009) |
 | Epochs | 8 |
-| Lines of code | ~1,500 (implementation + tests) |
+| Lines of code | ~1,781 (after F-017 cleanup; was ~1,868 before) |
 | Build status | ✅ ruff clean, pyright clean (2 expected stub warnings) |
 | Test status | ✅ All passing |
 

@@ -99,8 +99,14 @@ Execute git commands DIRECTLY in your session (never delegate git execution):
 
 ```bash
 git add -A
-git commit -m "feat(<module>): <feature-name>"
+git commit -m "feat(<module>): <feature-name>
+
+🤖 Generated with Amplifier
+
+Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>"
 ```
+
+**IMPORTANT**: Always include the Amplifier signature (robot emoji + Co-Authored-By trailer) in every commit.
 
 **Git Commit Fallback Strategies (if commit fails):**
 

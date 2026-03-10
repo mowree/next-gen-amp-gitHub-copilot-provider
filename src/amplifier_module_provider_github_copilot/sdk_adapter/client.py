@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +21,22 @@ from typing import Any
 from ..error_translation import load_error_config, translate_sdk_error
 
 logger = logging.getLogger(__name__)
+
+# Deny hook constant
+DENY_ALL: dict[str, str] = {
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Amplifier sovereignty - tools executed by kernel only",
+}
+
+
+def create_deny_hook() -> Callable[[Any, Any], Awaitable[dict[str, str]]]:
+    """Create async deny hook for SDK pre_tool_use callback."""
+
+    async def deny(input_data: Any, invocation: Any) -> dict[str, str]:
+        return DENY_ALL
+
+    return deny
+
 
 _CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "errors.yaml"
 

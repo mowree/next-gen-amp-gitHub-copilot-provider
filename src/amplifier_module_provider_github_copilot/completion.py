@@ -8,7 +8,7 @@ Contract: streaming-contract.md, deny-destroy.md
 Feature: F-007
 
 MUST constraints:
-- MUST create ephemeral session via session_factory
+- MUST create ephemeral session via sdk_create_fn or CopilotClientWrapper.session()
 - MUST destroy session after completion (success or error)
 - MUST translate SDK errors via error_translation
 - MUST yield domain events during streaming
@@ -23,11 +23,12 @@ from typing import Any
 
 from .error_translation import (
     ErrorConfig,
+    ProviderUnavailableError,
     load_error_config,
     translate_sdk_error,
 )
+from .sdk_adapter.client import create_deny_hook
 from .sdk_adapter.types import SDKSession, SessionConfig
-from .session_factory import destroy_session
 from .streaming import (
     AccumulatedResponse,
     DomainEvent,
@@ -127,10 +128,13 @@ async def complete(
         if sdk_create_fn is not None:
             session = await sdk_create_fn(session_config)
             assert session is not None
+            if hasattr(session, "register_pre_tool_use_hook"):
+                session.register_pre_tool_use_hook(create_deny_hook())
         else:
-            from .session_factory import create_ephemeral_session
-
-            session = await create_ephemeral_session(session_config)
+            raise ProviderUnavailableError(
+                "Real SDK path requires CopilotClientWrapper.session() context manager.",
+                provider="github-copilot",
+            )
 
         # Stream events from session
         assert session is not None
@@ -153,7 +157,11 @@ async def complete(
     finally:
         # Always destroy session
         if session is not None:
-            await destroy_session(session)
+            try:
+                if hasattr(session, "disconnect"):
+                    await session.disconnect()
+            except Exception as disconnect_err:
+                logger.warning(f"Error destroying session: {disconnect_err}")
 
 
 async def complete_and_collect(

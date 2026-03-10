@@ -341,6 +341,33 @@ class TestClose:
         await wrapper.close()  # second call - still no error
 
 
+class TestDenyHookInClient:
+    """create_deny_hook() and DENY_ALL exported from client.py."""
+
+    def test_create_deny_hook_exists_in_client(self) -> None:
+        from amplifier_module_provider_github_copilot.sdk_adapter.client import create_deny_hook
+
+        assert callable(create_deny_hook)
+
+    def test_deny_all_constant_exists_in_client(self) -> None:
+        from amplifier_module_provider_github_copilot.sdk_adapter.client import DENY_ALL
+
+        assert DENY_ALL["permissionDecision"] == "deny"
+        assert "Amplifier" in DENY_ALL["permissionDecisionReason"]
+
+    @pytest.mark.asyncio
+    async def test_deny_hook_returns_deny_all(self) -> None:
+        from amplifier_module_provider_github_copilot.sdk_adapter.client import (
+            DENY_ALL,
+            create_deny_hook,
+        )
+
+        hook = create_deny_hook()
+        result = await hook(None, None)
+        assert result == DENY_ALL
+        assert result["permissionDecision"] == "deny"
+
+
 class TestSDKIsolation:
     """AC-4: SDK imports are isolated to sdk_adapter/ only."""
 
