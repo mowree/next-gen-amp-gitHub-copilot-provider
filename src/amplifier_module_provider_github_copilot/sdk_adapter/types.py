@@ -26,19 +26,6 @@ class SessionConfig:
     max_tokens: int | None = None
 
 
-@dataclass
-class DomainEvent:
-    """Event from SDK translated to domain representation.
-
-    Attributes:
-        type: Event type (e.g., "text_delta", "tool_call", "thinking").
-        data: Event payload as dictionary.
-    """
-
-    type: str
-    data: dict[str, Any]
-
-
 # SDKSession is intentionally an opaque type alias.
 # Domain code should not access SDK session internals.
 # In the skeleton, we use Any; real implementation will wrap SDK session.
