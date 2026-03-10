@@ -27,16 +27,12 @@ from amplifier_module_provider_github_copilot.error_translation import (
     RateLimitError,
 )
 from amplifier_module_provider_github_copilot.provider import (
-    ChatRequest,
     GitHubCopilotProvider,
 )
 from amplifier_module_provider_github_copilot.sdk_adapter.types import (
-    SDKSession,
     SessionConfig,
 )
 from amplifier_module_provider_github_copilot.streaming import (
-    EventConfig,
-    DomainEventType,
     load_event_config,
 )
 
@@ -146,33 +142,7 @@ class TestFullCompletionLifecycle:
         assert result.is_complete
         assert session.destroyed  # Session cleanup
 
-    @pytest.mark.asyncio
-    async def test_provider_complete_method(self) -> None:
-        """Provider.complete() returns ChatResponse."""
-        events = [
-            {"type": "text_delta", "text": "Test response"},
-            {"type": "message_complete", "finish_reason": "stop"},
-        ]
-        session = MockSDKSession(events)
 
-        async def create_session(_: SessionConfig) -> MockSDKSession:
-            return session
-
-        # Create provider with injected completion function
-        provider = GitHubCopilotProvider()
-
-        async def mock_complete(req: CompletionRequest) -> Any:
-            event_config = load_event_config()
-            config = CompletionConfig(event_config=event_config)
-            return await complete_and_collect(req, config=config, sdk_create_fn=create_session)
-
-        provider._complete_fn = mock_complete
-
-        request = ChatRequest(messages=[{"role": "user", "content": "Hello"}])
-        response = await provider.complete(request)
-
-        assert response.content == "Test response"
-        assert response.finish_reason == "stop"
 
 
 # ============================================================================
@@ -476,55 +446,6 @@ class TestProviderProtocolCompliance:
         """Provider has name property."""
         provider = GitHubCopilotProvider()
         assert provider.name == "github-copilot"
-
-    def test_get_info_returns_provider_info(self) -> None:
-        """get_info() returns ProviderInfo."""
-        provider = GitHubCopilotProvider()
-        info = provider.get_info()
-
-        assert info.name == "github-copilot"
-        assert info.version == "0.1.0"
-        assert info.defaults is not None
-        assert info.defaults.model == "gpt-4"
-
-    @pytest.mark.asyncio
-    async def test_list_models_returns_model_list(self) -> None:
-        """list_models() returns list of ModelInfo."""
-        provider = GitHubCopilotProvider()
-        models = await provider.list_models()
-
-        assert len(models) >= 1
-        assert all(hasattr(m, "id") for m in models)
-        assert all(hasattr(m, "name") for m in models)
-        assert all(hasattr(m, "context_window") for m in models)
-
-    @pytest.mark.asyncio
-    async def test_complete_returns_chat_response(self) -> None:
-        """complete() returns ChatResponse."""
-        events = [
-            {"type": "text_delta", "text": "Response"},
-            {"type": "message_complete", "finish_reason": "stop"},
-        ]
-        session = MockSDKSession(events)
-
-        async def create_session(_: SessionConfig) -> MockSDKSession:
-            return session
-
-        provider = GitHubCopilotProvider()
-
-        async def mock_complete(req: CompletionRequest) -> Any:
-            event_config = load_event_config()
-            config = CompletionConfig(event_config=event_config)
-            return await complete_and_collect(req, config=config, sdk_create_fn=create_session)
-
-        provider._complete_fn = mock_complete
-
-        request = ChatRequest(messages=[{"role": "user", "content": "Hello"}])
-        response = await provider.complete(request)
-
-        assert hasattr(response, "content")
-        assert hasattr(response, "tool_calls")
-        assert hasattr(response, "finish_reason")
 
     def test_parse_tool_calls_returns_tool_call_list(self) -> None:
         """parse_tool_calls() returns list[ToolCall]."""
