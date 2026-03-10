@@ -9,14 +9,12 @@ Contract: contracts/sdk-boundary.md
 Exports:
 - SessionConfig: Configuration for SDK session creation
 - CopilotClientWrapper: SDK client with lifecycle management
-- CopilotSessionWrapper: Opaque session handle
 """
 
-from .client import CopilotClientWrapper, CopilotSessionWrapper
+from .client import CopilotClientWrapper
 from .types import SessionConfig
 
 __all__ = [
     "CopilotClientWrapper",
-    "CopilotSessionWrapper",
     "SessionConfig",
 ]

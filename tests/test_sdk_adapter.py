@@ -62,8 +62,8 @@ class TestSDKAdapterExports:
 
         assert CopilotClientWrapper is not None
 
-    def test_exports_copilot_session_wrapper(self) -> None:
-        """sdk_adapter exports CopilotSessionWrapper."""
-        from amplifier_module_provider_github_copilot.sdk_adapter import CopilotSessionWrapper
+    def test_does_not_export_copilot_session_wrapper(self) -> None:
+        """sdk_adapter no longer exports CopilotSessionWrapper (raw session used instead)."""
+        import amplifier_module_provider_github_copilot.sdk_adapter as adapter
 
-        assert CopilotSessionWrapper is not None
+        assert not hasattr(adapter, "CopilotSessionWrapper")
