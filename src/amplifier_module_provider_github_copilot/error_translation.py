@@ -50,140 +50,37 @@ class LLMError(Exception):
         self.retry_after = retry_after
 
 
-class AuthenticationError(LLMError):
-    """Authentication error - not retryable."""
+def _make_error_class(name: str, default_retryable: bool) -> type:
+    """Create an LLMError subclass with fixed retryable default."""
 
     def __init__(
-        self,
+        self: LLMError,
         message: str,
         *,
         provider: str | None = None,
         model: str | None = None,
-        retryable: bool = False,
+        retryable: bool = default_retryable,
         retry_after: float | None = None,
     ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=False, retry_after=retry_after
-        )
+        self.message = message  # type: ignore[attr-defined]
+        self.provider = provider
+        self.model = model
+        self.retryable = retryable
+        self.retry_after = retry_after
+        super(Exception, self).__init__(message)
+
+    return type(name, (LLMError,), {"__init__": __init__})
 
 
-class RateLimitError(LLMError):
-    """Rate limit error - retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = True,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=True, retry_after=retry_after
-        )
-
-
-class QuotaExceededError(LLMError):
-    """Quota exceeded error - not retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = False,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=False, retry_after=retry_after
-        )
-
-
-class LLMTimeoutError(LLMError):
-    """Timeout error - retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = True,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=True, retry_after=retry_after
-        )
-
-
-class ContentFilterError(LLMError):
-    """Content filter error - not retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = False,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=False, retry_after=retry_after
-        )
-
-
-class NetworkError(LLMError):
-    """Network error - retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = True,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=True, retry_after=retry_after
-        )
-
-
-class NotFoundError(LLMError):
-    """Not found error - not retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = False,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=False, retry_after=retry_after
-        )
-
-
-class ProviderUnavailableError(LLMError):
-    """Provider unavailable error - retryable."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = True,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(
-            message, provider=provider, model=model, retryable=True, retry_after=retry_after
-        )
+# Create all error types via factory (8 lines instead of 165)
+AuthenticationError = _make_error_class("AuthenticationError", False)
+RateLimitError = _make_error_class("RateLimitError", True)
+QuotaExceededError = _make_error_class("QuotaExceededError", False)
+LLMTimeoutError = _make_error_class("LLMTimeoutError", True)
+ContentFilterError = _make_error_class("ContentFilterError", False)
+NetworkError = _make_error_class("NetworkError", True)
+NotFoundError = _make_error_class("NotFoundError", False)
+ProviderUnavailableError = _make_error_class("ProviderUnavailableError", True)
 
 
 # Mapping from config names to error classes
