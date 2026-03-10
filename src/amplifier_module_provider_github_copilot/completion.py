@@ -27,7 +27,7 @@ from .error_translation import (
     translate_sdk_error,
 )
 from .sdk_adapter.types import SDKSession, SessionConfig
-from .session_factory import create_deny_hook, destroy_session
+from .session_factory import destroy_session
 from .streaming import (
     AccumulatedResponse,
     DomainEvent,
@@ -58,7 +58,7 @@ class CompletionRequest:
 
     prompt: str
     model: str | None = None
-    tools: list[dict[str, Any]] = field(default_factory=list)
+    tools: list[dict[str, Any]] = field(default_factory=lambda: [])
     max_tokens: int | None = None
     temperature: float | None = None
 
@@ -119,24 +119,21 @@ async def complete(
         error_config = load_error_config(package_root / "config" / "errors.yaml")
 
     # Create session config
-    session_config = config.session_config or SessionConfig(
-        model=request.model or "gpt-4"
-    )
+    session_config = config.session_config or SessionConfig(model=request.model or "gpt-4")
 
     # Create session
     session: SDKSession | None = None
     try:
         if sdk_create_fn is not None:
             session = await sdk_create_fn(session_config)
-            # Install deny hook on mock session
-            if hasattr(session, "register_pre_tool_use_hook"):
-                session.register_pre_tool_use_hook(create_deny_hook())
+            assert session is not None
         else:
             from .session_factory import create_ephemeral_session
 
             session = await create_ephemeral_session(session_config)
 
         # Stream events from session
+        assert session is not None
         async for sdk_event in session.send_message(request.prompt, request.tools):
             # Translate SDK event to domain event
             domain_event = translate_event(sdk_event, event_config)

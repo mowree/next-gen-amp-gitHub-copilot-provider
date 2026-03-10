@@ -31,7 +31,7 @@ DENY_ALL: dict[str, str] = {
 }
 
 
-def _create_deny_hook() -> Callable[..., Awaitable[dict[str, str]]]:  # pyright: ignore[reportUnusedFunction]
+def create_deny_hook() -> Callable[..., Awaitable[dict[str, str]]]:
     """Create a preToolUse hook that denies ALL tool execution.
 
     NEVER returns None - that would allow the tool to proceed.
@@ -81,31 +81,6 @@ class SDKSessionProtocol(Protocol):
 
 # Type alias for SDK session creation function
 SDKCreateFn = Callable[[SessionConfig], Awaitable[SDKSession]]
-
-
-def create_deny_hook() -> Callable[[Any], dict[str, str]]:
-    """Create a preToolUse hook that denies all tool execution.
-
-    Contract: deny-destroy.md
-    - MUST return DENY for all tool requests
-    - MUST include reason referencing Amplifier orchestrator
-
-    Returns:
-        A function that returns a denial response for any tool request.
-    """
-
-    def deny_all_tools(tool_request: Any) -> dict[str, str]:
-        """Deny all tool execution requests.
-
-        The SDK never executes tools - Amplifier's orchestrator handles them.
-        This prevents the "Two Orchestrators" problem.
-        """
-        return {
-            "action": "DENY",
-            "reason": "Amplifier orchestrator handles tools - SDK tool execution denied",
-        }
-
-    return deny_all_tools
 
 
 async def create_ephemeral_session(

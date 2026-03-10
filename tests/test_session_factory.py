@@ -61,7 +61,7 @@ class TestCreateDenyHook:
         assert callable(create_deny_hook)
 
     def test_deny_hook_returns_callable(self) -> None:
-        """AC-2: Deny hook returns a callable."""
+        """Deny hook returns a callable."""
         from amplifier_module_provider_github_copilot.session_factory import (
             create_deny_hook,
         )
@@ -69,30 +69,33 @@ class TestCreateDenyHook:
         hook = create_deny_hook()
         assert callable(hook)
 
-    def test_deny_hook_returns_deny_action(self) -> None:
-        """AC-2: Deny hook returns DENY action for tool calls."""
+    @pytest.mark.asyncio
+    async def test_deny_hook_returns_deny_response(self) -> None:
+        """Deny hook returns DENY_ALL with permissionDecision key."""
         from amplifier_module_provider_github_copilot.session_factory import (
+            DENY_ALL,
             create_deny_hook,
         )
 
         hook = create_deny_hook()
-        tool_request = MockToolRequest(name="read_file", arguments={"path": "/etc"})
-        result = hook(tool_request)
+        result = await hook(None, None)
 
         assert result is not None
-        assert result.get("action") == "DENY"
+        assert result == DENY_ALL
+        assert result["permissionDecision"] == "deny"
 
-    def test_deny_hook_includes_reason(self) -> None:
-        """AC-2: Deny hook includes reason in response."""
+    @pytest.mark.asyncio
+    async def test_deny_hook_includes_reason(self) -> None:
+        """Deny hook includes Amplifier sovereignty reason."""
         from amplifier_module_provider_github_copilot.session_factory import (
             create_deny_hook,
         )
 
         hook = create_deny_hook()
-        result = hook(MockToolRequest(name="any_tool", arguments={}))
+        result = await hook(None, None)
 
-        assert "reason" in result
-        assert "Amplifier" in result["reason"]
+        assert "permissionDecisionReason" in result
+        assert "Amplifier" in result["permissionDecisionReason"]
 
 
 class TestCreateEphemeralSession:
@@ -109,12 +112,11 @@ class TestCreateEphemeralSession:
     @pytest.mark.asyncio
     async def test_session_created_with_deny_hook(self) -> None:
         """AC-1: Session created with deny hook registered."""
-        from amplifier_module_provider_github_copilot.session_factory import (
-            create_ephemeral_session,
-        )
-
         from amplifier_module_provider_github_copilot.sdk_adapter.types import (
             SessionConfig,
+        )
+        from amplifier_module_provider_github_copilot.session_factory import (
+            create_ephemeral_session,
         )
 
         config = SessionConfig(model="gpt-4")
@@ -132,12 +134,11 @@ class TestCreateEphemeralSession:
     @pytest.mark.asyncio
     async def test_deny_hook_is_always_installed(self) -> None:
         """AC-1: Deny hook MUST be installed on every session."""
-        from amplifier_module_provider_github_copilot.session_factory import (
-            create_ephemeral_session,
-        )
-
         from amplifier_module_provider_github_copilot.sdk_adapter.types import (
             SessionConfig,
+        )
+        from amplifier_module_provider_github_copilot.session_factory import (
+            create_ephemeral_session,
         )
 
         config = SessionConfig(model="gpt-4")
@@ -206,13 +207,12 @@ class TestSessionLifecycle:
     @pytest.mark.asyncio
     async def test_full_lifecycle(self) -> None:
         """Contract: Session lifecycle is create -> use -> destroy."""
+        from amplifier_module_provider_github_copilot.sdk_adapter.types import (
+            SessionConfig,
+        )
         from amplifier_module_provider_github_copilot.session_factory import (
             create_ephemeral_session,
             destroy_session,
-        )
-
-        from amplifier_module_provider_github_copilot.sdk_adapter.types import (
-            SessionConfig,
         )
 
         config = SessionConfig(model="gpt-4")
@@ -224,9 +224,9 @@ class TestSessionLifecycle:
         assert session is not None
         assert mock_sdk_session.pre_tool_use_hook is not None
 
-        # Use (simulated - just verify hook works)
-        result = mock_sdk_session.pre_tool_use_hook(MockToolRequest(name="test", arguments={}))
-        assert result["action"] == "DENY"
+        # Use (verify hook denies) - hook is async
+        result = await mock_sdk_session.pre_tool_use_hook(None, None)
+        assert result["permissionDecision"] == "deny"
 
         # Destroy
         await destroy_session(session)
