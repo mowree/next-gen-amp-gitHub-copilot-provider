@@ -1,15 +1,7 @@
 """
-Tests for SDK Adapter skeleton (F-001).
+Tests for SDK Adapter skeleton (F-001) and client exports (F-017).
 
 Contract: contracts/sdk-boundary.md
-Feature: specs/features/F-001-sdk-adapter-skeleton.md
-
-Acceptance Criteria:
-- AC-1: sdk_adapter/ directory exists with __init__.py, types.py, driver.py
-- AC-2: No SDK imports outside of sdk_adapter/
-- AC-3: DomainEvent dataclass defined with type and data fields
-- AC-4: SessionConfig dataclass defined with model, system_prompt, max_tokens
-- AC-5: create_session and destroy_session stubs exist
 """
 
 from dataclasses import fields
@@ -77,30 +69,8 @@ class TestSDKAdapterTypes:
         assert "max_tokens" in field_names
 
 
-class TestSDKAdapterDriver:
-    """Test driver functions exposed by sdk_adapter."""
-
-    def test_create_session_exists(self) -> None:
-        """AC-5: create_session function exists."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.driver import create_session
-
-        assert callable(create_session)
-
-    def test_destroy_session_exists(self) -> None:
-        """AC-5: destroy_session function exists."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.driver import destroy_session
-
-        assert callable(destroy_session)
-
-
 class TestSDKAdapterExports:
     """Test sdk_adapter module exports."""
-
-    def test_exports_domain_event(self) -> None:
-        """sdk_adapter exports DomainEvent."""
-        from amplifier_module_provider_github_copilot.sdk_adapter import DomainEvent
-
-        assert DomainEvent is not None
 
     def test_exports_session_config(self) -> None:
         """sdk_adapter exports SessionConfig."""
@@ -108,14 +78,14 @@ class TestSDKAdapterExports:
 
         assert SessionConfig is not None
 
-    def test_exports_create_session(self) -> None:
-        """sdk_adapter exports create_session."""
-        from amplifier_module_provider_github_copilot.sdk_adapter import create_session
+    def test_exports_copilot_client_wrapper(self) -> None:
+        """sdk_adapter exports CopilotClientWrapper."""
+        from amplifier_module_provider_github_copilot.sdk_adapter import CopilotClientWrapper
 
-        assert callable(create_session)
+        assert CopilotClientWrapper is not None
 
-    def test_exports_destroy_session(self) -> None:
-        """sdk_adapter exports destroy_session."""
-        from amplifier_module_provider_github_copilot.sdk_adapter import destroy_session
+    def test_exports_copilot_session_wrapper(self) -> None:
+        """sdk_adapter exports CopilotSessionWrapper."""
+        from amplifier_module_provider_github_copilot.sdk_adapter import CopilotSessionWrapper
 
-        assert callable(destroy_session)
+        assert CopilotSessionWrapper is not None

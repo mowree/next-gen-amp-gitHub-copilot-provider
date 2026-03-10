@@ -24,6 +24,48 @@ from .sdk_adapter.types import SDKSession, SessionConfig
 
 logger = logging.getLogger(__name__)
 
+# Module-level constant for deny response
+DENY_ALL: dict[str, str] = {
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Amplifier sovereignty",
+}
+
+
+def _create_deny_hook() -> Callable[..., Awaitable[dict[str, str]]]:  # pyright: ignore[reportUnusedFunction]
+    """Create a preToolUse hook that denies ALL tool execution.
+
+    NEVER returns None - that would allow the tool to proceed.
+    Exception handling ensures we always return DENY_ALL.
+    """
+
+    async def deny(input_data: Any, invocation: Any) -> dict[str, str]:
+        try:
+            return DENY_ALL
+        except Exception:
+            return DENY_ALL  # NEVER return None
+
+    return deny
+
+
+def _create_breach_detector(  # pyright: ignore[reportUnusedFunction]
+    on_breach: Callable[[str], None],
+) -> Callable[..., Awaitable[dict[str, Any]]]:
+    """Create a postToolUse hook that detects sovereignty breaches.
+
+    If this hook fires, a tool executed despite our deny hook.
+    This is CRITICAL - it's our canary for detecting hook bypass.
+    """
+
+    async def detect(input_data: Any, invocation: Any) -> dict[str, Any]:
+        tool_name = input_data.get("toolName", "unknown")
+        on_breach(tool_name)  # Signal the breach
+        return {
+            "modifiedResult": "REDACTED - unauthorized execution",
+            "suppressOutput": True,
+        }
+
+    return detect
+
 
 class SDKSessionProtocol(Protocol):
     """Protocol for SDK session with hook registration."""
@@ -95,18 +137,25 @@ async def create_ephemeral_session(
         logger.warning(
             "Attempted to create session without deny hook - forcing deny_all_tools=True"
         )
-        deny_all_tools = True
+
+    # Build the breach detector (Phase 2 will wire this to the SDK)
+    breaches: list[str] = []
+    _breach_detector = _create_breach_detector(breaches.append)
 
     # Create session via SDK
     if sdk_create_fn is None:
-        # Use real SDK adapter (to be implemented in future feature)
-        from .sdk_adapter.driver import create_session as sdk_create
+        # Use CopilotClientWrapper for real SDK path
+        # Note: CopilotClientWrapper.session() handles deny internally
+        # For now, fallback to raising - full wiring comes in F-015
+        from .error_translation import ProviderUnavailableError
 
-        session = await sdk_create(config, deny_hook=create_deny_hook())
+        raise ProviderUnavailableError(
+            "Real SDK path requires CopilotClientWrapper. Use sdk_create_fn for testing.",
+            provider="github-copilot",
+        )
     else:
-        # Use injected mock for testing
+        # Use injected function for testing
         session = await sdk_create_fn(config)
-        # Register hook on mock session
         if hasattr(session, "register_pre_tool_use_hook"):
             session.register_pre_tool_use_hook(create_deny_hook())
 
