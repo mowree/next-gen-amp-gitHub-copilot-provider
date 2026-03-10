@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-from amplifier_module_provider_github_copilot.completion import (
+from amplifier_module_provider_github_copilot.provider import (
     CompletionConfig,
     CompletionRequest,
     complete,

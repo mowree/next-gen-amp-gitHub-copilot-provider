@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from amplifier_module_provider_github_copilot.completion import (
+from amplifier_module_provider_github_copilot.provider import (
     CompletionConfig,
     CompletionRequest,
     complete_and_collect,
