@@ -15,10 +15,12 @@ import logging
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
-from pathlib import Path
+from importlib import resources
 from typing import Any
 
-from ..error_translation import load_error_config, translate_sdk_error
+import yaml
+
+from ..error_translation import ErrorConfig, ErrorMapping, translate_sdk_error
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +40,47 @@ def create_deny_hook() -> Callable[[Any, Any], Awaitable[dict[str, str]]]:
     return deny
 
 
-_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config" / "errors.yaml"
+def _load_error_config_once() -> ErrorConfig:
+    """Load error config with fallback path resolution.
 
+    F-022 AC-4: Fix config path fragility.
+    Tries importlib.resources first, then falls back to file path.
+    """
+    from pathlib import Path
 
-def _load_error_config_once() -> Any:
+    from ..error_translation import load_error_config
+
+    # Try importlib.resources first
     try:
-        return load_error_config(_CONFIG_PATH)
-    except Exception:
-        from ..error_translation import ErrorConfig
+        config_text = resources.read_text("config", "errors.yaml")
+        data = yaml.safe_load(config_text)
+        if data:
+            mappings: list[ErrorMapping] = []
+            for mapping_data in data.get("error_mappings", []):
+                mappings.append(
+                    ErrorMapping(
+                        sdk_patterns=mapping_data.get("sdk_patterns", []),
+                        string_patterns=mapping_data.get("string_patterns", []),
+                        kernel_error=mapping_data.get("kernel_error", "ProviderUnavailableError"),
+                        retryable=mapping_data.get("retryable", True),
+                        extract_retry_after=mapping_data.get("extract_retry_after", False),
+                    )
+                )
+            default = data.get("default", {})
+            return ErrorConfig(
+                mappings=mappings,
+                default_error=default.get("kernel_error", "ProviderUnavailableError"),
+                default_retryable=default.get("retryable", True),
+            )
+    except Exception as e:
+        logger.debug("importlib.resources failed, trying file path: %s", e)
 
+    # Fall back to file path (works in dev/test)
+    try:
+        config_path = Path(__file__).parent.parent.parent.parent / "config" / "errors.yaml"
+        return load_error_config(config_path)
+    except Exception as e:
+        logger.warning("Failed to load error config: %s", e)
         return ErrorConfig()
 
 

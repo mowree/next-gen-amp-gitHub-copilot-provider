@@ -11,10 +11,11 @@ Exports:
 - CopilotClientWrapper: SDK client with lifecycle management
 """
 
-from .client import CopilotClientWrapper
+from .client import CopilotClientWrapper, create_deny_hook
 from .types import SessionConfig
 
 __all__ = [
     "CopilotClientWrapper",
     "SessionConfig",
+    "create_deny_hook",
 ]

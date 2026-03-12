@@ -96,13 +96,8 @@ KERNEL_ERROR_MAP: dict[str, type[LLMError]] = {
 }
 
 
-def _empty_str_list() -> list[str]:
-    """Factory for empty string list."""
-    return []
-
-
-def _empty_mapping_list() -> list[ErrorMapping]:
-    """Factory for empty mapping list."""
+def _str_list() -> list[str]:
+    """Factory for empty string list (typed)."""
     return []
 
 
@@ -118,11 +113,16 @@ class ErrorMapping:
         extract_retry_after: Whether to extract retry_after from message.
     """
 
-    sdk_patterns: list[str] = field(default_factory=_empty_str_list)
-    string_patterns: list[str] = field(default_factory=_empty_str_list)
+    sdk_patterns: list[str] = field(default_factory=_str_list)
+    string_patterns: list[str] = field(default_factory=_str_list)
     kernel_error: str = "ProviderUnavailableError"
     retryable: bool = True
     extract_retry_after: bool = False
+
+
+def _mapping_list() -> list[ErrorMapping]:
+    """Factory for empty ErrorMapping list (typed)."""
+    return []
 
 
 @dataclass
@@ -135,7 +135,7 @@ class ErrorConfig:
         default_retryable: Default retryable flag for unmatched errors.
     """
 
-    mappings: list[ErrorMapping] = field(default_factory=_empty_mapping_list)
+    mappings: list[ErrorMapping] = field(default_factory=_mapping_list)
     default_error: str = "ProviderUnavailableError"
     default_retryable: bool = True
 
