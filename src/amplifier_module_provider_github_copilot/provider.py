@@ -5,12 +5,13 @@ Thin orchestrator implementing Provider Protocol.
 Delegates to specialized modules for all logic.
 
 Contract: provider-protocol.md
-Feature: F-008
+Feature: F-008, F-020
 
 MUST constraints:
-- MUST implement Provider Protocol (name property + parse_tool_calls)
+- MUST implement Provider Protocol (4 methods + 1 property)
 - MUST delegate tool parsing to tool_parsing module
 - MUST NOT contain SDK imports (delegation only)
+- MUST implement mount(), get_info(), list_models(), complete(), parse_tool_calls()
 """
 
 from __future__ import annotations
@@ -38,6 +39,39 @@ from .streaming import (
 from .tool_parsing import ToolCall, parse_tool_calls
 
 logger = logging.getLogger(__name__)
+
+
+def _empty_str_list() -> list[str]:
+    """Factory for empty string list."""
+    return []
+
+
+@dataclass
+class ProviderInfo:
+    """Provider metadata returned by get_info().
+
+    Contract: provider-protocol.md
+    Feature: F-020 AC-2
+    """
+
+    name: str
+    version: str
+    description: str
+    capabilities: list[str] = field(default_factory=_empty_str_list)
+
+
+@dataclass
+class ModelInfo:
+    """Model metadata returned by list_models().
+
+    Contract: provider-protocol.md
+    Feature: F-020 AC-3
+    """
+
+    id: str
+    display_name: str
+    context_window: int
+    max_output_tokens: int
 
 
 # Type alias for SDK session creation function
@@ -205,11 +239,34 @@ class GitHubCopilotProvider:
     Provider Protocol implementation for GitHub Copilot.
 
     Contract: provider-protocol.md
+    Feature: F-008, F-020
 
     This is a thin orchestrator that delegates to:
     - completion logic (now inlined) for LLM calls
     - tool_parsing module for tool extraction
+
+    Implements 4 methods + 1 property Provider Protocol:
+    - name (property)
+    - get_info()
+    - list_models()
+    - complete()
+    - parse_tool_calls()
     """
+
+    def __init__(
+        self,
+        config: dict[str, Any] | None = None,
+        coordinator: Any | None = None,
+    ) -> None:
+        """Initialize provider.
+
+        Args:
+            config: Optional provider configuration.
+            coordinator: Optional Amplifier kernel coordinator.
+        """
+        self.config = config or {}
+        self.coordinator = coordinator
+        self._complete_fn: SDKCreateFn | None = None
 
     @property
     def name(self) -> str:
@@ -218,6 +275,68 @@ class GitHubCopilotProvider:
         Contract: provider-protocol:name:MUST:1
         """
         return "github-copilot"
+
+    def get_info(self) -> ProviderInfo:
+        """Return provider metadata.
+
+        Contract: provider-protocol:get_info:MUST:1
+        Feature: F-020 AC-2
+        """
+        return ProviderInfo(
+            name="github-copilot",
+            version="0.1.0",
+            description="GitHub Copilot provider for Amplifier",
+            capabilities=["streaming", "tool_use"],
+        )
+
+    async def list_models(self) -> list[ModelInfo]:
+        """Return available models from GitHub Copilot.
+
+        Contract: provider-protocol:list_models:MUST:1
+        Feature: F-020 AC-3
+        """
+        return [
+            ModelInfo(
+                id="gpt-4",
+                display_name="GPT-4",
+                context_window=128000,
+                max_output_tokens=4096,
+            ),
+            ModelInfo(
+                id="gpt-4o",
+                display_name="GPT-4o",
+                context_window=128000,
+                max_output_tokens=4096,
+            ),
+        ]
+
+    async def complete(
+        self,
+        request: CompletionRequest,
+        **kwargs: Any,
+    ) -> AsyncIterator[DomainEvent]:
+        """Execute completion lifecycle, yielding domain events.
+
+        Contract: provider-protocol:complete:MUST:1
+        Feature: F-020 AC-4
+
+        This is a thin wrapper around the module-level complete() function.
+        """
+        # Delegate to module-level complete() function
+        async for event in complete(
+            request,
+            config=kwargs.get("config"),
+            sdk_create_fn=kwargs.get("sdk_create_fn") or self._complete_fn,
+        ):
+            yield event
+
+    async def close(self) -> None:
+        """Clean up provider resources.
+
+        Feature: F-020 AC-1
+        """
+        # Currently no resources to clean up
+        pass
 
     def parse_tool_calls(self, response: Any) -> list[ToolCall]:
         """Extract tool calls from response.

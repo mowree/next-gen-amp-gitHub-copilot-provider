@@ -23,3 +23,7 @@ Tests: PASSING
 - `uv run pytest tests/ -v` — 124/124 tests passed (3 minor warnings about unawaited coroutines in test mocks)
 
 **Notes:** The health check recorded "Build: FAILED" but the error block was empty. Upon re-running all checks, the build is clean. Either the errors were already fixed before this session, or the health check had a recording issue.
+
+## Verification After Iteration 1
+- Build exit code: 0
+- Test exit code: 0
