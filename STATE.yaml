@@ -1,8 +1,9 @@
 phase: 3
 phase_name: Phase 3 -- Production Readiness
-epoch: 9
-next_action: Define Phase 3 features (CI pipeline, contract tests, SDK canary, documentation).
+epoch: 10
+next_action: Execute F-025 through F-028 in order (CI → contract tests → SDK integration → entry point)
 blockers: []
+
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
@@ -23,32 +24,72 @@ completed_features:
 - F-022-foundation-integration
 - F-023-test-coverage
 - F-024-code-quality
+
 architecture_spec:
   status: approved
   path: ./debates/GOLDEN_VISION_V2.md
+
 module_specs: {}
-features: {}
+
+features:
+  F-025-ci-pipeline:
+    name: CI Pipeline Stage 1
+    module: ci
+    status: ready
+    spec: specs/features/F-025-ci-pipeline.md
+    depends_on: []
+    started_at: null
+    completed_at: null
+    commit: null
+    description: GitHub Actions workflow with lint, type check, tests (<90s)
+    priority: essential
+
+  F-026-contract-compliance-tests:
+    name: Contract Compliance Tests
+    module: tests
+    status: ready
+    spec: specs/features/F-026-contract-compliance-tests.md
+    depends_on:
+    - F-025-ci-pipeline
+    started_at: null
+    completed_at: null
+    commit: null
+    description: Tests for every MUST clause in contracts/*.md
+    priority: essential
+
+  F-027-real-sdk-integration:
+    name: Real SDK Integration Tests
+    module: tests
+    status: ready
+    spec: specs/features/F-027-real-sdk-integration.md
+    depends_on:
+    - F-026-contract-compliance-tests
+    started_at: null
+    completed_at: null
+    commit: null
+    description: Tier 6 SDK assumptions + Tier 7 live smoke tests
+    priority: high
+
+  F-028-entry-point:
+    name: Entry Point Registration
+    module: provider
+    status: ready
+    spec: specs/features/F-028-entry-point.md
+    depends_on: []
+    started_at: null
+    completed_at: null
+    commit: null
+    description: Register provider as amplifier.modules entry point
+    priority: essential
+
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
   total_features_completed: 25
-  last_updated: '2026-03-12T08:02:24Z'
-  last_session: '2026-03-12T08:02:24Z'
+  last_updated: '2026-03-12T22:35:00Z'
+  last_session: '2026-03-12T22:35:00Z'
   phase_2_commit: f0a1da9
-  expert_review_completed: '2026-03-10T07:55:00Z'
-  expert_review_agents:
+  phase_3_design_agents:
   - zen-architect
-  - python-dev:code-intel
-  - test-coverage
-  - security-guardian
-  - foundation:explorer
-  - foundation:bug-hunter
   - foundation:integration-specialist
-  - python-dev:python-dev
-  - lsp:code-navigator
-  - amplifier:amplifier-expert
-  - foundation:foundation-expert
-  - core:core-expert
-  - superpowers:spec-reviewer
-  - superpowers:code-quality-reviewer
-last_session: '2026-03-12T08:03:54.586648+00:00'
+  - foundation:test-coverage
