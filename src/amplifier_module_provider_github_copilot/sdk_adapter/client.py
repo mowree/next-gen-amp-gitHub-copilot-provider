@@ -10,6 +10,7 @@ Feature: F-010
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -72,6 +73,7 @@ class CopilotClientWrapper:
         self._sdk_client: Any = sdk_client
         self._owned_client: Any = None  # Only set when we created the client ourselves
         self._error_config: Any = None
+        self._client_lock: asyncio.Lock = asyncio.Lock()  # F-019 AC-2: Race condition fix
 
     def _get_error_config(self) -> Any:
         if self._error_config is None:
@@ -107,31 +109,36 @@ class CopilotClientWrapper:
         """
         client = self._get_client()
         if client is None:
-            # Attempt lazy import of real SDK
-            try:
-                from copilot import CopilotClient  # type: ignore[import-untyped]
+            # F-019 AC-2: Protect lazy init with lock to prevent race conditions
+            async with self._client_lock:
+                # Double-check after acquiring lock (another task may have initialized)
+                client = self._get_client()
+                if client is None:
+                    # Attempt lazy import of real SDK
+                    try:
+                        from copilot import CopilotClient  # type: ignore[import-untyped]
 
-                token = _resolve_token()
-                options: dict[str, Any] = {}
-                if token:
-                    options["github_token"] = token
+                        token = _resolve_token()
+                        options: dict[str, Any] = {}
+                        if token:
+                            options["github_token"] = token
 
-                self._owned_client = CopilotClient(options)  # type: ignore[arg-type]
-                await self._owned_client.start()  # type: ignore[union-attr]
-                client = self._owned_client  # type: ignore[assignment]
-                logger.info("[CLIENT] Copilot client initialized")
-            except ImportError as e:
-                from ..error_translation import ProviderUnavailableError
+                        self._owned_client = CopilotClient(options)  # type: ignore[arg-type]
+                        await self._owned_client.start()  # type: ignore[union-attr]
+                        client = self._owned_client  # type: ignore[assignment]
+                        logger.info("[CLIENT] Copilot client initialized")
+                    except ImportError as e:
+                        from ..error_translation import ProviderUnavailableError
 
-                err = ProviderUnavailableError(
-                    f"Copilot SDK not installed: {e}",
-                    provider="github-copilot",
-                )
-                err.__cause__ = e
-                raise err from e
-            except Exception as e:
-                error_config = self._get_error_config()
-                raise translate_sdk_error(e, error_config) from e
+                        err = ProviderUnavailableError(
+                            f"Copilot SDK not installed: {e}",
+                            provider="github-copilot",
+                        )
+                        err.__cause__ = e
+                        raise err from e
+                    except Exception as e:
+                        error_config = self._get_error_config()
+                        raise translate_sdk_error(e, error_config) from e
 
         session_config: dict[str, Any] = {}
         if model:
@@ -147,6 +154,10 @@ class CopilotClientWrapper:
             logger.debug(  # type: ignore[union-attr]
                 f"[CLIENT] Session created: {getattr(sdk_session, 'session_id', '?')}"  # type: ignore[arg-type]
             )
+            # F-019 AC-1: MUST register deny hook on real SDK path
+            if hasattr(sdk_session, "register_pre_tool_use_hook"):
+                sdk_session.register_pre_tool_use_hook(create_deny_hook())
+                logger.debug("[CLIENT] Deny hook registered on session")
         except Exception as e:
             error_config = self._get_error_config()
             raise translate_sdk_error(e, error_config) from e

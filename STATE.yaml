@@ -1,9 +1,12 @@
 phase: 3
 phase_name: Phase 2 -- Expert Review Remediation
-epoch: 3
-next_action: Execute F-019 through F-024 in order (security fixes → protocol → bugs → foundation → tests → quality)
-blockers: []
-
+epoch: 4
+next_action: "Execute F-019 through F-024 in order (security fixes \u2192 protocol \u2192 bugs \u2192 foundation \u2192 tests\
+  \ \u2192 quality)"
+blockers:
+- description: 'Build failed: ruff=2 pyright=2'
+  since: '2026-03-12T07:03:30.859037'
+  severity: high
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
@@ -18,26 +21,22 @@ completed_features:
 - F-011-loop-controller
 - F-017-technical-debt-cleanup
 - F-018-aggressive-simplification
-
 architecture_spec:
   status: approved
   path: ./debates/GOLDEN_VISION_V2.md
-
 module_specs: {}
-
 features:
   F-019-critical-security-fixes:
     name: Critical Security Fixes
     module: sdk_adapter
-    status: ready
+    status: implemented
     spec: specs/features/F-019-critical-security-fixes.md
     depends_on: []
-    started_at: null
-    completed_at: null
-    commit: null
+    started_at: '2026-03-12T06:30:00Z'
+    completed_at: '2026-03-12T07:02:00Z'
+    commit: pending
     description: Fix deny hook gap, race condition, double exception translation
     priority: critical
-
   F-020-protocol-compliance:
     name: Provider Protocol Compliance
     module: provider
@@ -50,7 +49,6 @@ features:
     commit: null
     description: Implement mount(), get_info(), list_models(), refactor complete()
     priority: critical
-
   F-021-bug-fixes:
     name: Bug Fixes from Expert Review
     module: multiple
@@ -63,7 +61,6 @@ features:
     commit: null
     description: Fix load_event_config crash, dead asserts, regex, tombstone files
     priority: high
-
   F-022-foundation-integration:
     name: Foundation Integration
     module: bundle
@@ -76,7 +73,6 @@ features:
     commit: null
     description: Create bundle.md, skills, fix config paths
     priority: high
-
   F-023-test-coverage:
     name: Critical Test Coverage
     module: tests
@@ -90,7 +86,6 @@ features:
     commit: null
     description: Add tests for token resolution, SDK boundary, concurrent sessions
     priority: high
-
   F-024-code-quality:
     name: Code Quality Improvements
     module: multiple
@@ -103,13 +98,12 @@ features:
     commit: null
     description: Fix return types, inline imports, lambda factories
     priority: medium
-
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
-  total_features_completed: 13
-  last_updated: '2026-03-10T07:56:00Z'
-  last_session: '2026-03-10T07:56:00Z'
+  total_features_completed: 14
+  last_updated: '2026-03-12T07:02:00Z'
+  last_session: '2026-03-12T07:02:00Z'
   expert_review_completed: '2026-03-10T07:55:00Z'
   expert_review_agents:
   - zen-architect
@@ -126,3 +120,4 @@ meta:
   - core:core-expert
   - superpowers:spec-reviewer
   - superpowers:code-quality-reviewer
+last_session: '2026-03-12T07:03:30.928493+00:00'

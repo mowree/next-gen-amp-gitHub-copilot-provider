@@ -145,6 +145,11 @@ async def complete(
                 yield domain_event
 
     except Exception as e:
+        # F-019 AC-3: Don't double-wrap already-translated LLMError
+        from .error_translation import LLMError
+
+        if isinstance(e, LLMError):
+            raise  # Already translated, don't wrap again
         kernel_error = translate_sdk_error(
             e,
             error_config,
