@@ -97,23 +97,41 @@ class StreamingAccumulator:
         )
 
 
+def _empty_str_to_str_dict() -> dict[str, str]:
+    """Factory for empty string-to-string dict."""
+    return {}
+
+
 @dataclass
 class EventConfig:
     """Configuration for event translation."""
 
-    bridge_mappings: dict[str, tuple[DomainEventType, str | None]]
-    consume_patterns: list[str]
-    drop_patterns: list[str]
+    bridge_mappings: dict[str, tuple[DomainEventType, str | None]] = field(
+        default_factory=lambda: {}
+    )
+    consume_patterns: list[str] = field(default_factory=lambda: [])
+    drop_patterns: list[str] = field(default_factory=lambda: [])
+    finish_reason_map: dict[str, str] = field(default_factory=_empty_str_to_str_dict)
 
 
-def load_event_config(config_path: str | None = None) -> EventConfig:
-    """Load event classification config from YAML. Defaults to config/events.yaml."""
+def load_event_config(config_path: str | Path | None = None) -> EventConfig:
+    """Load event classification config from YAML. Defaults to config/events.yaml.
+
+    AC-1 (F-021): Gracefully handles missing files by returning default config.
+    """
     if config_path is None:
         package_root = Path(__file__).parent.parent.parent
         config_path = str(package_root / "config" / "events.yaml")
 
+    path = Path(config_path)
+    if not path.exists():
+        return EventConfig()  # AC-1: Graceful fallback on missing file
+
     with open(config_path) as f:
         raw = yaml.safe_load(f)
+
+    if not raw:
+        return EventConfig()
 
     classifications = raw.get("event_classifications", {})
 
@@ -123,10 +141,14 @@ def load_event_config(config_path: str | None = None) -> EventConfig:
         domain_type = DomainEventType[mapping["domain_type"]]
         bridge_mappings[sdk_type] = (domain_type, mapping.get("block_type"))
 
+    # Load finish_reason_map (AC-5)
+    finish_reason_map = raw.get("finish_reason_map", {})
+
     return EventConfig(
         bridge_mappings=bridge_mappings,
         consume_patterns=classifications.get("consume", []),
         drop_patterns=classifications.get("drop", []),
+        finish_reason_map=finish_reason_map,
     )
 
 
@@ -161,8 +183,20 @@ def translate_event(sdk_event: dict[str, Any], config: EventConfig) -> DomainEve
         return None
 
     domain_type, block_type = config.bridge_mappings[event_type]
+    data = _extract_event_data(sdk_event)
+
+    # AC-5 (F-021): Apply finish_reason_map for TURN_COMPLETE events
+    if domain_type == DomainEventType.TURN_COMPLETE and config.finish_reason_map:
+        sdk_finish_reason = data.get("finish_reason", "")
+        # Map SDK finish_reason to domain finish_reason, with fallback to _default
+        mapped_reason = config.finish_reason_map.get(
+            sdk_finish_reason,
+            config.finish_reason_map.get("_default", sdk_finish_reason),
+        )
+        data["finish_reason"] = mapped_reason
+
     return DomainEvent(
         type=domain_type,
-        data=_extract_event_data(sdk_event),
+        data=data,
         block_type=block_type,
     )

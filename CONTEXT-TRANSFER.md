@@ -10,6 +10,85 @@
 
 ---
 
+## Session 2026-03-12T07:55Z -- F-021 Bug Fixes Implemented
+
+### Work Completed
+
+**F-021: Bug Fixes from Expert Review** (IMPLEMENTED)
+- `src/amplifier_module_provider_github_copilot/streaming.py` - AC-1, AC-5 fixes
+- `src/amplifier_module_provider_github_copilot/provider.py` - AC-2 fix
+- `src/amplifier_module_provider_github_copilot/error_translation.py` - AC-3 fix
+- `tests/test_bug_fixes.py` - 16 tests for all ACs
+- Deleted `completion.py` and `session_factory.py` tombstone files
+
+**AC-1: Fix load_event_config Crash** (FIXED)
+- Added `Path.exists()` check before opening file
+- Returns default `EventConfig()` on missing file
+- Accepts both `str` and `Path` inputs
+
+**AC-2: Remove Dead Assert Statements** (FIXED)
+- Replaced `assert session is not None` with proper `ProviderUnavailableError`
+- Asserts are stripped by `-O` flag, so this was a production bug
+
+**AC-3: Fix retry_after Regex** (FIXED)
+- Removed overly broad `r"(\d+(?:\.\d+)?)\s*seconds?"` pattern
+- Now only matches explicit "Retry after N" patterns
+
+**AC-5: Load finish_reason_map** (FIXED)
+- Added `finish_reason_map` field to `EventConfig`
+- `load_event_config()` loads the map from YAML
+- `translate_event()` applies mapping for TURN_COMPLETE events
+- SDK `stop` → domain `STOP`, SDK `tool_use` → domain `TOOL_USE`
+
+**AC-6: Delete Tombstone Files** (FIXED)
+- Deleted `completion.py` (functionality in provider.py)
+- Deleted `session_factory.py` (functionality in sdk_adapter/client.py)
+
+### Key Design Decisions
+
+1. **finish_reason mapping in translate_event()**: Applied during translation, not accumulation, to keep StreamingAccumulator simple and config-free.
+
+2. **Path | str union type**: `load_event_config()` now accepts both Path and str for flexibility.
+
+3. **Integration test updates**: Tests now expect mapped finish_reason values (STOP, TOOL_USE) instead of SDK values.
+
+### Antagonistic Review Findings (Resolved)
+- Fixed `load_event_config` type signature to accept Path
+- Strengthened AC-6 tests to assert file deletion, not just tombstone check
+- Strengthened AC-2 test to check specific error type (ProviderUnavailableError)
+- Added Path input test case for AC-1
+
+### Build Status
+- `ruff check src/` - PASS (0 errors, 1 pre-existing warning)
+- `pyright src/` - PASS (0 errors)
+- `pytest tests/` - 154 tests pass
+
+### For Human to Commit
+```bash
+git add src/amplifier_module_provider_github_copilot/streaming.py \
+        src/amplifier_module_provider_github_copilot/provider.py \
+        src/amplifier_module_provider_github_copilot/error_translation.py \
+        tests/test_bug_fixes.py \
+        tests/test_integration.py \
+        STATE.yaml \
+        CONTEXT-TRANSFER.md && \
+git commit -m "feat(bugfix): implement F-021 bug fixes from expert review
+
+- AC-1: load_event_config returns default on missing file
+- AC-2: Replace dead asserts with proper ProviderUnavailableError
+- AC-3: Fix retry_after regex to not match generic 'N seconds'
+- AC-5: Load and apply finish_reason_map from events.yaml
+- AC-6: Delete tombstone files (completion.py, session_factory.py)
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+### Next Steps
+1. F-022: Foundation Integration (bundle.md, skills)
+2. F-023: Critical Test Coverage
+
+---
+
 ## Session 2026-03-12T07:45Z -- F-020 Protocol Compliance Implemented
 
 ### Work Completed

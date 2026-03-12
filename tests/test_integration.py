@@ -15,11 +15,6 @@ from typing import Any
 
 import pytest
 
-from amplifier_module_provider_github_copilot.provider import (
-    CompletionConfig,
-    CompletionRequest,
-    complete_and_collect,
-)
 from amplifier_module_provider_github_copilot.error_translation import (
     AuthenticationError,
     ErrorConfig,
@@ -27,7 +22,10 @@ from amplifier_module_provider_github_copilot.error_translation import (
     RateLimitError,
 )
 from amplifier_module_provider_github_copilot.provider import (
+    CompletionConfig,
+    CompletionRequest,
     GitHubCopilotProvider,
+    complete_and_collect,
 )
 from amplifier_module_provider_github_copilot.sdk_adapter.types import (
     SessionConfig,
@@ -35,7 +33,6 @@ from amplifier_module_provider_github_copilot.sdk_adapter.types import (
 from amplifier_module_provider_github_copilot.streaming import (
     load_event_config,
 )
-
 
 # ============================================================================
 # Mock SDK Session
@@ -138,11 +135,10 @@ class TestFullCompletionLifecycle:
         result = await complete_and_collect(request, config=config, sdk_create_fn=create_session)
 
         assert result.text_content == "Hello world!"
-        assert result.finish_reason == "stop"
+        # F-021 AC-5: finish_reason is now mapped via finish_reason_map ("stop" -> "STOP")
+        assert result.finish_reason == "STOP"
         assert result.is_complete
         assert session.destroyed  # Session cleanup
-
-
 
 
 # ============================================================================
@@ -181,7 +177,8 @@ class TestToolCallIntegration:
         assert len(result.tool_calls) == 1
         assert result.tool_calls[0]["name"] == "get_weather"
         assert result.tool_calls[0]["arguments"] == {"location": "Seattle"}
-        assert result.finish_reason == "tool_use"
+        # F-021 AC-5: finish_reason is now mapped via finish_reason_map ("tool_use" -> "TOOL_USE")
+        assert result.finish_reason == "TOOL_USE"
 
     def test_parse_tool_calls_from_response(self) -> None:
         """parse_tool_calls returns ToolCall objects with correct structure."""
@@ -361,7 +358,8 @@ class TestStreamingEventFlow:
         result = await complete_and_collect(request, config=config, sdk_create_fn=create_session)
 
         assert result.is_complete
-        assert result.finish_reason == "stop"
+        # F-021 AC-5: finish_reason is now mapped via finish_reason_map ("stop" -> "STOP")
+        assert result.finish_reason == "STOP"
 
 
 # ============================================================================

@@ -190,9 +190,10 @@ def _extract_retry_after(message: str) -> float | None:
     Returns:
         Seconds to wait, or None if not found.
     """
+    # AC-3 (F-021): Only match retry-specific patterns, not generic "N seconds"
     patterns = [
         r"[Rr]etry[- ]?after[:\s]+(\d+(?:\.\d+)?)",
-        r"(\d+(?:\.\d+)?)\s*seconds?",
+        # Removed overly broad r"(\d+(?:\.\d+)?)\s*seconds?" pattern
     ]
     for pattern in patterns:
         match = re.search(pattern, message)

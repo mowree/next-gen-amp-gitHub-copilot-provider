@@ -160,7 +160,14 @@ async def complete(
     try:
         if sdk_create_fn is not None:
             session = await sdk_create_fn(session_config)
-            assert session is not None
+            # AC-2 (F-021): Replace assert with proper error (asserts stripped by -O)
+            if session is None:
+                from .error_translation import ProviderUnavailableError
+
+                raise ProviderUnavailableError(
+                    "SDK session factory returned None",
+                    provider="github-copilot",
+                )
             if hasattr(session, "register_pre_tool_use_hook"):
                 session.register_pre_tool_use_hook(create_deny_hook())
         else:
@@ -171,8 +178,7 @@ async def complete(
                 provider="github-copilot",
             )
 
-        # Stream events from session
-        assert session is not None
+        # Stream events from session (session guaranteed non-None here)
         async for sdk_event in session.send_message(request.prompt, request.tools):
             domain_event = translate_event(sdk_event, event_config)
             if domain_event is not None:
