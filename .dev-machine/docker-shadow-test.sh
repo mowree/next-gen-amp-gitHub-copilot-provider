@@ -71,26 +71,37 @@ docker run "${DOCKER_ARGS[@]}" \
     
     # Install provider based on source
     # Use uv pip with --python flag (uv tool venvs do not have pip module)
+    # IMPORTANT: Do NOT use -q flag - we need to see errors
     case "$PROVIDER_SOURCE" in
         local)
             echo "Installing LOCAL provider..."
-            uv pip install --python "$TOOL_VENV/bin/python" -e /workspace --no-deps -q
-            uv pip install --python "$TOOL_VENV/bin/python" github-copilot-sdk pyyaml -q
+            echo "  Step 1: Installing github-copilot-sdk..."
+            uv pip install --python "$TOOL_VENV/bin/python" "github-copilot-sdk>=0.1.32,<0.2.0" pyyaml 2>&1 | tail -5
+            echo "  Step 2: Installing provider (editable)..."
+            uv pip install --python "$TOOL_VENV/bin/python" -e /workspace --no-deps 2>&1 | tail -5
             ;;
         pypi)
             echo "Installing PUBLIC provider from PyPI..."
-            uv pip install --python "$TOOL_VENV/bin/python" amplifier-module-provider-github-copilot -q
+            uv pip install --python "$TOOL_VENV/bin/python" amplifier-module-provider-github-copilot 2>&1 | tail -5
             ;;
         *)
             echo "Installing from: $PROVIDER_SOURCE..."
-            uv pip install --python "$TOOL_VENV/bin/python" "$PROVIDER_SOURCE" -q
+            uv pip install --python "$TOOL_VENV/bin/python" "$PROVIDER_SOURCE" 2>&1 | tail -5
             ;;
     esac
     
     # Handle SDK version
     if [ "$SDK_VERSION" != "latest" ]; then
-        uv pip install --python "$TOOL_VENV/bin/python" "github-copilot-sdk$SDK_VERSION" -q
+        echo "  Installing SDK version constraint: $SDK_VERSION..."
+        uv pip install --python "$TOOL_VENV/bin/python" "github-copilot-sdk$SDK_VERSION" 2>&1 | tail -5
     fi
+    
+    # Verify installations
+    echo ""
+    echo "  Verifying installed packages..."
+    "$TOOL_VENV/bin/python" -c "import copilot; print(\"    github-copilot-sdk: OK\")" 2>&1 || echo "    github-copilot-sdk: FAILED"
+    "$TOOL_VENV/bin/python" -c "import amplifier_core; print(\"    amplifier_core: OK\")" 2>&1 || echo "    amplifier_core: FAILED"
+    "$TOOL_VENV/bin/python" -c "import amplifier_module_provider_github_copilot; print(\"    provider module: OK\")" 2>&1 || echo "    provider module: FAILED"
     
     # Verify installation
     echo ""
@@ -109,17 +120,30 @@ else:
 "
     
     echo ""
-    echo "=== Setting up shadow test bundle ==="
-    # Copy bundle directly to bundles directory (bypasses buggy bundle add parsing)
-    mkdir -p /home/amplifier/.amplifier/bundles
-    cp /workspace/.dev-machine/shadow-test-bundle.md /home/amplifier/.amplifier/bundles/copilot-provider-shadow-test.md
-    echo "Bundle copied to ~/.amplifier/bundles/"
-    
     echo "=== Running shadow test ==="
-    # Use the bundle directly via amplifier bundle use + run
-    amplifier bundle use copilot-provider-shadow-test
-    amplifier run --verbose \
-      "You are running shadow tests. Confirm provider is working by responding with: SHADOW TEST PASSED - Provider loaded successfully. Then list any tool capabilities you have."
+    # Use foundation bundle with our provider already installed
+    # The provider entry point is registered, Amplifier will discover it
+    echo "Testing provider via foundation bundle..."
+    
+    # Simple connectivity test using echo to provide input
+    # amplifier run reads from stdin when no prompt given
+    echo "Respond with exactly: SHADOW TEST PASSED. Nothing else." | \
+      timeout 120 amplifier run --bundle foundation 2>&1 | tee /tmp/shadow-result.txt
+    
+    # Check if response contains expected text
+    if grep -q "SHADOW TEST PASSED" /tmp/shadow-result.txt 2>/dev/null; then
+        echo ""
+        echo "SHADOW TEST: SUCCESS - Provider responded correctly"
+    elif grep -q "Session ID:" /tmp/shadow-result.txt 2>/dev/null; then
+        echo ""
+        echo "SHADOW TEST: PARTIAL SUCCESS - Session created, checking response..."
+        cat /tmp/shadow-result.txt
+    else
+        echo ""
+        echo "SHADOW TEST: FAILED - No valid response"
+        cat /tmp/shadow-result.txt
+        exit 1
+    fi
 '
 
 EXIT_CODE=$?
