@@ -5,7 +5,7 @@ All SDK errors are translated to kernel LLMError types from amplifier_core.llm_e
 Mappings are driven by config/errors.yaml - no hardcoded error mappings.
 
 Contract: contracts/error-hierarchy.md
-Feature: F-002
+Feature: F-002, F-036
 
 MUST constraints (from contract):
 - MUST use kernel error types from amplifier_core.llm_errors
@@ -14,15 +14,22 @@ MUST constraints (from contract):
 - MUST preserve original exception via chaining
 - MUST use config-driven pattern matching
 - MUST fall through to ProviderUnavailableError(retryable=True) for unknown errors
+
+F-036 additions:
+- Optional context extraction from error messages
+- DEBUG logging for translation decisions
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 # TODO(amplifier-core): Replace fallback error classes below with imports from
 # amplifier_core.llm_errors once amplifier-core is a project dependency.
@@ -115,6 +122,26 @@ def _str_list() -> list[str]:
 
 
 @dataclass
+class ContextExtraction:
+    """A context extraction pattern for enhanced error messages.
+
+    F-036: Extracts structured context from error messages.
+
+    Attributes:
+        pattern: Regex pattern with a capture group.
+        field: Name of the field to extract (e.g., "tool_name").
+    """
+
+    pattern: str
+    field: str
+
+
+def _context_list() -> list[ContextExtraction]:
+    """Factory for empty ContextExtraction list (typed)."""
+    return []
+
+
+@dataclass
 class ErrorMapping:
     """A single error mapping from SDK to kernel error.
 
@@ -124,6 +151,7 @@ class ErrorMapping:
         kernel_error: Target kernel error type name.
         retryable: Whether the error is retryable.
         extract_retry_after: Whether to extract retry_after from message.
+        context_extraction: Optional list of context extraction patterns (F-036).
     """
 
     sdk_patterns: list[str] = field(default_factory=_str_list)
@@ -131,6 +159,7 @@ class ErrorMapping:
     kernel_error: str = "ProviderUnavailableError"
     retryable: bool = True
     extract_retry_after: bool = False
+    context_extraction: list[ContextExtraction] = field(default_factory=_context_list)
 
 
 def _mapping_list() -> list[ErrorMapping]:
@@ -174,6 +203,16 @@ def load_error_config(config_path: str | Path) -> ErrorConfig:
 
     mappings: list[ErrorMapping] = []
     for mapping_data in data.get("error_mappings", []):
+        # F-036: Load context extraction patterns
+        context_extraction: list[ContextExtraction] = []
+        for ce_data in mapping_data.get("context_extraction", []):
+            context_extraction.append(
+                ContextExtraction(
+                    pattern=ce_data.get("pattern", ""),
+                    field=ce_data.get("field", ""),
+                )
+            )
+
         mappings.append(
             ErrorMapping(
                 sdk_patterns=mapping_data.get("sdk_patterns", []),
@@ -181,6 +220,7 @@ def load_error_config(config_path: str | Path) -> ErrorConfig:
                 kernel_error=mapping_data.get("kernel_error", "ProviderUnavailableError"),
                 retryable=mapping_data.get("retryable", True),
                 extract_retry_after=mapping_data.get("extract_retry_after", False),
+                context_extraction=context_extraction,
             )
         )
 
@@ -244,6 +284,47 @@ def _matches_mapping(exc: Exception, mapping: ErrorMapping) -> bool:
     return False
 
 
+def _extract_context(message: str, extractions: list[ContextExtraction]) -> dict[str, str]:
+    """Extract context fields from error message using regex patterns.
+
+    F-036: Context extraction for enhanced error messages.
+
+    Args:
+        message: The error message to extract from.
+        extractions: List of context extraction patterns.
+
+    Returns:
+        Dictionary of field_name -> extracted_value.
+    """
+    context: dict[str, str] = {}
+    for extraction in extractions:
+        try:
+            match = re.search(extraction.pattern, message)
+            if match:
+                context[extraction.field] = match.group(1)
+        except (re.error, IndexError):
+            # Invalid regex or no capture group - silently skip
+            pass
+    return context
+
+
+def _format_context_suffix(context: dict[str, str]) -> str:
+    """Format extracted context as a message suffix.
+
+    F-036: Appends context in [context: key=value, ...] format.
+
+    Args:
+        context: Dictionary of field_name -> value.
+
+    Returns:
+        Formatted suffix string, or empty string if no context.
+    """
+    if not context:
+        return ""
+    parts = [f"{k}={v}" for k, v in context.items()]
+    return f" [context: {', '.join(parts)}]"
+
+
 def translate_sdk_error(
     exc: Exception,
     config: ErrorConfig,
@@ -260,6 +341,10 @@ def translate_sdk_error(
     - MUST chain original via `raise X from exc`
     - MUST set provider attribute
 
+    F-036 additions:
+    - Extracts context from error messages when configured
+    - Logs DEBUG message with translation details
+
     Args:
         exc: The SDK exception to translate.
         config: Error translation configuration.
@@ -269,7 +354,7 @@ def translate_sdk_error(
     Returns:
         Kernel LLMError with original exception chained.
     """
-    message = str(exc)
+    original_message = str(exc)
     retry_after: float | None = None
 
     # Try each mapping in order
@@ -280,7 +365,11 @@ def translate_sdk_error(
 
             # Extract retry_after if configured
             if mapping.extract_retry_after:
-                retry_after = _extract_retry_after(message)
+                retry_after = _extract_retry_after(original_message)
+
+            # F-036: Extract context from message
+            context = _extract_context(original_message, mapping.context_extraction)
+            message = original_message + _format_context_suffix(context)
 
             # Create the kernel error
             kernel_error = error_class(
@@ -291,15 +380,34 @@ def translate_sdk_error(
                 retry_after=retry_after,
             )
             kernel_error.__cause__ = exc
+
+            # F-036: Log translation with context
+            logger.debug(
+                "[ERROR_TRANSLATION] %s -> %s (retryable=%s, context=%s)",
+                type(exc).__name__,
+                kernel_error.__class__.__name__,
+                kernel_error.retryable,
+                context if context else "none",
+            )
+
             return kernel_error
 
     # No mapping matched - use default
     default_class = KERNEL_ERROR_MAP.get(config.default_error, ProviderUnavailableError)
     kernel_error = default_class(
-        message,
+        original_message,
         provider=provider,
         model=model,
         retryable=config.default_retryable,
     )
     kernel_error.__cause__ = exc
+
+    # F-036: Log default translation
+    logger.debug(
+        "[ERROR_TRANSLATION] %s -> %s (retryable=%s, default)",
+        type(exc).__name__,
+        kernel_error.__class__.__name__,
+        kernel_error.retryable,
+    )
+
     return kernel_error

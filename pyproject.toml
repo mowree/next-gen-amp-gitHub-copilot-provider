@@ -11,6 +11,8 @@ dependencies = [
     # - Minimum: 0.1.32 (session.disconnect() replaces destroy())
     # - Maximum: <0.2.0 (review SDK assumption tests before upgrading)
     "github-copilot-sdk>=0.1.32,<0.2.0",
+    # PyYAML for config loading
+    "pyyaml>=6.0",
     # Note: amplifier-core is provided by Amplifier runtime when module is loaded
     # Listed here for type hints only; not installed at runtime
 ]

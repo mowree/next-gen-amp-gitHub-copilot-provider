@@ -4,11 +4,18 @@ Tool parsing module.
 Extracts tool calls from SDK response and returns kernel ToolCall types.
 
 Contract: provider-protocol.md (parse_tool_calls method)
+Feature: F-004, F-037
+
+F-037 additions:
+- WARNING log for empty tool arguments (LLM may have hallucinated)
 """
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -72,10 +79,22 @@ def parse_tool_calls(response: Any) -> list[ToolCall]:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON in tool call arguments: {e}") from e
 
+        tool_id = getattr(tc, "id", "")
+        tool_name = getattr(tc, "name", "")
+
+        # F-037: Warn on empty arguments (LLM may have hallucinated)
+        # Note: Only warn for explicit empty dict {}, not for None
+        if args == {}:
+            logger.warning(
+                "[TOOL_PARSING] Empty arguments for tool '%s' (id=%s) - LLM may have hallucinated",
+                tool_name,
+                tool_id,
+            )
+
         result.append(
             ToolCall(
-                id=getattr(tc, "id", ""),
-                name=getattr(tc, "name", ""),
+                id=tool_id,
+                name=tool_name,
                 arguments=args,
             )
         )

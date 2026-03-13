@@ -69,12 +69,24 @@ error_mappings:
     string_patterns: ["tool conflict", "fake tool", "missing tool result", "conflicts with a built-in"]
     kernel_error: InvalidToolCallError
     retryable: false
+    # F-036: Context extraction for better debugging
+    context_extraction:
+      - pattern: "tool '([^']+)'"
+        field: tool_name
+      - pattern: "(built-in|external|missing)"
+        field: conflict_type
 
   # P4: Model/provider configuration errors
   - sdk_patterns: ["ConfigurationError"]
     string_patterns: ["does not support", "configuration error", "not configured"]
     kernel_error: ConfigurationError
     retryable: false
+    # F-036: Context extraction for better debugging
+    context_extraction:
+      - pattern: "model '([^']+)'"
+        field: model_name
+      - pattern: "feature '([^']+)'"
+        field: feature_name
 
 default:
   kernel_error: ProviderUnavailableError

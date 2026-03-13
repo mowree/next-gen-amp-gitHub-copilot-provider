@@ -10,6 +10,61 @@
 
 ---
 
+## Session 2026-03-13T09:15Z -- F-036 + F-037 Observability Improvements Complete
+
+### Work Completed
+
+**F-036: Error Context Enhancement** (IMPLEMENTED)
+- Added `ContextExtraction` dataclass with `pattern` and `field` attributes
+- Added `context_extraction` field to `ErrorMapping` dataclass
+- Added `_extract_context()` helper for regex-based context extraction
+- Error messages now include `[context: key=value]` suffix when patterns match
+- Added DEBUG logging for all error translations
+- Updated `config/errors.yaml` with context extraction patterns for InvalidToolCallError and ConfigurationError
+- Created `tests/test_f036_error_context.py` with 13 tests
+
+**F-037: Observability Improvements** (IMPLEMENTED)
+- Added logger to `tool_parsing.py`
+- WARNING log emitted when `tool_call.arguments == {}` (empty dict)
+- Log includes tool name and ID with `[TOOL_PARSING]` tag
+- Created `tests/test_f037_observability.py` with 13 tests
+
+**Dependency Fix**
+- Added `pyyaml>=6.0` to `pyproject.toml` dependencies (was missing)
+
+### Antagonistic Review Findings
+
+**F-036:**
+1. **FIXED**: Added context_extraction patterns to production config (config/errors.yaml)
+2. **BY DESIGN**: AC-6 empty args warning is F-037's responsibility per spec notes
+
+**F-037:**
+1. **ACCEPTED**: `getattr(tc, "arguments", {})` returning `{}` for missing attributes is defensive behavior
+2. **BY DESIGN**: None arguments handled correctly (getattr returns None when attribute exists but is None)
+
+### Build Verification
+
+- `pytest tests/test_f036_error_context.py` - 13 pass
+- `pytest tests/test_f037_observability.py` - 13 pass
+- `pytest tests/` - 312 pass, 8 xfailed, 4 warnings
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors)
+
+### Project Status
+
+- **38 features total completed** (36 from Phases 0-5 + F-036 + F-037)
+- Observability improvements complete
+- All error translations now logged at DEBUG level
+- Empty tool arguments now logged at WARNING level
+
+### Recommended Next Steps
+
+1. Tag v0.2.2 release (observability improvements)
+2. Consider Phase 6 scope (if any)
+3. Run live SDK tests with real credentials
+
+---
+
 ## Session 2026-03-13T07:40Z -- F-035 Error Type Expansion Complete
 
 ### Work Completed
