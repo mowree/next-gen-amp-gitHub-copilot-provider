@@ -35,7 +35,8 @@ features:
   F-029-documentation-update:
     name: Documentation Update
     module: docs
-    status: ready
+    status: in-progress
+    started_at: '2026-03-13T01:15:00Z'
     spec: specs/features/F-029-documentation-update.md
     depends_on: []
     description: Update README.md and add DEVELOPMENT.md
