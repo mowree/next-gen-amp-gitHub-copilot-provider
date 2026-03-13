@@ -19,6 +19,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# Install pyright LSP server via npm (required for LSP tool in delegated agents)
+# The pip version of pyright works for CLI but LSP needs npm's pyright-langserver
+RUN npm install -g pyright
+
 # Install uv (fast Python package manager) and PyYAML for recipe orchestration scripts
 RUN pip install --no-cache-dir uv pyyaml types-pyyaml yamllint
 
