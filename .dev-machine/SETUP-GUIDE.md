@@ -712,5 +712,46 @@ An on_permission_request handler is required when creating a session.
 | 11 | Docker volume permissions | Dockerfile + docker-run.sh | ✅ Fixed |
 | 12 | Environment issues at runtime | Dockerfile + iteration.yaml | ✅ Fixed |
 | 13 | SDK API contract changes | client.py | ✅ Fixed |
+| 14 | Missing pytest type stubs | pyproject.toml | ✅ Fixed |
+
+---
+
+## Pitfall 14: Missing Type Stubs for pytest (FIXED 2026-03-13)
+
+**Symptom**: pyright shows 70+ errors in test files:
+```
+Import "pytest" could not be resolved
+Type of "fixture" is unknown
+Untyped function decorator obscures type of function
+```
+
+**Root Cause**: 
+- pyright needs type stubs for third-party libraries
+- pytest is installed, but `types-pytest` stub package is not
+- This is a pyright false alarm (tests run fine), but clutters output
+
+**Fix Applied**:
+
+Added to `pyproject.toml` dev dependencies:
+```toml
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "types-pytest>=7.0.0",  # ← Type stubs for pyright
+    ...
+]
+```
+
+**Why This Was Missed**:
+- pytest itself works fine without stubs
+- pyright is strict mode (`typeCheckingMode = "strict"`)
+- Expert reviews focused on runtime behavior, not static analysis completeness
+
+**Verification**:
+```bash
+uv lock  # Regenerate lock with new dependency
+./.dev-machine/docker-run.sh --build
+# pyright should now resolve pytest imports
+```
 
 ---
