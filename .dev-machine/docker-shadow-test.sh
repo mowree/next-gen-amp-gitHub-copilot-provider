@@ -41,7 +41,7 @@ DOCKER_ARGS=(
     -v "$HOME/.amplifier:/home/amplifier/.amplifier"
     -e "GITHUB_TOKEN=${GITHUB_TOKEN:-}"
     -e "GH_TOKEN=${GH_TOKEN:-}"
-    -e "COPILOT_AGENT_TOKEN=${COPILOT_AGENT_TOKEN:-}"
+    -e "COPILOT_GITHUB_TOKEN=${COPILOT_GITHUB_TOKEN:-}"
     -e "HOME=/home/amplifier"
     -e "PROVIDER_SOURCE=$PROVIDER_SOURCE"
     -e "SDK_VERSION=$SDK_VERSION"

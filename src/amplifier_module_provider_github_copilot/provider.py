@@ -270,11 +270,11 @@ class GitHubCopilotProvider:
         return ProviderInfo(
             id="github-copilot",
             display_name="GitHub Copilot SDK",
+            # Official SDK priority from docs/auth/index.md
             credential_env_vars=[
-                "COPILOT_AGENT_TOKEN",
-                "COPILOT_GITHUB_TOKEN",
-                "GH_TOKEN",
-                "GITHUB_TOKEN",
+                "COPILOT_GITHUB_TOKEN",  # Official recommended
+                "GH_TOKEN",  # GitHub CLI compatible
+                "GITHUB_TOKEN",  # GitHub Actions compatible
             ],
             capabilities=["streaming", "tool_use"],
             defaults={

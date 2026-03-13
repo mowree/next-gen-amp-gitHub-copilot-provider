@@ -114,8 +114,14 @@ def _load_error_config_once() -> ErrorConfig:
 
 
 def _resolve_token() -> str | None:
-    """Resolve auth token from environment (highest precedence to lowest)."""
-    for var in ("COPILOT_AGENT_TOKEN", "COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
+    """Resolve auth token from environment (SDK priority order).
+
+    Official SDK priority from docs/auth/index.md:
+    1. COPILOT_GITHUB_TOKEN - Official recommended
+    2. GH_TOKEN - GitHub CLI compatible
+    3. GITHUB_TOKEN - GitHub Actions compatible
+    """
+    for var in ("COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
         token = os.environ.get(var)
         if token:
             return token
