@@ -10,6 +10,65 @@
 
 ---
 
+## Session 2026-03-13T00:20Z -- F-025, F-026, F-028 Implemented (Phase 3 Progress)
+
+### Work Completed
+
+**F-025: CI Pipeline** (IMPLEMENTED)
+- `.github/workflows/ci.yml` - GitHub Actions workflow with:
+  - Python 3.11 + uv setup
+  - ruff lint and format check
+  - pyright type check
+  - YAML schema validation
+  - pytest with 90s timeout
+- `README.md` - Added CI badge
+
+**F-026: Contract Compliance Tests** (IMPLEMENTED)
+- `tests/test_contract_protocol.py` - 15 tests for provider-protocol.md MUST clauses
+- `tests/test_contract_deny_destroy.py` - 7 tests for deny-destroy.md MUST clauses
+- `tests/test_contract_errors.py` - 9 tests for error-hierarchy.md compliance
+- `tests/test_contract_events.py` - 7 tests for event-vocabulary.md compliance
+- `tests/test_contract_streaming.py` - 8 tests for streaming-contract.md compliance
+- `pyproject.toml` - Added pytest markers (contract, pure, canary, live)
+
+**F-028: Entry Point Registration** (IMPLEMENTED)
+- `tests/test_entry_point.py` - 7 tests verifying kernel discovery via entry point
+- Entry point already existed in pyproject.toml (verified)
+- Tests verify: registration, loading, signature, module type metadata, exports
+
+### Key Design Decisions
+
+1. **Contract test structure**: Tests use docstrings with anchor IDs (e.g., `provider-protocol:name:MUST:1`) for traceability to contract clauses.
+
+2. **Architecture fitness tests**: `test_contract_deny_destroy.py` includes tests that scan source files for SDK imports outside sdk_adapter/ and scan config files for deny-disabling keys.
+
+3. **Tool call parsing tests**: Fixed to use MagicMock objects with attributes (not dicts) to match actual `parse_tool_calls()` implementation using `getattr()`.
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (2 pre-existing warnings in sdk_adapter/client.py)
+- `pytest tests/` - 226 tests pass (50 new tests)
+
+### For Human to Commit
+```bash
+git add -A && \
+git commit -m "feat: implement F-025, F-026, F-028 (Phase 3 CI + contract tests)
+
+- F-025: GitHub Actions CI workflow (lint, types, tests <90s)
+- F-026: 46 contract compliance tests for all 5 contract files
+- F-028: 7 entry point registration tests
+
+Total: 226 tests passing, ruff/pyright clean
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+### Next Steps
+1. Commit F-025, F-026, F-028 work
+2. F-027: Real SDK Integration Tests (Tier 6 + Tier 7)
+
+---
+
 ## Session 2026-03-12T08:02Z -- Phase 2 Finalized, Advancing to Phase 3
 
 ### Work Completed

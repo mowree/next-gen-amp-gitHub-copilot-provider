@@ -103,11 +103,14 @@ class TestProtocolParseToolCalls:
 
     def test_extracts_tool_calls(self, provider: GitHubCopilotProvider) -> None:
         """provider-protocol:parse_tool_calls:MUST:1 - Extracts tool calls from response."""
-        # Create a mock response with tool calls
+        # Create a mock response with tool calls (objects, not dicts)
+        tc1 = MagicMock()
+        tc1.id = "call_1"
+        tc1.name = "read_file"
+        tc1.arguments = {"path": "test.py"}
+
         response = MagicMock()
-        response.tool_calls = [
-            {"id": "call_1", "name": "read_file", "arguments": {"path": "test.py"}}
-        ]
+        response.tool_calls = [tc1]
 
         tool_calls = provider.parse_tool_calls(response)
 
@@ -126,10 +129,13 @@ class TestProtocolParseToolCalls:
 
     def test_preserves_tool_call_ids(self, provider: GitHubCopilotProvider) -> None:
         """provider-protocol:parse_tool_calls:MUST:3 - Preserves tool call IDs."""
+        tc1 = MagicMock()
+        tc1.id = "unique_id_123"
+        tc1.name = "test_tool"
+        tc1.arguments = {}
+
         response = MagicMock()
-        response.tool_calls = [
-            {"id": "unique_id_123", "name": "test_tool", "arguments": {}}
-        ]
+        response.tool_calls = [tc1]
 
         tool_calls = provider.parse_tool_calls(response)
 
@@ -137,10 +143,13 @@ class TestProtocolParseToolCalls:
 
     def test_uses_arguments_not_input(self, provider: GitHubCopilotProvider) -> None:
         """provider-protocol:parse_tool_calls:MUST:4 - Uses 'arguments' field, not 'input'."""
+        tc1 = MagicMock()
+        tc1.id = "call_1"
+        tc1.name = "test"
+        tc1.arguments = {"key": "value"}
+
         response = MagicMock()
-        response.tool_calls = [
-            {"id": "call_1", "name": "test", "arguments": {"key": "value"}}
-        ]
+        response.tool_calls = [tc1]
 
         tool_calls = provider.parse_tool_calls(response)
 

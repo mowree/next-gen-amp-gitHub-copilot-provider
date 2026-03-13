@@ -24,6 +24,7 @@ from amplifier_module_provider_github_copilot.error_translation import (
 def error_config() -> ErrorConfig:
     """Load error config from YAML."""
     from pathlib import Path
+
     return load_error_config(Path("config/errors.yaml"))
 
 
@@ -52,7 +53,8 @@ class TestErrorConfigCompliance:
     def test_auth_errors_not_retryable(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:Translation:MUST - AuthenticationError MUST be retryable=False."""
         auth_mappings = [
-            m for m in error_config.mappings
+            m
+            for m in error_config.mappings
             if "Authentication" in str(m.kernel_error) or "Auth" in str(m.kernel_error)
         ]
 
@@ -61,30 +63,21 @@ class TestErrorConfigCompliance:
 
         for mapping in auth_mappings:
             assert not mapping.retryable, (
-                f"AuthenticationError mapping must have retryable=False, "
-                f"got {mapping.retryable}"
+                f"AuthenticationError mapping must have retryable=False, got {mapping.retryable}"
             )
 
     def test_rate_limit_retryable(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:RateLimit:MUST:1 - RateLimitError MUST be retryable=True."""
-        rate_mappings = [
-            m for m in error_config.mappings
-            if "RateLimit" in str(m.kernel_error)
-        ]
+        rate_mappings = [m for m in error_config.mappings if "RateLimit" in str(m.kernel_error)]
 
         assert len(rate_mappings) >= 1, "Must have RateLimitError mapping"
 
         for mapping in rate_mappings:
-            assert mapping.retryable, (
-                f"RateLimitError mapping must have retryable=True"
-            )
+            assert mapping.retryable, "RateLimitError mapping must have retryable=True"
 
     def test_timeout_retryable(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:Translation - LLMTimeoutError MUST be retryable=True."""
-        timeout_mappings = [
-            m for m in error_config.mappings
-            if "Timeout" in str(m.kernel_error)
-        ]
+        timeout_mappings = [m for m in error_config.mappings if "Timeout" in str(m.kernel_error)]
 
         assert len(timeout_mappings) >= 1, "Must have timeout error mapping"
 
@@ -94,8 +87,7 @@ class TestErrorConfigCompliance:
     def test_content_filter_not_retryable(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:Translation - ContentFilterError MUST be retryable=False."""
         filter_mappings = [
-            m for m in error_config.mappings
-            if "ContentFilter" in str(m.kernel_error)
+            m for m in error_config.mappings if "ContentFilter" in str(m.kernel_error)
         ]
 
         for mapping in filter_mappings:
@@ -103,8 +95,12 @@ class TestErrorConfigCompliance:
 
     def test_has_default_fallback(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:Default:MUST:1 - Has default fallback mapping."""
-        assert error_config.default is not None, "Must have default error mapping"
-        assert error_config.default.kernel_error is not None
+        # ErrorConfig has default_error and default_retryable attributes
+        assert error_config.default_error is not None, "Must have default error type"
+        assert (
+            error_config.default_error in VALID_KERNEL_ERRORS
+            or error_config.default_error == "ProviderUnavailableError"
+        )
 
 
 class TestErrorTranslationFunction:
