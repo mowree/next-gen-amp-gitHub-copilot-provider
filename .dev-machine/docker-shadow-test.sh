@@ -43,6 +43,8 @@ DOCKER_ARGS=(
     -e "GH_TOKEN=${GH_TOKEN:-}"
     -e "COPILOT_AGENT_TOKEN=${COPILOT_AGENT_TOKEN:-}"
     -e "HOME=/home/amplifier"
+    -e "PROVIDER_SOURCE=$PROVIDER_SOURCE"
+    -e "SDK_VERSION=$SDK_VERSION"
 )
 
 # Add credential mounts if available
@@ -56,43 +58,44 @@ fi
 
 # Run with custom entrypoint to install provider first
 docker run "${DOCKER_ARGS[@]}" \
-    --entrypoint bash "$IMAGE_NAME" -c "
+    --entrypoint bash "$IMAGE_NAME" -c '
     set -e
-    echo '=== Installing provider into Amplifier runtime ==='
+    echo "=== Installing provider into Amplifier runtime ==="
     
-    # Find Amplifier's tool venv
-    TOOL_VENV='/home/amplifier/.local/share/uv/tools/amplifier'
-    if [ ! -d \"\$TOOL_VENV\" ]; then
-        echo 'ERROR: Amplifier tool venv not found'
+    # Find Amplifier tool venv
+    TOOL_VENV="/home/amplifier/.local/share/uv/tools/amplifier"
+    if [ ! -d "$TOOL_VENV" ]; then
+        echo "ERROR: Amplifier tool venv not found"
         exit 1
     fi
     
     # Install provider based on source
-    case '$PROVIDER_SOURCE' in
+    # Use uv pip with --python flag (uv tool venvs do not have pip module)
+    case "$PROVIDER_SOURCE" in
         local)
-            echo 'Installing LOCAL provider...'
-            \"\$TOOL_VENV/bin/python\" -m pip install -e /workspace --no-deps -q
-            \"\$TOOL_VENV/bin/python\" -m pip install github-copilot-sdk pyyaml -q
+            echo "Installing LOCAL provider..."
+            uv pip install --python "$TOOL_VENV/bin/python" -e /workspace --no-deps -q
+            uv pip install --python "$TOOL_VENV/bin/python" github-copilot-sdk pyyaml -q
             ;;
         pypi)
-            echo 'Installing PUBLIC provider from PyPI...'
-            \"\$TOOL_VENV/bin/python\" -m pip install amplifier-module-provider-github-copilot -q
+            echo "Installing PUBLIC provider from PyPI..."
+            uv pip install --python "$TOOL_VENV/bin/python" amplifier-module-provider-github-copilot -q
             ;;
         *)
-            echo 'Installing from: $PROVIDER_SOURCE...'
-            \"\$TOOL_VENV/bin/python\" -m pip install '$PROVIDER_SOURCE' -q
+            echo "Installing from: $PROVIDER_SOURCE..."
+            uv pip install --python "$TOOL_VENV/bin/python" "$PROVIDER_SOURCE" -q
             ;;
     esac
     
     # Handle SDK version
-    if [ '$SDK_VERSION' != 'latest' ]; then
-        \"\$TOOL_VENV/bin/python\" -m pip install 'github-copilot-sdk$SDK_VERSION' -q
+    if [ "$SDK_VERSION" != "latest" ]; then
+        uv pip install --python "$TOOL_VENV/bin/python" "github-copilot-sdk$SDK_VERSION" -q
     fi
     
     # Verify installation
-    echo ''
-    echo '=== Verifying provider installation ==='
-    \"\$TOOL_VENV/bin/python\" -c '
+    echo ""
+    echo "=== Verifying provider installation ==="
+    "$TOOL_VENV/bin/python" -c "
 from importlib.metadata import entry_points
 eps = entry_points(group=\"amplifier.modules\")
 found = [ep for ep in eps if ep.name == \"provider-github-copilot\"]
@@ -103,12 +106,12 @@ if found:
 else:
     print(\"ERROR: Entry point not found\")
     exit(1)
-'
-    
-    echo ''
-    echo '=== Running shadow test recipe ==='
-    amplifier run \"Execute recipe .dev-machine/shadow-test.yaml with provider_source=$PROVIDER_SOURCE sdk_version=$SDK_VERSION\"
 "
+    
+    echo ""
+    echo "=== Running shadow test recipe ==="
+    amplifier run "Execute recipe .dev-machine/shadow-test.yaml with provider_source=$PROVIDER_SOURCE sdk_version=$SDK_VERSION"
+'
 
 EXIT_CODE=$?
 

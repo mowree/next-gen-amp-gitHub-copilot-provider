@@ -137,6 +137,7 @@ steps:
       TOOL_VENV="{{preflight_result.tool_venv}}"
       PYTHON="$TOOL_VENV/bin/python"
       
+      # Use uv pip with --python flag (uv tool venvs do not have pip module)
       case "{{provider_source}}" in
         local)
           echo "Installing LOCAL provider from /workspace..."
@@ -144,25 +145,25 @@ steps:
           [ ! -d "$WORKSPACE" ] && WORKSPACE="."
           
           # Install provider without deps (avoid conflicts)
-          "$PYTHON" -m pip install -e "$WORKSPACE" --no-deps -q 2>&1
+          uv pip install --python "$PYTHON" -e "$WORKSPACE" --no-deps -q 2>&1
           
           # Install provider's runtime dependencies
-          "$PYTHON" -m pip install github-copilot-sdk pyyaml -q 2>&1
+          uv pip install --python "$PYTHON" github-copilot-sdk pyyaml -q 2>&1
           
           # Handle SDK version constraint
           if [ "{{sdk_version}}" != "latest" ]; then
-            "$PYTHON" -m pip install "github-copilot-sdk{{sdk_version}}" -q 2>&1
+            uv pip install --python "$PYTHON" "github-copilot-sdk{{sdk_version}}" -q 2>&1
           fi
           ;;
         
         pypi)
           echo "Installing PUBLIC provider from PyPI..."
-          "$PYTHON" -m pip install amplifier-module-provider-github-copilot -q 2>&1
+          uv pip install --python "$PYTHON" amplifier-module-provider-github-copilot -q 2>&1
           ;;
         
         *)
           echo "Installing from: {{provider_source}}..."
-          "$PYTHON" -m pip install "{{provider_source}}" -q 2>&1
+          uv pip install --python "$PYTHON" "{{provider_source}}" -q 2>&1
           ;;
       esac
       
