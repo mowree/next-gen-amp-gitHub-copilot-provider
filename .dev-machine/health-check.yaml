@@ -73,12 +73,12 @@ steps:
       cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== HEALTH CHECK -- INITIAL SCAN ==="
 
-      # Run build and capture output
-      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1)
+      # Run build and capture output (system-installed tools, not uv run)
+      BUILD_OUTPUT=$(ruff check src/ && pyright src/ 2>&1)
       BUILD_EXIT=$?
 
-      # Run tests and capture output
-      TEST_OUTPUT=$(uv run pytest tests/ -v 2>&1)
+      # Run tests and capture output (system-installed tools, not uv run)
+      TEST_OUTPUT=$(pytest tests/ -v 2>&1)
       TEST_EXIT=$?
 
       # Write findings to SCRATCH.md for the fixing session

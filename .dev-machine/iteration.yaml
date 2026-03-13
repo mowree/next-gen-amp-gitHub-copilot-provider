@@ -64,26 +64,28 @@ steps:
 
   # Step 1.25: Preflight environment check -- fail fast before dispatching agent
   # This catches missing dependencies BEFORE wasting agent tokens
+  # NOTE: Uses system-installed tools (ruff, pyright, pytest) NOT uv run
+  # because the volume mount shadows the build-time .venv
   - id: "preflight-check"
     type: "bash"
     command: |
       cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== PREFLIGHT ENVIRONMENT CHECK ==="
       
-      # Check ruff is available
-      if ! uv run ruff --version 2>&1; then
+      # Check ruff is available (system-installed, not via uv run)
+      if ! ruff --version 2>&1; then
         echo '{"status": "failed", "reason": "ruff not available"}'
         exit 1
       fi
       
-      # Check pyright is available
-      if ! uv run pyright --version 2>&1; then
+      # Check pyright is available (system-installed, not via uv run)
+      if ! pyright --version 2>&1; then
         echo '{"status": "failed", "reason": "pyright not available"}'
         exit 1
       fi
       
-      # Check pytest can collect tests (fast, doesn't run them)
-      if ! uv run pytest tests/ --collect-only -q 2>&1 | tail -3; then
+      # Check pytest can collect tests (system-installed, not via uv run)
+      if ! pytest tests/ --collect-only -q 2>&1 | tail -3; then
         echo '{"status": "failed", "reason": "pytest collection failed"}'
         exit 1
       fi
@@ -147,9 +149,10 @@ steps:
         * Update ./STATE.yaml to mark it in-progress with timestamp
         * Write failing tests first (TDD)
         * Implement minimal code to pass tests
-        * Run: uv run pytest tests/ -v
-        * Run: uv run ruff check src/ && uv run pyright src/
+        * Run: pytest tests/ -v
+        * Run: ruff check src/ && pyright src/
         * BOTH must pass before proceeding.
+        * NOTE: Use system-installed tools directly (not via uv run) in Docker
         * Spawn a fresh sub-agent for antagonistic review (give it the spec + your diff)
         * Fix any review issues found
         * Mark implementation complete in STATE.yaml (status: "implemented")
@@ -202,15 +205,17 @@ steps:
     timeout: 3600
 
   # Step 3: Structural build gate -- catches errors the agent may have missed
+  # NOTE: Uses system-installed tools (not uv run) because volume mount shadows build-time .venv
   - id: "build-check"
     type: "bash"
     command: |
       cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== POST-SESSION BUILD CHECK ==="
       # Both ruff and pyright must pass - no --exit-zero (catch errors early)
+      # Use system-installed tools directly (not via uv run)
       RUFF_EXIT=0; PYRIGHT_EXIT=0
-      uv run ruff check src/ 2>&1 || RUFF_EXIT=$?
-      uv run pyright src/ 2>&1 || PYRIGHT_EXIT=$?
+      ruff check src/ 2>&1 || RUFF_EXIT=$?
+      pyright src/ 2>&1 || PYRIGHT_EXIT=$?
       if [ "$RUFF_EXIT" -eq 0 ] && [ "$PYRIGHT_EXIT" -eq 0 ]; then
         echo '{"build_status": "clean"}'
       else

@@ -191,20 +191,21 @@ steps:
       set +e
       RUFF_EXIT=0; PYRIGHT_EXIT=0; TEST_EXIT=0
       
+      # Use system-installed tools (not uv run) - volume mount shadows build-time .venv
       echo "--- Lint Check (ruff) ---"
-      uv run ruff check src/ 2>&1
+      ruff check src/ 2>&1
       RUFF_EXIT=$?
       echo "  Exit code: $RUFF_EXIT"
       echo ""
       
       echo "--- Type Check (pyright) ---"
-      uv run pyright src/ 2>&1
+      pyright src/ 2>&1
       PYRIGHT_EXIT=$?
       echo "  Exit code: $PYRIGHT_EXIT"
       echo ""
       
       echo "--- Test Suite (pytest) ---"
-      uv run pytest tests/ -v 2>&1
+      pytest tests/ -v 2>&1
       TEST_EXIT=$?
       echo "  Exit code: $TEST_EXIT"
       echo ""

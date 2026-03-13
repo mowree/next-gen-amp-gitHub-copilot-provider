@@ -38,8 +38,8 @@ steps:
         SCRATCH_CONTENT="No SCRATCH.md found. Running fresh check..."
       fi
 
-      # Also grab raw build errors for structured data
-      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1) || true
+      # Also grab raw build errors for structured data (system-installed tools, not uv run)
+      BUILD_OUTPUT=$(ruff check src/ && pyright src/ 2>&1) || true
       BUILD_ERRORS=$(echo "$BUILD_OUTPUT" | tail -30 | tr '\n' ' ' | sed 's/"/\\"/g')
 
       echo "{\"iteration\": \"$ITER\", \"scratch\": \"see SCRATCH.md\", \"build_errors_summary\": \"$BUILD_ERRORS\"}"
@@ -70,12 +70,12 @@ steps:
       - For each file:
         * Read the file
         * Fix ALL errors in that file at once
-        * After fixing each file, run: uv run ruff check src/ && uv run pyright src/ 2>&1 | tail -20
+        * After fixing each file, run: ruff check src/ && pyright src/ 2>&1 | tail -20
         * Verify the errors in that file are resolved before moving on
 
-      VALIDATION:
-      - After all files are fixed, run: uv run ruff check src/ && uv run pyright src/ 2>&1
-      - Then run: uv run pytest tests/ -v 2>&1
+      VALIDATION (use system-installed tools, not uv run):
+      - After all files are fixed, run: ruff check src/ && pyright src/ 2>&1
+      - Then run: pytest tests/ -v 2>&1
       - If build still fails, keep fixing (iterate on remaining errors)
       - If tests fail, read the test output and fix the failures
 
@@ -116,12 +116,12 @@ steps:
       ITER={{error_context.iteration}}
       echo "=== POST-FIX VERIFICATION (iteration $ITER) ==="
 
-      # Run build
-      BUILD_OUTPUT=$(uv run ruff check src/ && uv run pyright src/ 2>&1)
+      # Run build (system-installed tools, not uv run)
+      BUILD_OUTPUT=$(ruff check src/ && pyright src/ 2>&1)
       BUILD_EXIT=$?
 
-      # Run tests
-      TEST_OUTPUT=$(uv run pytest tests/ -v 2>&1)
+      # Run tests (system-installed tools, not uv run)
+      TEST_OUTPUT=$(pytest tests/ -v 2>&1)
       TEST_EXIT=$?
 
       # Update SCRATCH.md with verification results

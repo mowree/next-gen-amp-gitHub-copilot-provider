@@ -69,7 +69,7 @@ and constraints before writing any code.
 ### 3. Write Failing Tests (RED)
 
 - Write tests that describe the expected behavior
-- Run `uv run pytest tests/ -v` to confirm they fail
+- Run `pytest tests/ -v` to confirm they fail
 - Tests should fail because the feature doesn't exist yet, not because of typos
 
 ### 4. Implement (GREEN)
@@ -79,10 +79,11 @@ and constraints before writing any code.
 
 ### 5. Verify BOTH Tests and Build
 
-- Run `uv run pytest tests/ -v` to confirm tests pass
-- Run `uv run ruff check src/ && uv run pyright src/` to confirm compilation/type-checking is clean
+- Run `pytest tests/ -v` to confirm tests pass
+- Run `ruff check src/ && pyright src/` to confirm compilation/type-checking is clean
 - BOTH must pass before proceeding
 - Do NOT skip the build step -- test runners may not catch all errors
+- NOTE: In Docker, use system-installed tools directly (ruff, pyright, pytest) NOT `uv run`
 
 ### 6. Antagonistic Review
 
