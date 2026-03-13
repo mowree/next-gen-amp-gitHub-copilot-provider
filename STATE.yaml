@@ -1,6 +1,6 @@
 phase: 6
 phase_name: Phase 6 -- Kernel Type Migration (COMPLETE)
-epoch: 27
+epoch: 28
 next_action: Tag v0.3.0 release and run tests with real SDK when available
 blockers: []
 completed_features:
@@ -73,4 +73,4 @@ meta:
     streaming architecture while returning kernel types from public methods.
 
     '
-last_session: '2026-03-13T18:24:44+00:00'
+last_session: '2026-03-13T18:28:43.197113+00:00'
