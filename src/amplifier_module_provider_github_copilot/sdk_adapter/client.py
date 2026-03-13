@@ -40,6 +40,35 @@ def create_deny_hook() -> Callable[[Any, Any], Awaitable[dict[str, str]]]:
     return deny
 
 
+def deny_permission_request(request: Any, invocation: dict[str, str]) -> Any:
+    """Deny all permission requests at source.
+
+    F-033: SDK v0.1.33 requires on_permission_request handler.
+
+    The SDK asks: "May I do X?"
+    Amplifier's answer: "No. Return the request to Amplifier's orchestrator."
+
+    Tool capture happens via streaming events (ASSISTANT_MESSAGE), not hooks.
+    This is the FIRST line of defense. preToolUse deny hook is the second.
+
+    Contract: contracts/deny-destroy.md
+    """
+    try:
+        from copilot.types import PermissionRequestResult  # type: ignore[import-untyped]
+
+        return PermissionRequestResult(  # type: ignore[return-value]
+            kind="denied-by-rules",
+            message="Amplifier orchestrator controls all operations",
+        )
+    except ImportError:
+        # SDK < 0.1.28 doesn't have PermissionRequestResult
+        # Return dict fallback
+        return {
+            "kind": "denied-by-rules",
+            "message": "Amplifier orchestrator controls all operations",
+        }
+
+
 def _load_error_config_once() -> ErrorConfig:
     """Load error config with fallback path resolution.
 
@@ -156,6 +185,10 @@ class CopilotClientWrapper:
                         options: dict[str, Any] = {}
                         if token:
                             options["github_token"] = token
+
+                        # F-033: SDK v0.1.33 requires on_permission_request handler
+                        options["on_permission_request"] = deny_permission_request
+                        logger.debug("[CLIENT] Permission handler set to deny_permission_request")
 
                         self._owned_client = CopilotClient(options)  # type: ignore[arg-type]
                         await self._owned_client.start()  # type: ignore[union-attr]

@@ -27,6 +27,7 @@ event_classifications:
     - session_created
     - session_destroyed
     - usage
+    - system_notification  # SDK v0.1.33 - log internally, don't forward
 
   drop:
     - tool_result_*

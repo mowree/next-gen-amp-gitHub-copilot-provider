@@ -10,6 +10,62 @@
 
 ---
 
+## Session 2026-03-13T05:20Z -- Phase 5 Complete: SDK v0.1.33 Compatibility
+
+### Work Completed
+
+**F-031: System Notification Event** (IMPLEMENTED)
+- Added `system_notification` to `config/events.yaml` under `consume:` section
+- SDK v0.1.33 introduced `system.notification` events that were triggering warnings
+- Test: `test_system_notification_classified_as_consume` verifies classification
+
+**F-032: Permission Handler Tests** (IMPLEMENTED)
+- `tests/test_permission_handler.py` - 9 new tests
+- Tests verify deny_permission_request exists and is used in production path
+- Tests verify system_notification classification
+
+**F-033: Permission Handler Fix** (IMPLEMENTED)
+- Added `deny_permission_request()` function to `client.py`
+- Function returns `PermissionRequestResult(kind="denied-by-rules")` for SDK v0.1.33+
+- Falls back to dict for SDK < 0.1.28
+- Added `on_permission_request` to client options in auto-init path
+- Defense in depth: deny at permission layer + deny at preToolUse + session destroy
+
+**F-034: SDK Version Drift Tests** (IMPLEMENTED)
+- Added to `tests/test_permission_handler.py` as `TestSDKVersionCompatibility` class
+- Tests verify SDK version is accessible and within expected range
+- Tests verify PermissionRequestResult type and kind field exist
+- Tests verify CopilotClient accepts on_permission_request option
+
+### Build Verification
+
+- `pytest tests/` - 255 pass, 10 live SDK tests fail (expected - need credentials)
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - 2 pre-existing SDK type unknowns (acceptable)
+
+### Phase 5 Status: COMPLETE ✅
+
+All 4 Phase 5 features implemented:
+- **35 features total completed** (31 from Phases 0-4 + 4 from Phase 5)
+- SDK v0.1.33 permission handler compatibility implemented
+- Deny-by-default pattern enforced at permission layer
+
+### Key Design Decisions
+
+1. **Deny-by-default at permission layer**: `on_permission_request` handler returns `denied-by-rules` for ALL permission requests. This is the FIRST line of defense; preToolUse deny hook is the second.
+
+2. **Backward compatibility**: `deny_permission_request()` uses try/except to handle SDK versions before v0.1.28 that don't have `PermissionRequestResult`.
+
+3. **Source inspection test**: Instead of complex module reloading, the test inspects the source code of `session()` method to verify `on_permission_request` is set to `deny_permission_request`.
+
+### Recommended Next Steps
+
+1. Tag v0.2.0 release (SDK v0.1.33 compatibility)
+2. Run live SDK tests with real credentials to verify permission handler
+3. Consider Phase 6 scope (if any)
+
+---
+
 ## Session 2026-03-13T01:24Z -- State Housekeeping
 
 ### Work Completed
