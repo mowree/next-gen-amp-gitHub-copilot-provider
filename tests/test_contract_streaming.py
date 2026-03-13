@@ -61,15 +61,19 @@ class TestStreamingAccumulator:
         """streaming-contract:ContentTypes:MUST:1 — Separates text and thinking."""
         accumulator = StreamingAccumulator()
 
+        # block_type is on the DomainEvent itself, not in data
         accumulator.add(
             DomainEvent(
                 type=DomainEventType.CONTENT_DELTA,
-                data={"text": "Thinking...", "block_type": "thinking"},
+                data={"text": "Thinking..."},
+                block_type="THINKING",
             )
         )
         accumulator.add(
             DomainEvent(
-                type=DomainEventType.CONTENT_DELTA, data={"text": "Response", "block_type": "text"}
+                type=DomainEventType.CONTENT_DELTA,
+                data={"text": "Response"},
+                block_type="text",
             )
         )
 

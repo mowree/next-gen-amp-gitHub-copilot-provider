@@ -23,7 +23,8 @@ from amplifier_module_provider_github_copilot.error_translation import (
 @pytest.fixture
 def error_config() -> ErrorConfig:
     """Load error config from YAML."""
-    return load_error_config()
+    from pathlib import Path
+    return load_error_config(Path("config/errors.yaml"))
 
 
 # Valid kernel error types from amplifier_core.llm_errors
@@ -109,7 +110,7 @@ class TestErrorConfigCompliance:
 class TestErrorTranslationFunction:
     """error-hierarchy:Translation:MUST:1-3"""
 
-    def test_translation_never_raises(self) -> None:
+    def test_translation_never_raises(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:Translation:MUST:1 - translate_sdk_error never raises."""
         from amplifier_module_provider_github_copilot.error_translation import (
             translate_sdk_error,
@@ -124,18 +125,18 @@ class TestErrorTranslationFunction:
         ]
 
         for exc in test_exceptions:
-            result = translate_sdk_error(exc)
+            result = translate_sdk_error(exc, error_config)
             # Should always return an LLMError, never raise
             assert result is not None
             assert hasattr(result, "provider")
 
-    def test_sets_provider_attribute(self) -> None:
+    def test_sets_provider_attribute(self, error_config: ErrorConfig) -> None:
         """error-hierarchy:Kernel:MUST:2 - Sets provider='github-copilot'."""
         from amplifier_module_provider_github_copilot.error_translation import (
             translate_sdk_error,
         )
 
-        result = translate_sdk_error(ValueError("test"))
+        result = translate_sdk_error(ValueError("test"), error_config)
 
         assert result.provider == "github-copilot"
 

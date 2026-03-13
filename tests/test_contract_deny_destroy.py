@@ -19,26 +19,28 @@ import pytest
 class TestDenyHookInstalled:
     """deny-destroy:DenyHook:MUST:1,2"""
 
-    def test_create_deny_hook_returns_deny_action(self) -> None:
+    @pytest.mark.asyncio
+    async def test_create_deny_hook_returns_deny_action(self) -> None:
         """deny-destroy:DenyHook:MUST:2 - Hook returns DENY for all tool requests."""
         from amplifier_module_provider_github_copilot.sdk_adapter import create_deny_hook
 
         hook = create_deny_hook()
-        # Simulate any tool request
-        result = hook({"tool": "any_tool", "arguments": {}})
+        # Simulate any tool request - hook takes (input_data, invocation)
+        result = await hook({"tool": "any_tool", "arguments": {}}, {"id": "inv_123"})
 
-        assert result["action"] == "DENY"
+        assert result["permissionDecision"] == "deny"
 
-    def test_deny_hook_reason_mentions_amplifier(self) -> None:
+    @pytest.mark.asyncio
+    async def test_deny_hook_reason_mentions_amplifier(self) -> None:
         """deny-destroy:DenyHook:MUST:2 - Deny reason references Amplifier orchestrator."""
         from amplifier_module_provider_github_copilot.sdk_adapter import create_deny_hook
 
         hook = create_deny_hook()
-        result = hook({"tool": "test"})
+        result = await hook({"tool": "test"}, {"id": "inv_456"})
 
-        assert "reason" in result
+        assert "permissionDecisionReason" in result
         # Reason should explain why denial happens
-        assert len(result["reason"]) > 0
+        assert len(result["permissionDecisionReason"]) > 0
 
 
 class TestDenyHookNotConfigurable:
@@ -47,6 +49,7 @@ class TestDenyHookNotConfigurable:
     def test_no_yaml_key_can_disable_deny_hook(self) -> None:
         """deny-destroy:DenyHook:MUST:3 - No config key can disable the deny hook."""
         from pathlib import Path
+
         import yaml
 
         config_dir = Path("config")
@@ -98,9 +101,7 @@ class TestArchitectureFitness:
                     if node.module and _is_sdk_import(node.module):
                         violations.append(f"{py_file.name}: from {node.module}")
 
-        assert not violations, (
-            f"SDK imports found outside sdk_adapter/:\n" + "\n".join(violations)
-        )
+        assert not violations, "SDK imports found outside sdk_adapter/:\n" + "\n".join(violations)
 
     def test_sdk_adapter_contains_sdk_imports(self) -> None:
         """Verify sdk_adapter/ is the membrane for SDK imports."""
@@ -121,8 +122,8 @@ class TestSessionEphemerality:
         from amplifier_module_provider_github_copilot.sdk_adapter.types import SessionConfig
 
         # SessionConfig should be a valid type
-        config = SessionConfig(prompt="test", model="gpt-4")
-        assert config.prompt == "test"
+        config = SessionConfig(model="gpt-4", system_prompt="test")
+        assert config.system_prompt == "test"
         assert config.model == "gpt-4"
 
 
