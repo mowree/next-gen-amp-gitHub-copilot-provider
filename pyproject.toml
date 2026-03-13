@@ -21,8 +21,8 @@ dev = [
     "pyright>=1.1.350",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21",
-    # For testing: amplifier-core types
-    "amplifier-core @ git+https://github.com/microsoft/amplifier-core",
+    # amplifier-core from PyPI (binary wheels, no Rust compilation needed)
+    "amplifier-core>=1.2.0",
 ]
 
 [project.entry-points."amplifier.modules"]

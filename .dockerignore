@@ -1,0 +1,17 @@
+# Exclude host virtual environment (container creates its own)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Reference materials (large, not needed at runtime)
+reference-only/
