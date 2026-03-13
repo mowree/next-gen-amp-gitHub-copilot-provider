@@ -10,6 +10,69 @@
 
 ---
 
+## Session 2026-03-13T17:28Z -- CRITICAL DISCOVERY: Kernel Type Migration Required
+
+### Executive Summary
+
+**Provider cannot be loaded by Amplifier.** Investigation revealed the workspace uses local dataclasses for `ProviderInfo`, `ModelInfo`, `ToolCall`, and `LLMError` hierarchy. The kernel expects Pydantic models from `amplifier_core`. When kernel validates provider via `isinstance()` checks, it fails.
+
+### How This Was Discovered
+
+1. Attempted to install provider on clean machine → failed
+2. External feedback indicated type mismatch
+3. Summoned expert panel (5 agents) for investigation:
+   - Foundation Explorer: Structure comparison
+   - Amplifier Expert: Kernel contract analysis
+   - Zen Architect: Architecture alignment
+   - Bug Hunter: Failure path tracing
+   - Integration Specialist: Configuration verification
+
+### Root Cause
+
+```
+Workspace: @dataclass ProviderInfo(name, version, description, capabilities)
+Kernel:    BaseModel ProviderInfo(id, display_name, credential_env_vars, capabilities, defaults, config_fields)
+                      ↑ Different base class, different fields
+```
+
+The code has TODO comments: "Replace with amplifier_core.llm_errors once amplifier-core is a project dependency" — but this was never done. Tests pass because they use `MagicMock()` coordinators that don't validate types.
+
+### F-038 Specification Created
+
+Path: `specs/features/F-038-kernel-type-migration.md`
+
+**Expert panel reviewed and identified 7 blockers, all addressed:**
+1. Version constraint `>=1.2.0` doesn't exist → Changed to `>=1.0.7`
+2. `to_chat_response()` uses wrong types → Use `TextBlock`/`ThinkingBlock` (Pydantic), not `TextContent`/`ThinkingContent` (dataclass)
+3. `parse_tool_calls()` must be method → Move to provider class per Protocol
+4. Test calls `mount()` without `await` → Make test async
+5. Capability vocabulary mismatch → Use `tool_use` not `tools`
+6. Missing `AccessDeniedError` → Add to imports
+7. Internal types deleted unnecessarily → Keep internal, only change boundary
+
+### Key Design Decision
+
+**Boundary-only migration**: Keep internal streaming machinery (`CompletionRequest`, `CompletionConfig`, `DomainEvent`, `StreamingAccumulator`). Only change public provider methods to return kernel types.
+
+```
+Internal:  DomainEvent → StreamingAccumulator → AccumulatedResponse
+Boundary:  AccumulatedResponse.to_chat_response() → kernel ChatResponse
+```
+
+This preserves the Three-Medium Architecture while achieving kernel compatibility.
+
+### State Updated
+
+- Phase 6 started: Kernel Type Migration
+- F-038 status: `ready`
+- Next action: Execute F-038 via dev machine
+
+### Lesson Learned
+
+Tests using `MagicMock()` for Amplifier coordinator don't catch type mismatches. The new F-038 tests use `isinstance()` checks against actual `amplifier_core` types to verify compliance.
+
+---
+
 ## Session 2026-03-13T09:15Z -- F-036 + F-037 Observability Improvements Complete
 
 ### Work Completed

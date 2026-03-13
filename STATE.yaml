@@ -1,7 +1,7 @@
-phase: 5
-phase_name: Phase 5 -- SDK v0.1.33 Compatibility
-epoch: 24
-next_action: Tag v0.2.2 release or consider Phase 6 scope
+phase: 6
+phase_name: Phase 6 -- Kernel Type Migration
+epoch: 25
+next_action: Execute F-038 kernel type migration (CRITICAL - provider cannot load without this)
 blockers: []
 completed_features:
 - F-001-sdk-adapter-skeleton
@@ -40,15 +40,42 @@ architecture_spec:
   status: approved
   path: ./debates/GOLDEN_VISION_V2.md
 module_specs: {}
-features: {}
+features:
+  F-038-kernel-type-migration:
+    status: ready
+    spec: ./specs/features/F-038-kernel-type-migration.md
+    priority: critical
+    estimated_effort: medium
+    description: |
+      CRITICAL: Provider cannot be loaded by Amplifier without this migration.
+      
+      Problem: Workspace uses local dataclasses for ProviderInfo, ModelInfo, ToolCall, 
+      and LLMError hierarchy. Kernel expects Pydantic models from amplifier_core.
+      isinstance() checks fail when kernel validates provider.
+      
+      Solution: Import kernel types, update boundary methods to return kernel types,
+      keep internal streaming machinery unchanged.
+      
+      Expert panel reviewed: Zen Architect, Bug Hunter, Integration Specialist.
+      All blockers addressed in spec.
+    acceptance_criteria:
+      - AC-1: get_info() returns amplifier_core.ProviderInfo
+      - AC-2: translate_sdk_error() returns kernel error types
+      - AC-3: parse_tool_calls() is method returning amplifier_core.ToolCall
+      - AC-4: complete() returns ChatResponse (not iterator)
+      - AC-5: ChatResponse.content uses TextBlock/ThinkingBlock (Pydantic)
+      - AC-6: All existing tests pass
+      - AC-7: Build passes (ruff check + pyright)
+      - AC-8: YAML error translation preserved
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
   total_features_completed: 38
-  last_updated: '2026-03-13T09:15:00Z'
-  last_session: '2026-03-13T09:15:00Z'
+  last_updated: '2026-03-13T17:28:00Z'
+  last_session: '2026-03-13T17:28:00Z'
   phase_4_completed: '2026-03-13T01:23:00Z'
-  phase_5_completed: '2026-03-13T05:20:00Z'
+  phase_5_completed: '2026-03-13T09:15:00Z'
+  phase_6_started: '2026-03-13T17:28:00Z'
   phase_2_commit: f0a1da9
   phase_3_design_agents:
   - zen-architect
@@ -56,4 +83,11 @@ meta:
   - foundation:test-coverage
   phase_3_verified: '2026-03-13T00:57:00Z'
   phase_4_started: '2026-03-13T01:13:00Z'
-last_session: '2026-03-13T09:17:36.618558+00:00'
+  kernel_migration_discovery: |
+    On 2026-03-13 at ~17:00 UTC, investigation revealed the provider uses local
+    dataclasses instead of amplifier_core kernel types. This was never caught
+    because tests use MagicMock() coordinators that don't validate types.
+    
+    Expert panel (5 agents) confirmed the root cause and reviewed the migration spec.
+    F-038 addresses this with a boundary-only migration that preserves internal
+    streaming architecture while returning kernel types from public methods.
