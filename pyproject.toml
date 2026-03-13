@@ -56,7 +56,11 @@ select = [
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
-include = ["src"]
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
+# Exclude stub-related errors for pytest (has inline types but pyright strict mode is pedantic)
+reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
