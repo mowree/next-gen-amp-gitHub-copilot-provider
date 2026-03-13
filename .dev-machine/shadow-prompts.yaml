@@ -1,0 +1,49 @@
+# Shadow Test Prompts
+# These prompts exercise different provider capabilities
+# Used by shadow-test.yaml recipe
+
+prompts:
+  # Basic connectivity - just verify the provider responds
+  - id: connectivity
+    name: "Basic Connectivity"
+    prompt: "Say 'Hello from shadow test' and nothing else."
+    expected: "Response received with valid ChatResponse structure"
+    timeout: 30
+
+  # Tool use round-trip - verify tool_use blocks work
+  - id: tool_use
+    name: "Tool Use Round-Trip"
+    prompt: "Read the file pyproject.toml and tell me the project name."
+    expected: "Tool called, result received, response includes project name"
+    timeout: 60
+
+  # Multi-turn - verify conversation context works
+  - id: multi_turn
+    name: "Multi-Turn Conversation"
+    prompt: |
+      First, remember the number 42.
+      Then, use the filesystem tool to read README.md.
+      Finally, tell me the number you remembered and the first line of the README.
+    expected: "Context maintained across turns, tool use works mid-conversation"
+    timeout: 90
+
+  # Streaming verification - check stream events
+  - id: streaming
+    name: "Streaming Response"
+    prompt: "Write a haiku about coding. Take your time, think step by step."
+    expected: "Stream events emitted, content accumulated correctly"
+    timeout: 60
+
+# Test configurations
+config:
+  # Stop on first failure or continue all tests
+  fail_fast: false
+  
+  # Retry transient failures
+  max_retries: 2
+  retry_delay_seconds: 5
+  
+  # Capture level
+  capture_events: true
+  capture_transcript: true
+  capture_timing: true

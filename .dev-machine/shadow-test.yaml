@@ -1,0 +1,403 @@
+# =============================================================================
+# provider-github-copilot-shadow-test: E2E Provider Validation in Shadow Environment
+# =============================================================================
+#
+# On-demand integration testing SEPARATE from build.yaml feature loop.
+# Tests the provider against real Amplifier runtime with configurable sources.
+#
+# Usage:
+#   # Test LOCAL provider (development code)
+#   amplifier recipe execute .dev-machine/shadow-test.yaml
+#
+#   # Test PUBLIC provider (PyPI version)
+#   amplifier recipe execute .dev-machine/shadow-test.yaml \
+#     context='{"provider_source": "pypi"}'
+#
+#   # Test with specific SDK version
+#   amplifier recipe execute .dev-machine/shadow-test.yaml \
+#     context='{"provider_source": "local", "sdk_version": "==0.1.33"}'
+#
+#   # Compare mode (local vs public)
+#   amplifier recipe execute .dev-machine/shadow-test.yaml \
+#     context='{"compare_mode": true}'
+#
+# =============================================================================
+
+name: "provider-github-copilot-shadow-test"
+description: "E2E provider validation in shadow environment - on-demand, not part of build loop"
+version: "1.0.0"
+author: "Shadow Test Machine"
+tags: ["shadow-test", "integration", "e2e", "provider-github-copilot"]
+
+context:
+  # Provider source: "local" | "pypi" | "git+https://..."
+  provider_source: "local"
+  # SDK version constraint: ">=0.1.33" | "==0.1.33" | "latest"
+  sdk_version: "latest"
+  # Compare mode: run both local and public, diff results
+  compare_mode: false
+  # Results directory
+  results_dir: ".dev-machine/shadow-results"
+  # Test prompts file
+  prompts_file: ".dev-machine/shadow-prompts.yaml"
+  # Run ID (auto-generated)
+  run_id: ""
+
+recursion:
+  max_depth: 3
+  max_total_steps: 50
+
+steps:
+  # ---------------------------------------------------------------------------
+  # Step 0: Generate run ID and setup
+  # ---------------------------------------------------------------------------
+  - id: "setup"
+    type: "bash"
+    command: |
+      RUN_ID="shadow-$(date +%Y%m%d-%H%M%S)"
+      RESULTS_DIR="{{results_dir}}"
+      mkdir -p "$RESULTS_DIR"
+      
+      echo "=== Shadow Test Setup ==="
+      echo "Run ID: $RUN_ID"
+      echo "Provider source: {{provider_source}}"
+      echo "SDK version: {{sdk_version}}"
+      echo "Compare mode: {{compare_mode}}"
+      echo ""
+      
+      echo "{\"run_id\": \"$RUN_ID\", \"status\": \"setup_complete\"}"
+    output: "setup_result"
+    parse_json: true
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 1: Preflight checks (credentials, environment)
+  # ---------------------------------------------------------------------------
+  - id: "preflight"
+    type: "bash"
+    command: |
+      echo "=== Preflight Checks ==="
+      ERRORS=""
+      
+      # Check for credentials
+      if [ -z "$GITHUB_TOKEN" ] && [ -z "$COPILOT_AGENT_TOKEN" ]; then
+        echo "WARNING: No GITHUB_TOKEN or COPILOT_AGENT_TOKEN set"
+        echo "Live API tests will be skipped"
+        CRED_STATUS="missing"
+      else
+        echo "Credentials: OK"
+        CRED_STATUS="present"
+      fi
+      
+      # Check Python availability
+      if ! command -v python3 &> /dev/null; then
+        ERRORS="$ERRORS\nPython3 not found"
+      fi
+      
+      # Check workspace exists
+      if [ ! -f "/workspace/pyproject.toml" ] && [ ! -f "./pyproject.toml" ]; then
+        ERRORS="$ERRORS\nNo pyproject.toml found - not in project directory"
+      fi
+      
+      # Find Amplifier tool venv
+      TOOL_VENV=""
+      for CANDIDATE in "/home/amplifier/.local/share/uv/tools/amplifier" "$HOME/.local/share/uv/tools/amplifier"; do
+        if [ -d "$CANDIDATE" ]; then
+          TOOL_VENV="$CANDIDATE"
+          break
+        fi
+      done
+      
+      if [ -z "$TOOL_VENV" ]; then
+        ERRORS="$ERRORS\nAmplifier tool venv not found"
+      else
+        echo "Amplifier venv: $TOOL_VENV"
+      fi
+      
+      if [ -n "$ERRORS" ]; then
+        echo "PREFLIGHT FAILED:$ERRORS"
+        echo "{\"status\": \"failed\", \"credentials\": \"$CRED_STATUS\", \"errors\": \"$ERRORS\"}"
+        exit 1
+      fi
+      
+      echo "{\"status\": \"passed\", \"credentials\": \"$CRED_STATUS\", \"tool_venv\": \"$TOOL_VENV\"}"
+    output: "preflight_result"
+    parse_json: true
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 2: Install provider into Amplifier runtime
+  # ---------------------------------------------------------------------------
+  - id: "install-provider"
+    type: "bash"
+    condition: "{{preflight_result.status}} == 'passed'"
+    command: |
+      echo "=== Installing Provider ==="
+      
+      TOOL_VENV="{{preflight_result.tool_venv}}"
+      PYTHON="$TOOL_VENV/bin/python"
+      
+      case "{{provider_source}}" in
+        local)
+          echo "Installing LOCAL provider from /workspace..."
+          WORKSPACE="/workspace"
+          [ ! -d "$WORKSPACE" ] && WORKSPACE="."
+          
+          # Install provider without deps (avoid conflicts)
+          "$PYTHON" -m pip install -e "$WORKSPACE" --no-deps -q 2>&1
+          
+          # Install provider's runtime dependencies
+          "$PYTHON" -m pip install github-copilot-sdk pyyaml -q 2>&1
+          
+          # Handle SDK version constraint
+          if [ "{{sdk_version}}" != "latest" ]; then
+            "$PYTHON" -m pip install "github-copilot-sdk{{sdk_version}}" -q 2>&1
+          fi
+          ;;
+        
+        pypi)
+          echo "Installing PUBLIC provider from PyPI..."
+          "$PYTHON" -m pip install amplifier-module-provider-github-copilot -q 2>&1
+          ;;
+        
+        *)
+          echo "Installing from: {{provider_source}}..."
+          "$PYTHON" -m pip install "{{provider_source}}" -q 2>&1
+          ;;
+      esac
+      
+      # Verify installation
+      echo ""
+      echo "Verifying entry point registration..."
+      VERIFY_OUTPUT=$("$PYTHON" -c "
+from importlib.metadata import entry_points
+import json
+try:
+    eps = entry_points(group='amplifier.modules')
+    found = [ep for ep in eps if ep.name == 'provider-github-copilot']
+    if found:
+        mod = found[0].load()
+        print(json.dumps({'status': 'installed', 'entry_point': str(found[0]), 'module': str(mod)}))
+    else:
+        print(json.dumps({'status': 'failed', 'reason': 'Entry point not found'}))
+except Exception as e:
+    print(json.dumps({'status': 'failed', 'reason': str(e)}))
+" 2>&1)
+      
+      echo "$VERIFY_OUTPUT"
+    output: "install_result"
+    parse_json: true
+    timeout: 300
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 3: Verify mount() function works
+  # ---------------------------------------------------------------------------
+  - id: "verify-mount"
+    type: "bash"
+    condition: "{{install_result.status}} == 'installed'"
+    command: |
+      echo "=== Verifying mount() Function ==="
+      
+      TOOL_VENV="{{preflight_result.tool_venv}}"
+      PYTHON="$TOOL_VENV/bin/python"
+      
+      "$PYTHON" -c "
+import asyncio
+import json
+
+async def test_mount():
+    try:
+        from amplifier_module_provider_github_copilot import mount
+        
+        # mount() requires a coordinator - we can't fully test without one
+        # but we can verify the function is callable and inspect its signature
+        import inspect
+        sig = inspect.signature(mount)
+        params = list(sig.parameters.keys())
+        
+        # Also verify the provider class can be imported
+        from amplifier_module_provider_github_copilot.provider import GitHubCopilotProvider
+        
+        print(json.dumps({
+            'status': 'verified',
+            'mount_params': params,
+            'provider_class': 'GitHubCopilotProvider'
+        }))
+    except Exception as e:
+        print(json.dumps({
+            'status': 'failed',
+            'reason': str(e),
+            'traceback': repr(e)
+        }))
+
+asyncio.run(test_mount())
+" 2>&1
+    output: "mount_result"
+    parse_json: true
+    timeout: 60
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 4: Run shadow prompts (agent-driven)
+  # ---------------------------------------------------------------------------
+  - id: "run-shadow-tests"
+    type: "agent"
+    agent: "self"
+    condition: "{{mount_result.status}} == 'verified' and {{preflight_result.credentials}} == 'present'"
+    instruction: |
+      You are running shadow tests for the github-copilot provider.
+      
+      Run ID: {{setup_result.run_id}}
+      Provider source: {{provider_source}}
+      Results directory: {{results_dir}}
+      
+      **Your Tasks:**
+      
+      1. **Basic Connectivity Test:**
+         Run a simple prompt through Amplifier using the github-copilot provider.
+         Capture: response received, latency, any errors
+         
+      2. **Tool Use Round-Trip Test:**
+         Use a filesystem tool (read_file) to verify tool_use blocks work.
+         Capture: tool called correctly, result received, tool_result sent back
+         
+      3. **Error Handling Test:**
+         If possible, trigger an error condition and verify it's handled gracefully.
+         
+      4. **Capture Session Artifacts:**
+         Find the session directory in ~/.amplifier/sessions/ or /home/amplifier/.amplifier/sessions/
+         Extract key metrics from events.jsonl:
+         - Event count by type
+         - Error count
+         - Latency (llm:response timestamps)
+         - Token usage
+         
+      5. **Write Results:**
+         Create {{results_dir}}/{{setup_result.run_id}}.yaml with:
+         ```yaml
+         run_id: {{setup_result.run_id}}
+         provider_source: {{provider_source}}
+         timestamp: <current UTC time>
+         tests:
+           connectivity: pass/fail
+           tool_use: pass/fail
+           error_handling: pass/fail/skipped
+         metrics:
+           total_events: N
+           errors: N
+           avg_latency_ms: N
+           total_tokens: N
+         session_id: <session ID used>
+         notes: <any observations>
+         ```
+      
+      If any test fails, capture the full error and continue with remaining tests.
+    output: "shadow_result"
+    timeout: 600
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 5: Skip message if no credentials
+  # ---------------------------------------------------------------------------
+  - id: "no-credentials-skip"
+    type: "bash"
+    condition: "{{preflight_result.credentials}} == 'missing'"
+    command: |
+      echo "=== Shadow Tests Skipped ==="
+      echo "No credentials available (GITHUB_TOKEN or COPILOT_AGENT_TOKEN)"
+      echo "Live API tests cannot run."
+      echo ""
+      echo "To run live tests, set credentials:"
+      echo "  export GITHUB_TOKEN=your_token"
+      echo "  export COPILOT_AGENT_TOKEN=your_token"
+      echo ""
+      echo "{\"status\": \"skipped\", \"reason\": \"no_credentials\"}"
+    output: "skip_result"
+    parse_json: true
+
+  # ---------------------------------------------------------------------------
+  # Step 6: Forensic analysis of session logs
+  # ---------------------------------------------------------------------------
+  - id: "forensic-analysis"
+    type: "agent"
+    agent: "foundation:session-analyst"
+    condition: "{{shadow_result}} != null"
+    instruction: |
+      Analyze the shadow test session for the github-copilot provider.
+      
+      Run ID: {{setup_result.run_id}}
+      
+      **Find the session:**
+      Look in ~/.amplifier/sessions/ or /home/amplifier/.amplifier/sessions/
+      for the most recent session.
+      
+      **Analyze for:**
+      1. **Type Contract Compliance:**
+         - Does ChatResponse have correct structure?
+         - Are tool_calls properly formatted?
+         - Is usage data present and valid?
+      
+      2. **Error Patterns:**
+         - Any llm:error events?
+         - Any unhandled exceptions?
+         - Error types match kernel error hierarchy?
+      
+      3. **Streaming Health:**
+         - Stream start/end pairs match?
+         - Any broken streams?
+         - Chunk timing reasonable?
+      
+      4. **Transcript Integrity:**
+         - No orphaned tool calls?
+         - No consecutive same-role messages?
+         - Proper turn ordering?
+      
+      **Output:**
+      Provide a structured health report with:
+      - Overall status: PASS / WARN / FAIL
+      - Issues found (with severity)
+      - Recommendations
+      
+      Write findings to {{results_dir}}/{{setup_result.run_id}}-forensics.md
+    output: "forensic_result"
+    timeout: 300
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 7: Generate summary report
+  # ---------------------------------------------------------------------------
+  - id: "summary"
+    type: "bash"
+    command: |
+      echo "=== Shadow Test Summary ==="
+      echo ""
+      echo "Run ID: {{setup_result.run_id}}"
+      echo "Provider: {{provider_source}}"
+      echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      echo ""
+      
+      RESULTS_DIR="{{results_dir}}"
+      
+      # Show results files
+      echo "Results files:"
+      ls -la "$RESULTS_DIR"/{{setup_result.run_id}}* 2>/dev/null || echo "  (none generated)"
+      echo ""
+      
+      # Show result content if available
+      if [ -f "$RESULTS_DIR/{{setup_result.run_id}}.yaml" ]; then
+        echo "Test Results:"
+        cat "$RESULTS_DIR/{{setup_result.run_id}}.yaml"
+        echo ""
+      fi
+      
+      if [ -f "$RESULTS_DIR/{{setup_result.run_id}}-forensics.md" ]; then
+        echo "Forensic Analysis:"
+        cat "$RESULTS_DIR/{{setup_result.run_id}}-forensics.md"
+        echo ""
+      fi
+      
+      # Overall status
+      echo "=== SHADOW TEST COMPLETE ==="
+      echo "Review results in: $RESULTS_DIR/"
+    output: "summary_output"
