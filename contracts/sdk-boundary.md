@@ -23,6 +23,7 @@ This contract ensures the provider remains testable, maintainable, and isolated 
 2. **MUST** have exactly ONE file (`_imports.py`) that imports from `github_copilot_sdk`
 3. **MUST NOT** allow SDK imports in ANY other module
 4. **MUST NOT** export SDK types from `sdk_adapter/__init__.py`
+5. **MUST** fail at import time with a clear error if `github-copilot-sdk` is not installed (eager dependency check)
 
 ### Directory Structure
 
@@ -152,6 +153,7 @@ def translate_sdk_error(exc: Exception, config: ErrorConfig) -> CopilotProviderE
 | `sdk-boundary:Types:MUST:3` | SessionHandle is opaque string |
 | `sdk-boundary:Translation:MUST:1` | Events translated to DomainEvent |
 | `sdk-boundary:Translation:MUST:2` | Errors translated to domain exceptions |
+| `sdk-boundary:Membrane:MUST:5` | Fail at import time if SDK not installed |
 
 ---
 

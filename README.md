@@ -1,5 +1,7 @@
 # provider-github-copilot
 
+[![CI](https://github.com/microsoft/amplifier-module-provider-github-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/amplifier-module-provider-github-copilot/actions/workflows/ci.yml)
+
 GitHub Copilot provider for Amplifier implementing the Three-Medium Architecture.
 
 ## Architecture
