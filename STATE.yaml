@@ -39,7 +39,8 @@ architecture_spec:
 module_specs: {}
 features:
   F-035-error-type-expansion:
-    status: ready
+    status: in-progress
+    started_at: '2026-03-13T07:28:00Z'
     spec: specs/features/F-035-error-type-expansion.md
     plan: docs/plans/2026-03-13-f035-error-type-expansion.md
     priority: P0

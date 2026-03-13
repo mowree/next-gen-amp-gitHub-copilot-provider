@@ -82,6 +82,13 @@ NetworkError = _make_error_class("NetworkError", True)
 NotFoundError = _make_error_class("NotFoundError", False)
 ProviderUnavailableError = _make_error_class("ProviderUnavailableError", True)
 
+# F-035: New error types for actionable error messages
+ContextLengthError = _make_error_class("ContextLengthError", False)
+InvalidRequestError = _make_error_class("InvalidRequestError", False)
+StreamError = _make_error_class("StreamError", True)  # Retryable
+InvalidToolCallError = _make_error_class("InvalidToolCallError", False)
+ConfigurationError = _make_error_class("ConfigurationError", False)
+
 
 # Mapping from config names to error classes
 KERNEL_ERROR_MAP: dict[str, type[LLMError]] = {
@@ -93,6 +100,12 @@ KERNEL_ERROR_MAP: dict[str, type[LLMError]] = {
     "NetworkError": NetworkError,
     "NotFoundError": NotFoundError,
     "ProviderUnavailableError": ProviderUnavailableError,
+    # F-035: New error types
+    "ContextLengthError": ContextLengthError,
+    "InvalidRequestError": InvalidRequestError,
+    "StreamError": StreamError,
+    "InvalidToolCallError": InvalidToolCallError,
+    "ConfigurationError": ConfigurationError,
 }
 
 
