@@ -332,13 +332,22 @@ def translate_sdk_error(
             message = original_message + _format_context_suffix(context)
 
             # Create the kernel error
-            kernel_error = error_class(
-                message,
-                provider=provider,
-                model=model,
-                retryable=mapping.retryable,
-                retry_after=retry_after,
-            )
+            # Note: InvalidToolCallError doesn't accept retry_after
+            if error_class is InvalidToolCallError:
+                kernel_error = error_class(
+                    message,
+                    provider=provider,
+                    model=model,
+                    retryable=mapping.retryable,
+                )
+            else:
+                kernel_error = error_class(
+                    message,
+                    provider=provider,
+                    model=model,
+                    retryable=mapping.retryable,
+                    retry_after=retry_after,
+                )
             kernel_error.__cause__ = exc
 
             # F-036: Log translation with context

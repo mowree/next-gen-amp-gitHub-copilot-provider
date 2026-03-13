@@ -44,9 +44,8 @@ class TestProtocolGetInfo:
         """provider-protocol:get_info:MUST:1 - Returns valid ProviderInfo."""
         info = provider.get_info()
 
-        assert info.name == "github-copilot"
-        assert info.version is not None
-        assert info.description is not None
+        assert info.id == "github-copilot"
+        assert info.display_name is not None
         assert info.capabilities is not None
 
     def test_includes_capabilities(self, provider: GitHubCopilotProvider) -> None:

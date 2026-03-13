@@ -59,7 +59,10 @@ def parse_tool_calls(response: Any) -> list[ToolCall]:
     for tc in tool_calls:
         # Get arguments - handle both dict and string
         args = getattr(tc, "arguments", {})
-        if isinstance(args, str):
+        args_was_none = args is None
+        if args_was_none:
+            args = {}  # Convert None to empty dict for kernel ToolCall compatibility
+        elif isinstance(args, str):
             try:
                 args = json.loads(args)
             except json.JSONDecodeError as e:
@@ -70,7 +73,7 @@ def parse_tool_calls(response: Any) -> list[ToolCall]:
 
         # F-037: Warn on empty arguments (LLM may have hallucinated)
         # Note: Only warn for explicit empty dict {}, not for None
-        if args == {}:
+        if args == {} and not args_was_none:
             logger.warning(
                 "[TOOL_PARSING] Empty arguments for tool '%s' (id=%s) - LLM may have hallucinated",
                 tool_name,

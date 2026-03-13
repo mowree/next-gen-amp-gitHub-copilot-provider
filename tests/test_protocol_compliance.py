@@ -94,9 +94,8 @@ class TestGetInfo:
         info = provider.get_info()
 
         assert isinstance(info, ProviderInfo)
-        assert info.name == "github-copilot"
-        assert info.version is not None
-        assert info.description is not None
+        assert info.id == "github-copilot"
+        assert info.display_name is not None
         assert isinstance(info.capabilities, list)
 
     def test_get_info_includes_streaming_capability(self) -> None:
