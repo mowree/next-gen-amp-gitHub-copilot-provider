@@ -10,6 +10,54 @@
 
 ---
 
+## Session 2026-03-13T07:40Z -- F-035 Error Type Expansion Complete
+
+### Work Completed
+
+**F-035: Error Type Expansion** (IMPLEMENTED - commit 2dab0b1)
+- Added 5 new kernel error classes to `error_translation.py`
+- Added 5 new pattern mappings to `config/errors.yaml`
+- Created `tests/test_f035_error_types.py` with 29 tests
+
+**P0 (CRITICAL): Circuit Breaker False Positive Fix**
+- Circuit breaker pattern now FIRST in errors.yaml (before timeout)
+- Messages like "Circuit breaker TRIPPED: timeout=..." now map to ProviderUnavailableError
+- Previously matched LLMTimeoutError causing infinite retry loops
+
+**P1-P4: New Error Types**
+- ContextLengthError: "413", "token count", "exceeds the limit"
+- StreamError: "GOAWAY", "broken pipe" (retryable=true)
+- InvalidToolCallError: "tool conflict", "fake tool"
+- ConfigurationError: "does not support"
+- InvalidRequestError: class added for future use (no patterns yet)
+
+### Antagonistic Review Findings
+
+1. **FIXED**: "connection error" wasn't mapping to NetworkError - added pattern
+2. **NOTED**: Custom error classes vs kernel types - pre-existing TODO, uses fallbacks until amplifier-core dependency
+3. **BY DESIGN**: InvalidRequestError has no patterns - available for future use
+
+### Build Verification
+
+- `pytest tests/test_f035_error_types.py` - 29 pass
+- `pytest tests/test_error_translation.py tests/test_contract_errors.py` - 25 pass (no regressions)
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors)
+
+### Project Status
+
+- **36 features total completed** (35 from Phases 0-5 + F-035)
+- Error handling now provides actionable error types
+- Circuit breaker retry loop bug fixed
+
+### Recommended Next Steps
+
+1. Consider Phase 6 scope (if any)
+2. Tag v0.2.1 release (error handling improvements)
+3. Run live SDK tests with real credentials
+
+---
+
 ## Session 2026-03-13T05:20Z -- Phase 5 Complete: SDK v0.1.33 Compatibility
 
 ### Work Completed
