@@ -35,8 +35,10 @@ features:
   F-029-documentation-update:
     name: Documentation Update
     module: docs
-    status: in-progress
+    status: implemented
     started_at: '2026-03-13T01:15:00Z'
+    completed_at: '2026-03-13T01:18:00Z'
+    commit: 3d5e5a2
     spec: specs/features/F-029-documentation-update.md
     depends_on: []
     description: Update README.md and add DEVELOPMENT.md
@@ -44,7 +46,8 @@ features:
   F-030-changelog:
     name: CHANGELOG
     module: docs
-    status: ready
+    status: in-progress
+    started_at: '2026-03-13T01:18:00Z'
     spec: specs/features/F-030-changelog.md
     depends_on:
     - F-029-documentation-update
