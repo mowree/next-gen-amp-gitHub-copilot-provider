@@ -2,10 +2,7 @@ phase: 5
 phase_name: Phase 5 -- SDK v0.1.33 Compatibility
 epoch: 22
 next_action: Phase 5 complete - consider v0.2.0 release
-blockers:
-- description: 'Completion gate failed: ruff=0 pyright=0 pytest=1'
-  since: '2026-03-13T05:22:32.365498'
-  severity: high
+blockers: []
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation

@@ -62,6 +62,38 @@ steps:
     parse_json: true
 
 
+  # Step 1.25: Preflight environment check -- fail fast before dispatching agent
+  # This catches missing dependencies BEFORE wasting agent tokens
+  - id: "preflight-check"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== PREFLIGHT ENVIRONMENT CHECK ==="
+      
+      # Check ruff is available
+      if ! uv run ruff --version 2>&1; then
+        echo '{"status": "failed", "reason": "ruff not available"}'
+        exit 1
+      fi
+      
+      # Check pyright is available
+      if ! uv run pyright --version 2>&1; then
+        echo '{"status": "failed", "reason": "pyright not available"}'
+        exit 1
+      fi
+      
+      # Check pytest can collect tests (fast, doesn't run them)
+      if ! uv run pytest tests/ --collect-only -q 2>&1 | tail -3; then
+        echo '{"status": "failed", "reason": "pytest collection failed"}'
+        exit 1
+      fi
+      
+      echo '{"status": "passed", "checks": ["ruff", "pyright", "pytest"]}'
+    output: "preflight_result"
+    parse_json: true
+    on_error: "fail"
+
+
   # Step 1.5: Module health check -- flag oversized packages before working session
   - id: "module-health-check"
     type: "bash"

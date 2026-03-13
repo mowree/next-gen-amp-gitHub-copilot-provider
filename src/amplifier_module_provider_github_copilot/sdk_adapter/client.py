@@ -81,7 +81,7 @@ def _load_error_config_once() -> ErrorConfig:
 
     # Try importlib.resources first
     try:
-        config_text = resources.read_text("config", "errors.yaml")
+        config_text = resources.files("config").joinpath("errors.yaml").read_text(encoding="utf-8")
         data = yaml.safe_load(config_text)
         if data:
             mappings: list[ErrorMapping] = []
@@ -224,8 +224,8 @@ class CopilotClientWrapper:
                 f"[CLIENT] Session created: {getattr(sdk_session, 'session_id', '?')}"  # type: ignore[arg-type]
             )
             # F-019 AC-1: MUST register deny hook on real SDK path
-            if hasattr(sdk_session, "register_pre_tool_use_hook"):
-                sdk_session.register_pre_tool_use_hook(create_deny_hook())
+            if hasattr(sdk_session, "register_pre_tool_use_hook"):  # type: ignore[arg-type]
+                sdk_session.register_pre_tool_use_hook(create_deny_hook())  # type: ignore[union-attr]
                 logger.debug("[CLIENT] Deny hook registered on session")
         except Exception as e:
             error_config = self._get_error_config()

@@ -606,3 +606,111 @@ git log --oneline -3
 ```
 
 ---
+
+## Pitfall 12: Environment Issues Discovered at Runtime (FIXED 2026-03-13)
+
+**Symptom**: Agent discovers missing pytest/pyright/ruff DURING test runs, wasting 10+ health-check iterations.
+
+```
+error: Failed to spawn: `pytest` -- Caused by: No such file or directory
+Import "pytest" could not be resolved -- 26 type errors
+```
+
+**Root Cause Chain**:
+1. Dockerfile runs `uv sync` but doesn't VERIFY tools work
+2. Agent dispatched to working session
+3. Agent runs `uv run pytest` → fails
+4. Health-check loop starts → 10 iterations max
+5. Each iteration: read error → attempt fix → retest → repeat
+6. ~200 minutes of GPU compute wasted on environment discovery
+
+**Fixes Applied**:
+
+### Fix 12a: Dockerfile Verification at Build Time
+
+```dockerfile
+# After uv sync, verify environment works
+RUN echo "=== VERIFYING DEV ENVIRONMENT ===" && \
+    uv run ruff --version && \
+    uv run pyright --version && \
+    uv run pytest --version && \
+    echo "=== DEV ENVIRONMENT VERIFIED ==="
+```
+
+This fails the Docker build if dev tools aren't available.
+
+### Fix 12b: Preflight Check Before Agent Dispatch
+
+Added to `iteration.yaml` after "orient" step:
+
+```yaml
+- id: "preflight-check"
+  type: "bash"
+  command: |
+    # Check ruff, pyright, pytest availability
+    # Fail iteration if any missing
+  on_error: "fail"
+```
+
+This prevents agent dispatch if environment is broken.
+
+### Fix 12c: Type Stub Installation
+
+```dockerfile
+RUN pip install --no-cache-dir uv pyyaml types-pyyaml yamllint
+```
+
+Adds type stubs needed by pyright for YAML validation.
+
+### Fix 12d: Deprecation Warning Resolution
+
+`client.py` line 84 updated from deprecated API:
+```python
+# OLD (deprecated in Python 3.11+)
+config_text = resources.read_text("config", "errors.yaml")
+
+# NEW
+config_text = resources.files("config").joinpath("errors.yaml").read_text(encoding="utf-8")
+```
+
+**Impact**: Environment issues now caught at Docker build time (5 min) instead of runtime loops (200+ min).
+
+---
+
+## Pitfall 13: SDK API Contract Changes Breaking Tests
+
+**Symptom**: 10 test failures with message:
+```
+An on_permission_request handler is required when creating a session.
+```
+
+**Root Cause**: SDK v0.1.33 changed its API to REQUIRE `on_permission_request` handler.
+
+**Fixes Applied** (by autonomous machine in commit b2729ca):
+
+1. **Client-level handler**: `options["on_permission_request"] = deny_permission_request`
+2. **Session-level handler**: `session_config["on_permission_request"] = deny_permission_request`
+
+**Prevention**: Phase 5 (SDK v0.1.33 Compatibility) now includes F-031 through F-034 specs that document SDK API requirements explicitly.
+
+---
+
+## Summary of All Pitfalls
+
+| # | Issue | Fix Location | Status |
+|---|-------|-------------|--------|
+| 1 | Missing Python deps in container | Dockerfile | ✅ Fixed |
+| 2 | Agent vs Recipe bash capability | iteration.yaml | ✅ Documented |
+| 3 | Stale git status in context | N/A | ✅ Documented |
+| 4 | Module load warnings as failures | N/A | ✅ Documented |
+| 5 | Git credentials not mounted | docker-run.sh | ✅ Fixed |
+| 6 | Build gate not enforcing pyright | iteration.yaml | ✅ Fixed |
+| 7 | Aspirational contracts not enforced | build.yaml | ✅ Fixed |
+| 8 | No completion gate | build.yaml | ✅ Fixed |
+| 9 | File permissions after Docker | docker-run.sh | ✅ Fixed |
+| 10 | Implementer lacks bash | skill created | ✅ Documented |
+| 11 | Docker volume permissions | Dockerfile + docker-run.sh | ✅ Fixed |
+| 12 | Environment issues at runtime | Dockerfile + iteration.yaml | ✅ Fixed |
+| 13 | SDK API contract changes | client.py | ✅ Fixed |
+
+---
