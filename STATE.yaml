@@ -1,8 +1,14 @@
-phase: 4
-phase_name: Phase 4 -- Documentation & Release
-epoch: 20
-next_action: Phase 4 complete - all documentation features implemented
-blockers: []
+phase: 5
+phase_name: Phase 5 -- SDK v0.1.33 Compatibility
+epoch: 21
+next_action: Implement F-031, F-032, F-034 (F-033 blocked pending discussion)
+blockers:
+- id: F-033-design-discussion
+  description: "Permission handler approach needs human decision: approve_all vs deny-by-default"
+  severity: medium
+  since: '2026-03-13T04:01:00Z'
+  blocked_features:
+    - F-033-permission-handler-fix
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
