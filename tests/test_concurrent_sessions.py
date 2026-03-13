@@ -52,9 +52,7 @@ class TestConcurrentSessions:
         with patch.dict("sys.modules", {"copilot": MagicMock()}):
             import sys
 
-            sys.modules["copilot"].CopilotClient = MagicMock(
-                return_value=mock_client_instance
-            )
+            sys.modules["copilot"].CopilotClient = MagicMock(return_value=mock_client_instance)
 
             # Patch _resolve_token to return a token (so we don't get auth errors)
             with patch(
@@ -106,9 +104,7 @@ class TestConcurrentSessions:
         with patch.dict("sys.modules", {"copilot": MagicMock()}):
             import sys
 
-            sys.modules["copilot"].CopilotClient = MagicMock(
-                return_value=mock_client_instance
-            )
+            sys.modules["copilot"].CopilotClient = MagicMock(return_value=mock_client_instance)
 
             with patch(
                 "amplifier_module_provider_github_copilot.sdk_adapter.client._resolve_token",

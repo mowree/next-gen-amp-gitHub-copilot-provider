@@ -13,31 +13,27 @@ Test categories:
 
 from __future__ import annotations
 
-import pytest
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
+from amplifier_module_provider_github_copilot.error_translation import (
+    ErrorConfig,
+    LLMError,
+    NetworkError,
+)
 from amplifier_module_provider_github_copilot.provider import (
     CompletionConfig,
     CompletionRequest,
     complete,
     complete_and_collect,
 )
+from amplifier_module_provider_github_copilot.sdk_adapter.types import SessionConfig
 from amplifier_module_provider_github_copilot.streaming import (
-    AccumulatedResponse,
-    DomainEvent,
     DomainEventType,
     EventConfig,
 )
-from amplifier_module_provider_github_copilot.error_translation import (
-    ErrorConfig,
-    LLMError,
-    NetworkError,
-)
-from amplifier_module_provider_github_copilot.sdk_adapter.types import SessionConfig
-
 
 # === Mock SDK Session ===
 
@@ -56,7 +52,9 @@ class MockSDKSession:
     async def disconnect(self):
         self.disconnected = True
 
-    async def send_message(self, prompt: str, tools: list | None = None) -> AsyncIterator[dict[str, Any]]:
+    async def send_message(
+        self, prompt: str, tools: list | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         """Yield mock SDK events."""
         for event in self.events:
             yield event
@@ -71,7 +69,9 @@ class MockSDKSessionWithError(MockSDKSession):
         self.events_before_error = events_before_error
         self._count = 0
 
-    async def send_message(self, prompt: str, tools: list | None = None) -> AsyncIterator[dict[str, Any]]:
+    async def send_message(
+        self, prompt: str, tools: list | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         for i in range(self.events_before_error):
             yield {"type": "text_delta", "text": f"chunk{i}"}
             self._count += 1
@@ -84,7 +84,8 @@ class MockSDKSessionWithError(MockSDKSession):
 @pytest.fixture
 def event_config() -> EventConfig:
     """Minimal event config for testing."""
-    from amplifier_module_provider_github_copilot.streaming import EventConfig, DomainEventType
+    from amplifier_module_provider_github_copilot.streaming import DomainEventType, EventConfig
+
     return EventConfig(
         bridge_mappings={
             "text_delta": (DomainEventType.CONTENT_DELTA, "TEXT"),
@@ -103,6 +104,7 @@ def event_config() -> EventConfig:
 def error_config() -> ErrorConfig:
     """Minimal error config for testing."""
     from amplifier_module_provider_github_copilot.error_translation import ErrorConfig, ErrorMapping
+
     return ErrorConfig(
         mappings=[
             ErrorMapping(
@@ -230,7 +232,7 @@ class TestStreamingIntegration:
         """AC-002: Consume events processed internally, not yielded."""
         events = [
             {"type": "tool_use_start", "tool_id": "t1"},  # consume
-            {"type": "text_delta", "text": "Hello"},      # bridge
+            {"type": "text_delta", "text": "Hello"},  # bridge
             {"type": "message_complete", "finish_reason": "stop"},
         ]
         session = MockSDKSession(events)
@@ -379,8 +381,18 @@ class TestResponseConstruction:
     async def test_tool_calls_accumulated(self, completion_config):
         """AC-004: Tool calls accumulated correctly."""
         events = [
-            {"type": "tool_use_complete", "tool_id": "t1", "name": "read_file", "arguments": {"path": "/test"}},
-            {"type": "tool_use_complete", "tool_id": "t2", "name": "write_file", "arguments": {"path": "/out"}},
+            {
+                "type": "tool_use_complete",
+                "tool_id": "t1",
+                "name": "read_file",
+                "arguments": {"path": "/test"},
+            },
+            {
+                "type": "tool_use_complete",
+                "tool_id": "t2",
+                "name": "write_file",
+                "arguments": {"path": "/out"},
+            },
             {"type": "message_complete", "finish_reason": "tool_use"},
         ]
         session = MockSDKSession(events)

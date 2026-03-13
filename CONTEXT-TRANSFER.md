@@ -10,6 +10,68 @@
 
 ---
 
+## Session 2026-03-13T00:42Z -- F-027 Real SDK Integration Tests Implemented
+
+### Work Completed
+
+**F-027: Real SDK Integration Tests** (IMPLEMENTED)
+- `tests/sdk_helpers.py` - 6 helper functions for SDK event handling (dict or object)
+- `tests/conftest.py` - Pytest fixtures for SDK integration tests
+- `tests/test_sdk_assumptions.py` - 19 Tier 6 tests (verify SDK types/shapes without API calls)
+- `tests/test_live_sdk.py` - 11 Tier 7 tests (require real credentials, run nightly)
+- `pyproject.toml` - Added `sdk_assumption` marker
+
+### Test Coverage by AC
+
+| AC | Description | Tier | Tests |
+|----|-------------|------|-------|
+| AC-1 | SDK Import Assumptions | 6 | 5 tests |
+| AC-2 | Session Lifecycle Assumptions | 6+7 | 2+3 tests |
+| AC-3 | Deny Hook Verification | 7 | 1 test |
+| AC-4 | Simple Completion | 7 | 2 tests |
+| AC-5 | Error Shape Verification | 7 | 2 tests |
+| AC-6 | Wrapper Integration | 7 | 2 tests |
+
+### Key Discoveries
+
+1. **SDK requires on_permission_request**: `CopilotClient` requires an `on_permission_request` handler in options. Without it, `create_session()` raises `ValueError`. This is documented in the fixture and tests.
+
+2. **Helper functions handle dict OR object events**: The SDK may return events as dicts or typed objects depending on version. Our helpers (`get_event_type`, `get_event_field`) handle both.
+
+### Antagonistic Review Findings (Resolved)
+
+1. **AC-2 Tier 6 placeholder** - Fixed: documented that session object interface (disconnect, send_message) cannot be verified without credentials; verified client.create_session method exists instead.
+
+2. **AC-5 auth error test missing** - Fixed: Added `test_auth_error_shape` that verifies auth error matches patterns in errors.yaml.
+
+3. **SDK requires permission handler** - Fixed: Updated conftest.py fixture with `_default_permission_handler`.
+
+### Build Status
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors, 0 warnings)
+- `pytest tests/` - 246 tests pass (30 new tests)
+
+### For Human to Commit
+```bash
+git add -A && \
+git commit -m "feat: implement F-027 Real SDK Integration Tests
+
+- Tier 6: 19 SDK assumption tests (no API calls, verify types/shapes)
+- Tier 7: 11 live smoke tests (require GITHUB_TOKEN, run nightly)
+- Discovery: SDK requires on_permission_request handler
+- Helpers: Handle SDK events as dict or object
+
+Total: 246 tests passing, ruff/pyright clean
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+```
+
+### Next Steps
+1. Commit all pending Phase 3 work (F-025, F-026, F-027, F-028)
+2. Phase 3 nearing completion - assess remaining work
+
+---
+
 ## Session 2026-03-13T00:20Z -- F-025, F-026, F-028 Implemented (Phase 3 Progress)
 
 ### Work Completed

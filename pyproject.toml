@@ -68,4 +68,5 @@ markers = [
     "pure: marks tests as pure/no-IO (run with -m pure)",
     "canary: marks tests as SDK canary (run with -m canary)",
     "live: marks tests as requiring real credentials (run with -m live)",
+    "sdk_assumption: marks tests as SDK assumption tests (no API calls, verify types/shapes)",
 ]

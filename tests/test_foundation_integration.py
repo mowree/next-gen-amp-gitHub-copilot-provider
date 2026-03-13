@@ -6,7 +6,6 @@ Verifies bundle.md, exports, and config loading.
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 
 
@@ -48,6 +47,7 @@ class TestModuleExports:
     def test_mount_is_async(self) -> None:
         """mount() is an async function."""
         import asyncio
+
         import amplifier_module_provider_github_copilot as mod
 
         assert asyncio.iscoroutinefunction(mod.mount)
@@ -97,10 +97,10 @@ class TestConfigPackage:
 
     def test_error_config_loads_with_fallback(self) -> None:
         """Error config loading falls back gracefully."""
+        from amplifier_module_provider_github_copilot.error_translation import ErrorConfig
         from amplifier_module_provider_github_copilot.sdk_adapter.client import (
             _load_error_config_once,
         )
-        from amplifier_module_provider_github_copilot.error_translation import ErrorConfig
 
         # Should return ErrorConfig (either loaded or default)
         config = _load_error_config_once()

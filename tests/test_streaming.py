@@ -423,9 +423,7 @@ class TestStreamingAccumulator:
 
         accumulator = StreamingAccumulator()
         assert not accumulator.is_complete
-        accumulator.add(
-            DomainEvent(type=DomainEventType.TURN_COMPLETE, data={})
-        )
+        accumulator.add(DomainEvent(type=DomainEventType.TURN_COMPLETE, data={}))
         assert accumulator.is_complete
 
     def test_content_delta_with_none_block_type_goes_to_text(self):

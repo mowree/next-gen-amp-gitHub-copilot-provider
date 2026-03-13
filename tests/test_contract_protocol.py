@@ -9,8 +9,7 @@ Tests every MUST clause in the Provider Protocol contract.
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -92,9 +91,7 @@ class TestProtocolComplete:
         params = sig.parameters
 
         # Should have **kwargs or similar for extensibility
-        has_var_keyword = any(
-            p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()
-        )
+        has_var_keyword = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
         assert has_var_keyword, "complete() must accept **kwargs"
 
 
