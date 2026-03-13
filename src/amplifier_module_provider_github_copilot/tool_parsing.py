@@ -4,38 +4,24 @@ Tool parsing module.
 Extracts tool calls from SDK response and returns kernel ToolCall types.
 
 Contract: provider-protocol.md (parse_tool_calls method)
-Feature: F-004, F-037
+Feature: F-004, F-037, F-038
 
 F-037 additions:
 - WARNING log for empty tool arguments (LLM may have hallucinated)
+
+F-038: Kernel Type Migration
+- Now imports ToolCall from amplifier_core.message_models
+- Removed local ToolCall dataclass definition
 """
 
 import json
 import logging
-from dataclasses import dataclass
 from typing import Any, Protocol
 
+# F-038: Import kernel ToolCall type
+from amplifier_core import ToolCall
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ToolCall:
-    """
-    Tool call extracted from LLM response.
-
-    Contract: provider-protocol.md (E3 correction)
-
-    NOTE: Uses `arguments` not `input` per kernel contract.
-
-    Attributes:
-        id: Unique identifier for this tool call.
-        name: Name of the tool to invoke.
-        arguments: Parsed arguments as a dictionary.
-    """
-
-    id: str
-    name: str
-    arguments: dict[str, Any]
 
 
 class HasToolCalls(Protocol):

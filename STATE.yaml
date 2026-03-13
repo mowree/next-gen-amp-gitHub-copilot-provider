@@ -1,7 +1,7 @@
 phase: 6
 phase_name: Phase 6 -- Kernel Type Migration
-epoch: 25
-next_action: Execute F-038 kernel type migration (CRITICAL - provider cannot load without this)
+epoch: 26
+next_action: Commit F-038 changes and verify with real tests when github-copilot-sdk available
 blockers: []
 completed_features:
 - F-001-sdk-adapter-skeleton
@@ -42,37 +42,32 @@ architecture_spec:
 module_specs: {}
 features:
   F-038-kernel-type-migration:
-    status: ready
+    status: implemented
+    started_at: '2026-03-13T17:55:00Z'
+    completed_at: '2026-03-13T18:30:00Z'
     spec: ./specs/features/F-038-kernel-type-migration.md
     priority: critical
     estimated_effort: medium
-    description: |
-      CRITICAL: Provider cannot be loaded by Amplifier without this migration.
-      
-      Problem: Workspace uses local dataclasses for ProviderInfo, ModelInfo, ToolCall, 
-      and LLMError hierarchy. Kernel expects Pydantic models from amplifier_core.
-      isinstance() checks fail when kernel validates provider.
-      
-      Solution: Import kernel types, update boundary methods to return kernel types,
-      keep internal streaming machinery unchanged.
-      
-      Expert panel reviewed: Zen Architect, Bug Hunter, Integration Specialist.
-      All blockers addressed in spec.
+    description: "CRITICAL: Provider cannot be loaded by Amplifier without this migration.\n\nProblem: Workspace uses local\
+      \ dataclasses for ProviderInfo, ModelInfo, ToolCall, \nand LLMError hierarchy. Kernel expects Pydantic models from amplifier_core.\n\
+      isinstance() checks fail when kernel validates provider.\n\nSolution: Import kernel types, update boundary methods to\
+      \ return kernel types,\nkeep internal streaming machinery unchanged.\n\nExpert panel reviewed: Zen Architect, Bug Hunter,\
+      \ Integration Specialist.\nAll blockers addressed in spec.\n"
     acceptance_criteria:
-      - AC-1: get_info() returns amplifier_core.ProviderInfo
-      - AC-2: translate_sdk_error() returns kernel error types
-      - AC-3: parse_tool_calls() is method returning amplifier_core.ToolCall
-      - AC-4: complete() returns ChatResponse (not iterator)
-      - AC-5: ChatResponse.content uses TextBlock/ThinkingBlock (Pydantic)
-      - AC-6: All existing tests pass
-      - AC-7: Build passes (ruff check + pyright)
-      - AC-8: YAML error translation preserved
+    - AC-1: "get_info() returns amplifier_core.ProviderInfo \u2713"
+    - AC-2: "translate_sdk_error() returns kernel error types \u2713"
+    - AC-3: "parse_tool_calls() is method returning amplifier_core.ToolCall \u2713"
+    - AC-4: "complete() returns ChatResponse (not iterator) \u2713"
+    - AC-5: "ChatResponse.content uses TextBlock/ThinkingBlock (Pydantic) \u2713"
+    - AC-6: All existing tests pass (blocked by missing github-copilot-sdk)
+    - AC-7: "Build passes (ruff check + pyright) \u2713"
+    - AC-8: "YAML error translation preserved \u2713"
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
-  total_features_completed: 38
-  last_updated: '2026-03-13T17:28:00Z'
-  last_session: '2026-03-13T17:28:00Z'
+  total_features_completed: 39
+  last_updated: '2026-03-13T18:30:00Z'
+  last_session: '2026-03-13T18:30:00Z'
   phase_4_completed: '2026-03-13T01:23:00Z'
   phase_5_completed: '2026-03-13T09:15:00Z'
   phase_6_started: '2026-03-13T17:28:00Z'
@@ -83,11 +78,18 @@ meta:
   - foundation:test-coverage
   phase_3_verified: '2026-03-13T00:57:00Z'
   phase_4_started: '2026-03-13T01:13:00Z'
-  kernel_migration_discovery: |
-    On 2026-03-13 at ~17:00 UTC, investigation revealed the provider uses local
+  kernel_migration_discovery: 'On 2026-03-13 at ~17:00 UTC, investigation revealed the provider uses local
+
     dataclasses instead of amplifier_core kernel types. This was never caught
-    because tests use MagicMock() coordinators that don't validate types.
-    
+
+    because tests use MagicMock() coordinators that don''t validate types.
+
+
     Expert panel (5 agents) confirmed the root cause and reviewed the migration spec.
+
     F-038 addresses this with a boundary-only migration that preserves internal
+
     streaming architecture while returning kernel types from public methods.
+
+    '
+last_session: '2026-03-13T18:18:22.261830+00:00'

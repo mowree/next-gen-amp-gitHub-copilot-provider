@@ -24,7 +24,8 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.21",
     # amplifier-core from PyPI (binary wheels, no Rust compilation needed)
-    "amplifier-core>=1.2.0",
+    # F-038: Changed from >=1.2.0 to >=1.0.7 (1.2.0 doesn't exist)
+    "amplifier-core>=1.0.7",
 ]
 
 [project.entry-points."amplifier.modules"]

@@ -5,7 +5,7 @@ All SDK errors are translated to kernel LLMError types from amplifier_core.llm_e
 Mappings are driven by config/errors.yaml - no hardcoded error mappings.
 
 Contract: contracts/error-hierarchy.md
-Feature: F-002, F-036
+Feature: F-002, F-036, F-038
 
 MUST constraints (from contract):
 - MUST use kernel error types from amplifier_core.llm_errors
@@ -18,6 +18,10 @@ MUST constraints (from contract):
 F-036 additions:
 - Optional context extraction from error messages
 - DEBUG logging for translation decisions
+
+F-038: Kernel Type Migration
+- Now imports all error types from amplifier_core.llm_errors
+- Removed local fallback error class definitions
 """
 
 from __future__ import annotations
@@ -29,75 +33,30 @@ from pathlib import Path
 
 import yaml
 
+# F-038: Import ALL error types from amplifier_core.llm_errors
+from amplifier_core.llm_errors import (
+    AbortError,
+    AccessDeniedError,
+    AuthenticationError,
+    ConfigurationError,
+    ContentFilterError,
+    ContextLengthError,
+    InvalidRequestError,
+    InvalidToolCallError,
+    LLMError,
+    LLMTimeoutError,
+    NetworkError,
+    NotFoundError,
+    ProviderUnavailableError,
+    QuotaExceededError,
+    RateLimitError,
+    StreamError,
+)
+
 logger = logging.getLogger(__name__)
 
-# TODO(amplifier-core): Replace fallback error classes below with imports from
-# amplifier_core.llm_errors once amplifier-core is a project dependency.
-# See: contracts/error-hierarchy.md
 
-
-# Define fallback error types that match kernel interface
-# These are used when amplifier-core is not installed (testing scenarios)
-class LLMError(Exception):
-    """Base LLM error - matches amplifier_core.llm_errors.LLMError interface."""
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = False,
-        retry_after: float | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.provider = provider
-        self.model = model
-        self.retryable = retryable
-        self.retry_after = retry_after
-
-
-def _make_error_class(name: str, default_retryable: bool) -> type:
-    """Create an LLMError subclass with fixed retryable default."""
-
-    def __init__(
-        self: LLMError,
-        message: str,
-        *,
-        provider: str | None = None,
-        model: str | None = None,
-        retryable: bool = default_retryable,
-        retry_after: float | None = None,
-    ) -> None:
-        self.message = message  # type: ignore[attr-defined]
-        self.provider = provider
-        self.model = model
-        self.retryable = retryable
-        self.retry_after = retry_after
-        super(Exception, self).__init__(message)
-
-    return type(name, (LLMError,), {"__init__": __init__})
-
-
-# Create all error types via factory (8 lines instead of 165)
-AuthenticationError = _make_error_class("AuthenticationError", False)
-RateLimitError = _make_error_class("RateLimitError", True)
-QuotaExceededError = _make_error_class("QuotaExceededError", False)
-LLMTimeoutError = _make_error_class("LLMTimeoutError", True)
-ContentFilterError = _make_error_class("ContentFilterError", False)
-NetworkError = _make_error_class("NetworkError", True)
-NotFoundError = _make_error_class("NotFoundError", False)
-ProviderUnavailableError = _make_error_class("ProviderUnavailableError", True)
-
-# F-035: New error types for actionable error messages
-ContextLengthError = _make_error_class("ContextLengthError", False)
-InvalidRequestError = _make_error_class("InvalidRequestError", False)
-StreamError = _make_error_class("StreamError", True)  # Retryable
-InvalidToolCallError = _make_error_class("InvalidToolCallError", False)
-ConfigurationError = _make_error_class("ConfigurationError", False)
-
-
-# Mapping from config names to error classes
+# F-038: Mapping from config names to kernel error classes
 KERNEL_ERROR_MAP: dict[str, type[LLMError]] = {
     "AuthenticationError": AuthenticationError,
     "RateLimitError": RateLimitError,
@@ -107,12 +66,13 @@ KERNEL_ERROR_MAP: dict[str, type[LLMError]] = {
     "NetworkError": NetworkError,
     "NotFoundError": NotFoundError,
     "ProviderUnavailableError": ProviderUnavailableError,
-    # F-035: New error types
     "ContextLengthError": ContextLengthError,
     "InvalidRequestError": InvalidRequestError,
     "StreamError": StreamError,
     "InvalidToolCallError": InvalidToolCallError,
     "ConfigurationError": ConfigurationError,
+    "AccessDeniedError": AccessDeniedError,
+    "AbortError": AbortError,
 }
 
 

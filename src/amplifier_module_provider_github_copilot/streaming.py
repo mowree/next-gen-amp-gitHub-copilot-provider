@@ -1,13 +1,23 @@
-"""Event translation / streaming module. Contract: event-vocabulary.md"""
+"""Event translation / streaming module. Contract: event-vocabulary.md
+
+Feature: F-005, F-006, F-038
+
+F-038: Kernel Type Migration
+- Added to_chat_response() method that converts accumulated response to kernel ChatResponse
+- Uses TextBlock/ThinkingBlock (Pydantic from message_models)
+"""
 
 import fnmatch
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
+
+if TYPE_CHECKING:
+    from amplifier_core import ChatResponse
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +104,65 @@ class StreamingAccumulator:
             finish_reason=self.finish_reason,
             error=self.error,
             is_complete=self.is_complete,
+        )
+
+    def to_chat_response(self) -> "ChatResponse":
+        """Convert accumulated response to kernel ChatResponse.
+
+        Feature: F-038
+
+        IMPORTANT: Uses TextBlock/ThinkingBlock (Pydantic from message_models),
+        NOT TextContent/ThinkingContent (dataclass from content_models).
+
+        Returns:
+            ChatResponse with content blocks, tool_calls, usage, and finish_reason.
+        """
+        from amplifier_core import (
+            ChatResponse,
+            TextBlock,
+            ThinkingBlock,
+            ToolCall,
+            Usage,
+        )
+
+        content: list[TextBlock | ThinkingBlock] = []
+
+        # Add text content using Pydantic TextBlock
+        if self.text_content:
+            content.append(TextBlock(text=self.text_content))
+
+        # Add thinking content using Pydantic ThinkingBlock
+        if self.thinking_content:
+            content.append(ThinkingBlock(thinking=self.thinking_content))
+
+        # Convert tool calls to kernel ToolCall
+        tool_calls: list[ToolCall] | None = None
+        if self.tool_calls:
+            tool_calls = [
+                ToolCall(
+                    id=tc.get("id", ""),
+                    name=tc.get("name", ""),
+                    arguments=tc.get("arguments", {})
+                    if isinstance(tc.get("arguments"), dict)
+                    else {},
+                )
+                for tc in self.tool_calls
+            ]
+
+        # Convert usage - all three fields REQUIRED
+        usage: Usage | None = None
+        if self.usage:
+            usage = Usage(
+                input_tokens=self.usage.get("input_tokens", 0),
+                output_tokens=self.usage.get("output_tokens", 0),
+                total_tokens=self.usage.get("total_tokens", 0),
+            )
+
+        return ChatResponse(
+            content=content,  # type: ignore[arg-type]
+            tool_calls=tool_calls,
+            usage=usage,
+            finish_reason=self.finish_reason,
         )
 
 

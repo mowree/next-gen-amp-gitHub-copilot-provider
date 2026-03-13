@@ -5,13 +5,18 @@ Thin orchestrator implementing Provider Protocol.
 Delegates to specialized modules for all logic.
 
 Contract: provider-protocol.md
-Feature: F-008, F-020
+Feature: F-008, F-020, F-038
 
 MUST constraints:
 - MUST implement Provider Protocol (4 methods + 1 property)
 - MUST delegate tool parsing to tool_parsing module
 - MUST NOT contain SDK imports (delegation only)
 - MUST implement mount(), get_info(), list_models(), complete(), parse_tool_calls()
+
+F-038: Kernel Type Migration
+- Now imports ProviderInfo and ModelInfo from amplifier_core.models
+- Now imports ToolCall from amplifier_core.message_models
+- Removed local dataclass definitions for these types
 """
 
 from __future__ import annotations
@@ -20,6 +25,9 @@ import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
+
+# F-038: Import kernel types
+from amplifier_core import ChatResponse, ModelInfo, ProviderInfo, ToolCall
 
 from .error_translation import (
     ErrorConfig,
@@ -36,42 +44,9 @@ from .streaming import (
     load_event_config,
     translate_event,
 )
-from .tool_parsing import ToolCall, parse_tool_calls
+from .tool_parsing import parse_tool_calls
 
 logger = logging.getLogger(__name__)
-
-
-def _empty_str_list() -> list[str]:
-    """Factory for empty string list."""
-    return []
-
-
-@dataclass
-class ProviderInfo:
-    """Provider metadata returned by get_info().
-
-    Contract: provider-protocol.md
-    Feature: F-020 AC-2
-    """
-
-    name: str
-    version: str
-    description: str
-    capabilities: list[str] = field(default_factory=_empty_str_list)
-
-
-@dataclass
-class ModelInfo:
-    """Model metadata returned by list_models().
-
-    Contract: provider-protocol.md
-    Feature: F-020 AC-3
-    """
-
-    id: str
-    display_name: str
-    context_window: int
-    max_output_tokens: int
 
 
 # Type alias for SDK session creation function
@@ -286,47 +261,108 @@ class GitHubCopilotProvider:
         """Return provider metadata.
 
         Contract: provider-protocol:get_info:MUST:1
-        Feature: F-020 AC-2
+        Feature: F-020 AC-2, F-038
         """
+        # F-038: Use kernel ProviderInfo with correct field names
         return ProviderInfo(
-            name="github-copilot",
-            version="0.1.0",
-            description="GitHub Copilot provider for Amplifier",
+            id="github-copilot",
+            display_name="GitHub Copilot SDK",
+            credential_env_vars=["GITHUB_TOKEN", "GH_TOKEN", "COPILOT_GITHUB_TOKEN"],
             capabilities=["streaming", "tool_use"],
+            defaults={
+                "model": "gpt-4o",
+                "max_tokens": 4096,
+                "temperature": 0.7,
+                "timeout": 60,
+                "context_window": 200000,
+                "max_output_tokens": 32000,
+            },
+            config_fields=[],
         )
 
     async def list_models(self) -> list[ModelInfo]:
         """Return available models from GitHub Copilot.
 
         Contract: provider-protocol:list_models:MUST:1
-        Feature: F-020 AC-3
+        Feature: F-020 AC-3, F-038
         """
+        # F-038: Use kernel ModelInfo with correct field names
         return [
             ModelInfo(
                 id="gpt-4",
                 display_name="GPT-4",
                 context_window=128000,
                 max_output_tokens=4096,
+                capabilities=["streaming", "tool_use"],
+                defaults={},
             ),
             ModelInfo(
                 id="gpt-4o",
                 display_name="GPT-4o",
                 context_window=128000,
                 max_output_tokens=4096,
+                capabilities=["streaming", "tool_use"],
+                defaults={},
             ),
         ]
 
     async def complete(
         self,
+        request: Any,
+        **kwargs: Any,
+    ) -> ChatResponse:
+        """Execute completion lifecycle, returning ChatResponse.
+
+        Contract: provider-protocol:complete:MUST:1
+        Feature: F-020 AC-4, F-038
+
+        F-038: Now returns ChatResponse instead of AsyncIterator[DomainEvent].
+        Uses internal streaming machinery and converts at boundary.
+        """
+
+        # Convert request to internal CompletionRequest if needed
+        internal_request: CompletionRequest
+        if isinstance(request, CompletionRequest):
+            internal_request = request
+        else:
+            # Handle kernel ChatRequest - extract prompt from messages
+            messages: list[Any] = getattr(request, "messages", [])
+            prompt_parts: list[str] = []
+            for msg in messages:
+                content: Any = getattr(msg, "content", "")
+                if isinstance(content, str):
+                    prompt_parts.append(content)
+                elif isinstance(content, list):
+                    for block in content:  # type: ignore[union-attr]
+                        text: str | None = getattr(block, "text", None)  # type: ignore[arg-type]
+                        if text is not None:
+                            prompt_parts.append(text)
+            internal_request = CompletionRequest(
+                prompt="\n".join(prompt_parts),
+                model=getattr(request, "model", None),
+                tools=getattr(request, "tools", []) or [],
+            )
+
+        # Use internal streaming machinery and accumulate
+        accumulator = StreamingAccumulator()
+        async for event in self._complete_internal(
+            internal_request,
+            config=kwargs.get("config"),
+            sdk_create_fn=kwargs.get("sdk_create_fn") or self._complete_fn,
+        ):
+            accumulator.add(event)
+
+        # Convert at boundary to kernel ChatResponse
+        return accumulator.to_chat_response()
+
+    async def _complete_internal(
+        self,
         request: CompletionRequest,
         **kwargs: Any,
     ) -> AsyncIterator[DomainEvent]:
-        """Execute completion lifecycle, yielding domain events.
+        """Internal: Execute completion lifecycle, yielding domain events.
 
-        Contract: provider-protocol:complete:MUST:1
-        Feature: F-020 AC-4
-
-        This is a thin wrapper around the module-level complete() function.
+        This is the preserved streaming implementation, now private.
         """
         # Delegate to module-level complete() function
         async for event in complete(

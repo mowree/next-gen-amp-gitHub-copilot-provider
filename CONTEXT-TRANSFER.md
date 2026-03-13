@@ -10,6 +10,84 @@
 
 ---
 
+## Session 2026-03-13T18:17Z -- F-038 Kernel Type Migration IMPLEMENTED
+
+### Executive Summary
+
+**F-038 IMPLEMENTED**: Provider now imports and returns kernel types from `amplifier_core`. This was the CRITICAL blocker preventing Amplifier from loading the provider.
+
+### Work Completed
+
+**F-038: Kernel Type Migration** (IMPLEMENTED)
+
+Files modified:
+- `src/.../error_translation.py` - Imports all 15+ kernel error types from `amplifier_core.llm_errors`, removed local fallback classes
+- `src/.../tool_parsing.py` - Imports `ToolCall` from `amplifier_core`, removed local dataclass
+- `src/.../streaming.py` - Added `to_chat_response()` method using `TextBlock`/`ThinkingBlock` (Pydantic)
+- `src/.../provider.py` - Imports `ProviderInfo`, `ModelInfo`, `ToolCall` from kernel; `complete()` now returns `ChatResponse` (not iterator)
+- `pyproject.toml` - Changed `amplifier-core>=1.2.0` to `>=1.0.7` (1.2.0 doesn't exist)
+- `tests/test_f038_kernel_integration.py` - New test file with kernel type compliance tests
+
+### Key Design Decisions
+
+1. **Boundary-only migration**: Internal types preserved (`CompletionRequest`, `CompletionConfig`, `DomainEvent`, `StreamingAccumulator`). Only public methods changed to return kernel types.
+
+2. **complete() architecture change**: 
+   - Public `complete()` now returns `ChatResponse` (per kernel Protocol)
+   - Private `_complete_internal()` preserves streaming implementation
+   - `StreamingAccumulator.to_chat_response()` handles boundary conversion
+
+3. **Error type mapping**: `KERNEL_ERROR_MAP` now maps to actual kernel classes from `amplifier_core.llm_errors`, including newly added `AccessDeniedError` and `AbortError`.
+
+4. **ProviderInfo field mapping**:
+   - `name` → `id` (kernel uses `id`)
+   - `description` → `display_name`
+   - Added: `credential_env_vars`, `defaults`, `config_fields`
+
+### Acceptance Criteria Status
+
+| AC | Description | Status |
+|----|-------------|--------|
+| AC-1 | get_info() returns amplifier_core.ProviderInfo | ✓ |
+| AC-2 | translate_sdk_error() returns kernel error types | ✓ |
+| AC-3 | parse_tool_calls() is method returning amplifier_core.ToolCall | ✓ |
+| AC-4 | complete() returns ChatResponse (not iterator) | ✓ |
+| AC-5 | ChatResponse.content uses TextBlock/ThinkingBlock (Pydantic) | ✓ |
+| AC-6 | All existing tests pass | Blocked (github-copilot-sdk not installed) |
+| AC-7 | Build passes (ruff check + pyright) | ✓ |
+| AC-8 | YAML error translation preserved | ✓ |
+
+### Build Verification
+
+- `ruff check src/` - PASS (0 errors)
+- `pyright src/` - PASS (0 errors)
+- Tests blocked by missing `github-copilot-sdk` dependency (expected in this environment)
+
+### Antagonistic Review Findings (Resolved)
+
+1. **FIXED**: `pyproject.toml` had `amplifier-core>=1.2.0` → changed to `>=1.0.7`
+2. **FIXED**: `complete()` returned `AsyncIterator[DomainEvent]` → now returns `ChatResponse`
+3. **PASS**: All other migration requirements met
+
+### Commit Pending
+
+Changes ready for commit. Files modified:
+- STATE.yaml
+- pyproject.toml
+- src/amplifier_module_provider_github_copilot/error_translation.py
+- src/amplifier_module_provider_github_copilot/provider.py
+- src/amplifier_module_provider_github_copilot/streaming.py
+- src/amplifier_module_provider_github_copilot/tool_parsing.py
+- tests/test_f038_kernel_integration.py (new)
+
+### Next Steps
+
+1. Commit F-038 changes
+2. Verify tests pass when `github-copilot-sdk` is available
+3. Tag release v0.3.0 (kernel type migration)
+
+---
+
 ## Session 2026-03-13T17:28Z -- CRITICAL DISCOVERY: Kernel Type Migration Required
 
 ### Executive Summary
