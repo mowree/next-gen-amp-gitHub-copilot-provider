@@ -213,6 +213,8 @@ class CopilotClientWrapper:
         if system_message:
             session_config["system_message"] = {"mode": "append", "content": system_message}
         session_config["streaming"] = streaming
+        # F-033: SDK v0.1.33 requires on_permission_request at session level too
+        session_config["on_permission_request"] = deny_permission_request
 
         sdk_session = None
         try:

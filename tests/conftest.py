@@ -67,12 +67,12 @@ async def _default_permission_handler(permission: Any) -> dict[str, str]:
     return {"permissionDecision": "deny", "permissionDecisionReason": "test environment"}
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 async def sdk_client() -> AsyncIterator[Any]:
-    """Module-scoped real SDK client for live tests.
+    """Function-scoped real SDK client for live tests.
 
     Skips if SDK not installed or no token available.
-    Starts client once per test module, stops on cleanup.
+    Creates a fresh client per test to avoid event loop mismatches.
 
     SDK ASSUMPTION: CopilotClient requires on_permission_request handler
     to be set before create_session() can be called.
