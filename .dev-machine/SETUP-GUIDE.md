@@ -447,3 +447,162 @@ The trade-off: Interactive mode is safer but slower. Autonomous mode is faster b
 | Test status | ✅ All passing |
 
 The machine successfully built a working GitHub Copilot provider from the GOLDEN_VISION_V2.md constitution.
+
+---
+
+## Pitfall 11: Docker Volume Permissions (PERMANENT FIX)
+
+**Symptom**: After autonomous dev-machine runs, git operations fail:
+```
+error: insufficient permission for adding an object to repository database .git/objects
+```
+
+**Root Cause**: 
+- Docker containers run as `root` (UID 0) by default
+- Files created in mounted volumes inherit `root:root` ownership
+- Host user (UID 1000) cannot write to root-owned files
+- Every autonomous run creates new root-owned files → cycle repeats
+
+**Why This Kept Happening**:
+```
+1. User fixes permissions: sudo chown -R $(whoami) .
+2. Docker dev-machine runs → creates root-owned .git/objects/, STATE.yaml
+3. User/agent tries to commit → Permission denied
+4. Repeat step 1 (happened 4+ times in one day)
+```
+
+### The Fix (Applied 2026-03-13)
+
+**Expert Consensus**: 4/4 agents recommended `--user` flag (zen-architect, integration-specialist, bug-hunter, explorer)
+
+#### Changes to docker-run.sh
+
+```bash
+# OLD (ran as root):
+DOCKER_ARGS=(
+    --rm
+    -v "$PROJECT_DIR:/workspace"
+    -v "$HOME/.gitconfig:/root/.gitconfig:ro"
+    -v "$HOME/.amplifier:/root/.amplifier"
+    ...
+)
+
+# NEW (runs as host user):
+DOCKER_ARGS=(
+    --rm
+    --user "$(id -u):$(id -g)"                          # ← KEY FIX
+    -v "$PROJECT_DIR:/workspace"
+    -v "$HOME/.gitconfig:/home/amplifier/.gitconfig:ro" # ← Updated path
+    -v "$HOME/.amplifier:/home/amplifier/.amplifier"    # ← Updated path
+    -e "HOME=/home/amplifier"                           # ← Set HOME env
+    ...
+)
+```
+
+#### Changes to Dockerfile
+
+```dockerfile
+# NEW: Create writable home for non-root user
+RUN mkdir -p /home/amplifier/.local/bin /home/amplifier/.amplifier /home/amplifier/.cache \
+    && chmod -R 777 /home/amplifier
+
+# NEW: Install amplifier to accessible location (not /root/)
+ENV UV_TOOL_DIR=/home/amplifier/.local/share/uv/tools
+ENV UV_TOOL_BIN_DIR=/home/amplifier/.local/bin
+RUN uv tool install git+https://github.com/microsoft/amplifier ...
+ENV PATH="/home/amplifier/.local/bin:$PATH"
+
+# CHANGED: Git config at SYSTEM level (works for any user)
+RUN git config --system user.email "amplifier-ai@microsoft.com" \
+    && git config --system user.name "Amplifier Dev Machine" \
+    && git config --system --add safe.directory /workspace \
+    && git config --system credential.helper "!gh auth git-credential"
+```
+
+### Why This Works
+
+| Before | After |
+|--------|-------|
+| Container runs as UID 0 (root) | Container runs as UID 1000 (host user) |
+| Files created as `root:root` | Files created as `mowrim:mowrim` |
+| Host user can't commit | Host user can commit immediately |
+| Need `sudo chown` after every run | No permission fixes needed |
+
+### Migration Steps (One-Time)
+
+After the autonomous machine finishes its current run:
+
+```bash
+# Step 1: Fix existing root-owned files (one time only)
+cd /home/mowrim/projects/next-get-provider-github-copilot
+sudo chown -R $(whoami):$(whoami) .
+
+# Step 2: Rebuild the container with the new Dockerfile
+./.dev-machine/docker-run.sh --build
+
+# Step 3: Future runs will have correct permissions automatically
+./.dev-machine/docker-run.sh
+```
+
+### Verification
+
+After rebuild, verify the fix works:
+
+```bash
+# Run a quick test
+./.dev-machine/docker-run.sh --build
+
+# Check file ownership after run
+ls -la STATE.yaml .git/objects/ | head -5
+# Should show YOUR user, not root
+
+# Verify git works
+git status && git log --oneline -1
+# Should work without sudo
+```
+
+---
+
+## Steps for Next Run
+
+After the current autonomous machine finishes:
+
+### 1. Fix Existing Permissions (One Time)
+
+```bash
+cd /home/mowrim/projects/next-get-provider-github-copilot
+sudo chown -R $(whoami):$(whoami) .
+```
+
+### 2. Rebuild Container with Permission Fix
+
+```bash
+./.dev-machine/docker-run.sh --build
+```
+
+This rebuilds the image with:
+- `--user $(id -u):$(id -g)` in docker run
+- `/home/amplifier` directory for non-root user
+- Amplifier CLI installed to `/home/amplifier/.local/bin`
+
+### 3. Run Autonomous Machine
+
+```bash
+./.dev-machine/docker-run.sh
+```
+
+No more permission issues. Files created by Docker will be owned by your user.
+
+### 4. (Optional) Verify Fix Worked
+
+```bash
+# After run completes, check ownership
+ls -la STATE.yaml SCRATCH.md
+# Should show: mowrim mowrim (not root root)
+
+# Verify git works without sudo
+git status
+git log --oneline -3
+```
+
+---
