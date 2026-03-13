@@ -270,7 +270,12 @@ class GitHubCopilotProvider:
         return ProviderInfo(
             id="github-copilot",
             display_name="GitHub Copilot SDK",
-            credential_env_vars=["GITHUB_TOKEN", "GH_TOKEN", "COPILOT_GITHUB_TOKEN"],
+            credential_env_vars=[
+                "COPILOT_AGENT_TOKEN",
+                "COPILOT_GITHUB_TOKEN",
+                "GH_TOKEN",
+                "GITHUB_TOKEN",
+            ],
             capabilities=["streaming", "tool_use"],
             defaults={
                 "model": "gpt-4o",

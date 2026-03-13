@@ -109,8 +109,11 @@ else:
 "
     
     echo ""
-    echo "=== Running shadow test recipe ==="
-    amplifier run "Execute recipe .dev-machine/shadow-test.yaml with provider_source=$PROVIDER_SOURCE sdk_version=$SDK_VERSION"
+    echo "=== Running shadow test ==="
+    # Use --bundle to specify our custom test bundle (not default foundation)
+    # Use --verbose to debug provider loading issues
+    amplifier run --verbose --bundle /workspace/.dev-machine/shadow-test-bundle.md \
+      "You are running shadow tests. Confirm provider is working by responding with: SHADOW TEST PASSED - Provider loaded successfully. Then list any tool capabilities you have."
 '
 
 EXIT_CODE=$?
