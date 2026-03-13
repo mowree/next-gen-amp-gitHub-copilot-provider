@@ -39,7 +39,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/amplifier_module_provider_github_copilot"]
+packages = ["amplifier_module_provider_github_copilot"]
 
 [tool.ruff]
 line-length = 100
@@ -59,7 +59,7 @@ select = [
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
-include = ["src", "tests"]
+include = ["amplifier_module_provider_github_copilot", "tests"]
 venvPath = "."
 venv = ".venv"
 # Exclude stub-related errors for pytest (has inline types but pyright strict mode is pedantic)
