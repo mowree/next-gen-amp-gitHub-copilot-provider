@@ -109,10 +109,13 @@ else:
 "
     
     echo ""
+    echo "=== Registering shadow test bundle ==="
+    # Register the bundle first (--bundle expects named bundles, not file paths)
+    amplifier bundle add /workspace/.dev-machine/shadow-test-bundle.md 2>/dev/null || true
+    
     echo "=== Running shadow test ==="
-    # Use --bundle to specify our custom test bundle (not default foundation)
-    # Use --verbose to debug provider loading issues
-    amplifier run --verbose --bundle /workspace/.dev-machine/shadow-test-bundle.md \
+    # Use the registered bundle name from the frontmatter (copilot-provider-shadow-test)
+    amplifier run --verbose --bundle copilot-provider-shadow-test \
       "You are running shadow tests. Confirm provider is working by responding with: SHADOW TEST PASSED - Provider loaded successfully. Then list any tool capabilities you have."
 '
 
