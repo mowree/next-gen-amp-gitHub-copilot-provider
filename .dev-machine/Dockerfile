@@ -47,7 +47,9 @@ ENV PATH="/home/amplifier/.local/bin:$PATH"
 # Install dev tools GLOBALLY so they survive volume mount shadowing
 # When docker-run.sh mounts the host project to /workspace, it shadows any .venv
 # created during build. Installing to system Python ensures tools are always available.
-RUN pip install --no-cache-dir ruff pyright pytest pytest-asyncio
+# amplifier-core installed globally so pyright type-checking and pytest imports work
+# even after the volume mount shadows the project .venv at runtime
+RUN pip install --no-cache-dir ruff pyright pytest pytest-asyncio amplifier-core
 
 # Verify dev tools are available system-wide (not via uv run, which uses .venv)
 RUN ruff --version && pyright --version && pytest --version
@@ -61,7 +63,7 @@ COPY . .
 # Create project .venv for project dependencies (not dev tools)
 # This gets shadowed at runtime but that's OK - we only need project deps at build time
 # for validation. At runtime, uv sync will recreate it.
-RUN uv sync
+RUN uv sync --extra dev
 
 # Verify project imports work at build time (validates pyproject.toml is correct)
 RUN uv run python -c "import amplifier_module_provider_github_copilot; print('Module import OK')"
