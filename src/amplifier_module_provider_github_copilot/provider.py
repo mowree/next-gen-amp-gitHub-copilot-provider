@@ -34,7 +34,7 @@ from .error_translation import (
     load_error_config,
     translate_sdk_error,
 )
-from .sdk_adapter.client import create_deny_hook
+from .sdk_adapter.client import CopilotClientWrapper, create_deny_hook
 from .sdk_adapter.types import SDKSession, SessionConfig
 from .streaming import (
     AccumulatedResponse,
@@ -248,6 +248,8 @@ class GitHubCopilotProvider:
         self.config = config or {}
         self.coordinator = coordinator
         self._complete_fn: SDKCreateFn | None = None
+        # F-039: Create SDK client wrapper for real SDK path
+        self._client = CopilotClientWrapper()
 
     @property
     def name(self) -> str:
@@ -314,10 +316,10 @@ class GitHubCopilotProvider:
         """Execute completion lifecycle, returning ChatResponse.
 
         Contract: provider-protocol:complete:MUST:1
-        Feature: F-020 AC-4, F-038
+        Feature: F-020 AC-4, F-038, F-039
 
         F-038: Now returns ChatResponse instead of AsyncIterator[DomainEvent].
-        Uses internal streaming machinery and converts at boundary.
+        F-039: Uses CopilotClientWrapper.session() for real SDK path.
         """
 
         # Convert request to internal CompletionRequest if needed
@@ -343,14 +345,39 @@ class GitHubCopilotProvider:
                 tools=getattr(request, "tools", []) or [],
             )
 
-        # Use internal streaming machinery and accumulate
+        # F-039: Use the SDK client wrapper for real SDK path
+        # The client.session() context manager handles:
+        # - Lazy SDK initialization
+        # - Session creation with deny hook
+        # - Proper cleanup on exit
         accumulator = StreamingAccumulator()
-        async for event in self._complete_internal(
-            internal_request,
-            config=kwargs.get("config"),
-            sdk_create_fn=kwargs.get("sdk_create_fn") or self._complete_fn,
-        ):
-            accumulator.add(event)
+
+        # Check for test injection first
+        sdk_create_fn = kwargs.get("sdk_create_fn") or self._complete_fn
+        if sdk_create_fn is not None:
+            # Test path: use injected SDK factory
+            async for event in self._complete_internal(
+                internal_request,
+                config=kwargs.get("config"),
+                sdk_create_fn=sdk_create_fn,
+            ):
+                accumulator.add(event)
+        else:
+            # Real SDK path: use client wrapper
+            model = internal_request.model or "gpt-4o"
+            async with self._client.session(model=model) as sdk_session:
+                # Stream events from SDK session
+                event_config = kwargs.get("config")
+                if event_config is None:
+                    event_config = load_event_config()
+
+                async for sdk_event in sdk_session.send_message(
+                    internal_request.prompt,
+                    internal_request.tools,
+                ):
+                    domain_event = translate_event(sdk_event, event_config)
+                    if domain_event is not None:
+                        accumulator.add(domain_event)
 
         # Convert at boundary to kernel ChatResponse
         return accumulator.to_chat_response()
