@@ -36,24 +36,13 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Project-specific exclusions (PRIVATE - not for public repo)
+# Project-specific exclusions
+# Note: These are kept in the PRIVATE repo but excluded from PUBLIC distribution
 reference-only/
 mydocs/
-debates/
 
-# Autonomous dev-machine (PRIVATE)
-.dev-machine/
-STATE.yaml
-CONTEXT-TRANSFER.md
-SCRATCH.md
-FEATURE-ARCHIVE.yaml
-GIT-STATUS-NOW.txt
-AGENTS.md
-bundle.md
+# uv lock (regenerated on install)  
+uv.lock
 
 # Shadow test artifacts
 shadow_test_output.log
-run_shadow_test.sh
-
-# uv lock (regenerated on install)
-uv.lock
