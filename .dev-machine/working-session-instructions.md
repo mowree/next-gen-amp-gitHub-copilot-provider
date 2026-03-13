@@ -25,7 +25,7 @@ Execute these steps in order before doing any work:
    next, and whether there are blockers.
 2. **Read `./CONTEXT-TRANSFER.md`** -- Understand recent decisions, context from
    prior sessions, and any known issues.
-3. **Read `./debates/GOLDEN_VISION_V2.md`** -- The overall system architecture. This is
+3. **Read `./mydocs/debates/GOLDEN_VISION_V2.md`** -- The overall system architecture. This is
    the constitution. All implementation must conform to it.
 4. **Read the module spec** for the module you're working on. Check
    `./STATE.yaml` `module_specs` to see which modules have specs written.

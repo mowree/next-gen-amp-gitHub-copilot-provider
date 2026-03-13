@@ -77,7 +77,7 @@ except Exception as e:
 ## Contract References
 
 - `contracts/deny-destroy.md` — sovereignty contract
-- `debates/GOLDEN_VISION_V2.md` — Section "Non-Negotiable Constraints"
+- `mydocs/debates/GOLDEN_VISION_V2.md` — Section "Non-Negotiable Constraints"
 
 ## NOT IN SCOPE
 

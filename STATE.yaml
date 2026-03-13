@@ -41,7 +41,7 @@ completed_features:
 - F-040-sdk-api-fix
 architecture_spec:
   status: approved
-  path: ./debates/GOLDEN_VISION_V2.md
+  path: ./mydocs/mydocs/debates/GOLDEN_VISION_V2.md
 module_specs: {}
 features: {}
 meta:

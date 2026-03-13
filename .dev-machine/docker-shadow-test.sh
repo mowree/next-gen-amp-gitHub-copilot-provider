@@ -109,13 +109,16 @@ else:
 "
     
     echo ""
-    echo "=== Registering shadow test bundle ==="
-    # Register the bundle first (--bundle expects named bundles, not file paths)
-    amplifier bundle add /workspace/.dev-machine/shadow-test-bundle.md 2>/dev/null || true
+    echo "=== Setting up shadow test bundle ==="
+    # Copy bundle directly to bundles directory (bypasses buggy bundle add parsing)
+    mkdir -p /home/amplifier/.amplifier/bundles
+    cp /workspace/.dev-machine/shadow-test-bundle.md /home/amplifier/.amplifier/bundles/copilot-provider-shadow-test.md
+    echo "Bundle copied to ~/.amplifier/bundles/"
     
     echo "=== Running shadow test ==="
-    # Use the registered bundle name from the frontmatter (copilot-provider-shadow-test)
-    amplifier run --verbose --bundle copilot-provider-shadow-test \
+    # Use the bundle directly via amplifier bundle use + run
+    amplifier bundle use copilot-provider-shadow-test
+    amplifier run --verbose \
       "You are running shadow tests. Confirm provider is working by responding with: SHADOW TEST PASSED - Provider loaded successfully. Then list any tool capabilities you have."
 '
 

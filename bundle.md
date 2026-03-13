@@ -11,8 +11,9 @@ providers:
       # Optional provider config
       
 context:
-  - contracts/provider-protocol.md
-  - contracts/deny-destroy.md
+  include:
+    - contracts/provider-protocol.md
+    - contracts/deny-destroy.md
 ---
 
 # GitHub Copilot Provider

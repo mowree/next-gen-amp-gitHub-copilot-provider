@@ -107,7 +107,7 @@ Document the 5-method Provider Protocol as a markdown contract. This contract de
 
 - Read the Amplifier PROVIDER_CONTRACT.md first
 - Adapt to our Three-Medium Architecture (contracts drive tests AND implementation)
-- Use the contract format from `debates/research/MARKDOWN_CONTRACTS_IN_OUR_PROJECT.md`
+- Use the contract format from `mydocs/debates/research/MARKDOWN_CONTRACTS_IN_OUR_PROJECT.md`
 
 ---
 

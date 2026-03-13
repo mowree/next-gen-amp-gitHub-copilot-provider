@@ -138,7 +138,7 @@ steps:
       3. .dev-machine/working-session-instructions.md -- your detailed operating procedure
 
       THEN READ THE RELEVANT SPECS:
-      4. ./debates/GOLDEN_VISION_V2.md -- the overall architecture (always read this)
+      4. ./mydocs/debates/GOLDEN_VISION_V2.md -- the overall architecture (always read this)
       5. Module specs for whatever module you're working on (check ./STATE.yaml module_specs)
       6. Feature specs marked "ready" in ./STATE.yaml features section
 

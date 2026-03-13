@@ -1,6 +1,6 @@
 # Architecture Specification
 
-**Primary Spec:** [debates/GOLDEN_VISION_V2.md](../debates/GOLDEN_VISION_V2.md)
+**Primary Spec:** [mydocs/debates/GOLDEN_VISION_V2.md](../mydocs/debates/GOLDEN_VISION_V2.md)
 
 This document serves as an index to the architecture specification.
 
@@ -39,7 +39,7 @@ This document serves as an index to the architecture specification.
 
 ## Full Specification
 
-See [debates/GOLDEN_VISION_V2.md](../debates/GOLDEN_VISION_V2.md) for:
+See [mydocs/debates/GOLDEN_VISION_V2.md](../mydocs/debates/GOLDEN_VISION_V2.md) for:
 
 - Executive Summary (The Six Innovations)
 - Core Philosophy (The Six Principles)

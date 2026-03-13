@@ -3,7 +3,7 @@
 **Status:** Draft  
 **Priority:** High  
 **Contract References:** contracts/sdk-boundary.md, contracts/deny-destroy.md  
-**Architecture Reference:** debates/GOLDEN_VISION_V2.md §Testing Strategy (Tier 6 + Tier 7)
+**Architecture Reference:** mydocs/debates/GOLDEN_VISION_V2.md §Testing Strategy (Tier 6 + Tier 7)
 
 ---
 

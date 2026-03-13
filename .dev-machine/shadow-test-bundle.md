@@ -6,33 +6,19 @@ bundle:
   version: 0.1.0
   description: Minimal bundle for testing github-copilot provider in isolation
 
-# Provider under test - source varies based on test mode
 providers:
   - module: provider-github-copilot
-    # source: set dynamically by shadow-test.yaml recipe
     config:
       model: gpt-4o
 
-# Minimal orchestrator - no streaming for simpler validation
 session:
   orchestrator:
     module: loop-basic
     source: git+https://github.com/microsoft/amplifier-module-loop-basic@main
-
-# Basic context manager
   context:
     module: context-simple
     source: git+https://github.com/microsoft/amplifier-module-context-simple@main
 
-# Logging hook for session capture
-hooks:
-  - module: hooks-logging
-    source: git+https://github.com/microsoft/amplifier-module-hooks-logging@main
-    config:
-      level: debug
-      capture_events: true
-
-# Filesystem tool for tool_use testing
 tools:
   - module: tool-filesystem
     source: git+https://github.com/microsoft/amplifier-module-tool-filesystem@main
