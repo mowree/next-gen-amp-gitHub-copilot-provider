@@ -223,18 +223,7 @@ steps:
         echo "========================================"
         
         # Add blocker to STATE.yaml
-        python3 << 'PYEOF'
-import yaml, datetime
-with open('./STATE.yaml') as f: s = yaml.safe_load(f)
-b = s.get('blockers') or []
-b.append({
-    'description': f'Completion gate failed: ruff={RUFF_EXIT} pyright={PYRIGHT_EXIT} pytest={TEST_EXIT}',
-    'since': datetime.datetime.now().isoformat(),
-    'severity': 'high'
-})
-s['blockers'] = b
-with open('./STATE.yaml', 'w') as f: yaml.dump(s, f, default_flow_style=False, sort_keys=False)
-PYEOF
+        python3 -c "import yaml, datetime; f=open('./STATE.yaml'); s=yaml.safe_load(f); f.close(); b=s.get('blockers') or []; b.append({'description': 'Completion gate failed: ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT pytest=$TEST_EXIT', 'since': datetime.datetime.now().isoformat(), 'severity': 'high'}); s['blockers']=b; f=open('./STATE.yaml','w'); yaml.dump(s,f,default_flow_style=False,sort_keys=False); f.close()"
         echo '{"gate": "failed", "ruff": '$RUFF_EXIT', "pyright": '$PYRIGHT_EXIT', "pytest": '$TEST_EXIT'}'
         exit 1
       fi

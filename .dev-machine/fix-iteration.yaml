@@ -142,7 +142,7 @@ steps:
       if [ "$BUILD_EXIT" -eq 0 ] && [ "$TEST_EXIT" -eq 0 ]; then
         echo "{\"status\": \"done\", \"iteration\": \"$ITER\"}"
       elif [ "$ITER" -ge 10 ]; then
-        echo "{\"status\": \"max-iterations\", \"iteration\": \"$ITER\"}"
+        echo "{\"status\": \"max_iterations\", \"iteration\": \"$ITER\"}"
       else
         echo "{\"status\": \"checking\", \"iteration\": \"$ITER\"}"
       fi

@@ -6,50 +6,71 @@ Add `on_permission_request` handler to `CopilotClientWrapper` initialization to 
 ## Status
 - **Priority**: Critical (production will crash without this)
 - **Layer**: Python mechanism
-- **Status**: ⚠️ BLOCKED - Awaiting design discussion on handler approach
+- **Status**: ✅ APPROVED - Deny-by-default approach
 
 ## Background
 SDK v0.1.28+ REQUIRES `on_permission_request` handler in `create_session()`. The next-gen provider is missing this.
 
-## Design Discussion Required
+## Approved Design: Deny-by-Default
 
-Three approaches identified by expert panel:
+**Rationale (from expert panel + human review):**
+1. Tool capture happens via **streaming events** (ASSISTANT_MESSAGE), not hooks
+2. Hooks are for **blocking**, not learning — we already have tool info when hooks fire
+3. Denying at permission layer is semantically correct + future-proofs against new SDK operations
+4. Defense-in-depth: deny at permission layer + deny at preToolUse + session destroy
 
-### Option A: Use `PermissionHandler.approve_all` (upstream pattern)
+## Implementation
+
+### 1. Add deny_permission_request function to client.py
+
 ```python
-from copilot.types import PermissionHandler
-session_config["on_permission_request"] = PermissionHandler.approve_all
-```
-- ✅ Matches upstream implementation
-- ❌ security-guardian: "HIGH RISK — violates Deny+Destroy"
-- ❌ amplifier-expert: "Permission requests must be events, not executed"
+from copilot.types import PermissionRequest, PermissionRequestResult
 
-### Option B: Use `create_deny_hook()` (deny-by-default)
+def deny_permission_request(
+    request: PermissionRequest, 
+    invocation: dict[str, str]
+) -> PermissionRequestResult:
+    """
+    Deny all permission requests at source.
+    
+    The SDK asks: "May I do X?"
+    Amplifier's answer: "No. Return the request to Amplifier's orchestrator."
+    
+    Tool capture happens via streaming events (ASSISTANT_MESSAGE), not hooks.
+    This is the FIRST line of defense. preToolUse deny hook is the second.
+    """
+    return PermissionRequestResult(
+        kind="denied-by-rules",
+        message="Amplifier orchestrator controls all operations"
+    )
+```
+
+### 2. Add to CopilotClient options (with backward compatibility)
+
 ```python
-session_config["on_permission_request"] = create_deny_hook()
+# In client.py, when building options dict:
+try:
+    from copilot.types import PermissionRequest, PermissionRequestResult
+    options["on_permission_request"] = deny_permission_request
+    logger.debug("[CLIENT] Permission handler set to deny_permission_request")
+except (ImportError, AttributeError):
+    # SDK < 0.1.28 doesn't require this
+    logger.debug("[CLIENT] PermissionHandler not available; using SDK default")
 ```
-- ✅ Aligns with Deny+Destroy pattern
-- ✅ zen-architect: "Handler must be fixed deny-all like preToolUse hook"
-- ⚠️ Need to verify `create_deny_hook()` signature is compatible
 
-### Option C: Create new deny permission handler
-```python
-async def deny_permission_request(request: Any) -> dict:
-    return {"permissionDecision": "deny", "permissionDecisionReason": "Amplifier sovereignty"}
+### 3. Update contracts/deny-destroy.md
 
-session_config["on_permission_request"] = deny_permission_request
+Add new MUST clause:
+```markdown
+## Permission Requests
+
+MUST: Register `on_permission_request` handler that denies all requests
+MUST: Return `PermissionRequestResult(kind="denied-by-rules")` for all permission requests
+MUST NOT: Use `PermissionHandler.approve_all` or any approval-returning handler
+RATIONALE: Permission requests are the SDK asking "may I execute?" — the answer is always "no, Amplifier decides."
 ```
-- ✅ Explicit deny semantics
-- ✅ Clear sovereignty assertion
-- ⚠️ More code to maintain
 
-## Questions for Discussion
-
-1. **Compatibility**: Does `create_deny_hook()` have the same signature as `on_permission_request` expects?
-2. **Semantics**: Should permission requests be logged as events before denial?
-3. **Contract**: Should `contracts/deny-destroy.md` be updated to cover permission requests?
-
-## Acceptance Criteria (once approach decided)
+## Acceptance Criteria
 
 - [ ] `on_permission_request` handler added to `client.py` auto-init path
 - [ ] Handler denies all permission requests (per Deny+Destroy)

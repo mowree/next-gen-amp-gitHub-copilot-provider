@@ -1,14 +1,8 @@
 phase: 5
 phase_name: Phase 5 -- SDK v0.1.33 Compatibility
 epoch: 21
-next_action: Implement F-031, F-032, F-034 (F-033 blocked pending discussion)
-blockers:
-- id: F-033-design-discussion
-  description: "Permission handler approach needs human decision: approve_all vs deny-by-default"
-  severity: medium
-  since: '2026-03-13T04:01:00Z'
-  blocked_features:
-    - F-033-permission-handler-fix
+next_action: Implement F-031, F-032, F-033, F-034 (all approved - deny-by-default)
+blockers: []
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
@@ -39,7 +33,38 @@ architecture_spec:
   status: approved
   path: ./debates/GOLDEN_VISION_V2.md
 module_specs: {}
-features: {}
+features:
+  F-031-system-notification-event:
+    name: System Notification Event Support
+    module: streaming
+    status: ready
+    spec: specs/features/F-031-system-notification-event.md
+    depends_on: []
+    description: Add system notification event type to streaming
+
+  F-032-permission-handler-tests:
+    name: Permission Handler Test Coverage
+    module: tests
+    status: ready
+    spec: specs/features/F-032-permission-handler-tests.md
+    depends_on: []
+    description: Add tests for SDK permission handlers
+
+  F-033-permission-handler-fix:
+    name: Permission Handler Implementation
+    module: client
+    status: blocked
+    spec: specs/features/F-033-permission-handler-fix.md
+    depends_on: [F-032-permission-handler-tests]
+    description: Fix permission handler to match SDK v0.1.33 API
+
+  F-034-sdk-version-tests:
+    name: SDK Version Compatibility Tests
+    module: tests
+    status: ready
+    spec: specs/features/F-034-sdk-version-tests.md
+    depends_on: []
+    description: Add tests for SDK version compatibility
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'

@@ -116,7 +116,7 @@ steps:
       if [ "$BUILD_EXIT" -eq 0 ] && [ "$TEST_EXIT" -eq 0 ]; then
         echo '{"status": "clean", "build_errors": "0", "test_status": "passing"}'
       else
-        echo "{\"status\": \"needs-fixing\", \"build_exit\": \"$BUILD_EXIT\", \"test_exit\": \"$TEST_EXIT\"}"
+        echo "{\"status\": \"needs_fixing\", \"build_exit\": \"$BUILD_EXIT\", \"test_exit\": \"$TEST_EXIT\"}"
       fi
     output: "initial_result"
     parse_json: true
