@@ -36,13 +36,24 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Project-specific exclusions
+# Project-specific exclusions (PRIVATE - not for public repo)
 reference-only/
 mydocs/
+debates/
 
-# uv
+# Autonomous dev-machine (PRIVATE)
+.dev-machine/
+STATE.yaml
+CONTEXT-TRANSFER.md
+SCRATCH.md
+FEATURE-ARCHIVE.yaml
+GIT-STATUS-NOW.txt
+AGENTS.md
+bundle.md
+
+# Shadow test artifacts
+shadow_test_output.log
+run_shadow_test.sh
+
+# uv lock (regenerated on install)
 uv.lock
-
-# Local dev-machine infrastructure
-.dev-machine/Dockerfile
-.dev-machine/docker-run.sh

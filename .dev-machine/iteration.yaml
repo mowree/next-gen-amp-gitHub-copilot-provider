@@ -105,7 +105,7 @@ steps:
       THRESHOLD=400
       OVERSIZED=""
       # Scan src directory for Python files
-      for pkg in src/*/; do
+      for pkg in amplifier_module_provider_github_copilot/; do
         name=$(basename "$pkg")
         if [ -d "$pkg" ]; then
           loc=$(find "$pkg" -name "*.py" | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
@@ -150,7 +150,7 @@ steps:
         * Write failing tests first (TDD)
         * Implement minimal code to pass tests
         * Run: pytest tests/ -v
-        * Run: ruff check src/ && pyright src/
+        * Run: ruff check amplifier_module_provider_github_copilot/ && pyright amplifier_module_provider_github_copilot/
         * BOTH must pass before proceeding.
         * NOTE: Use system-installed tools directly (not via uv run) in Docker
         * Spawn a fresh sub-agent for antagonistic review (give it the spec + your diff)
@@ -214,8 +214,8 @@ steps:
       # Both ruff and pyright must pass - no --exit-zero (catch errors early)
       # Use system-installed tools directly (not via uv run)
       RUFF_EXIT=0; PYRIGHT_EXIT=0
-      ruff check src/ 2>&1 || RUFF_EXIT=$?
-      pyright src/ 2>&1 || PYRIGHT_EXIT=$?
+      ruff check amplifier_module_provider_github_copilot/ 2>&1 || RUFF_EXIT=$?
+      pyright amplifier_module_provider_github_copilot/ 2>&1 || PYRIGHT_EXIT=$?
       if [ "$RUFF_EXIT" -eq 0 ] && [ "$PYRIGHT_EXIT" -eq 0 ]; then
         echo '{"build_status": "clean"}'
       else

@@ -7,7 +7,7 @@ steps:
     type: "bash"
     command: |
       cd /home/mowrim/projects/next-get-provider-github-copilot
-      git add src/amplifier_module_provider_github_copilot/error_translation.py
+      git add amplifier_module_provider_github_copilot/error_translation.py
       git commit -m $'refactor(F-018): simplify error_translation.py - factory pattern\n\nReplace 8 verbose LLMError subclass definitions (165 lines) with a\n_make_error_class factory function. Reduces boilerplate while preserving\nall error type names, retryable defaults, and KERNEL_ERROR_MAP behavior.\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>'
       git log --oneline -5
     on_error: "fail"

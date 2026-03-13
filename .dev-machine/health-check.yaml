@@ -74,7 +74,7 @@ steps:
       echo "=== HEALTH CHECK -- INITIAL SCAN ==="
 
       # Run build and capture output (system-installed tools, not uv run)
-      BUILD_OUTPUT=$(ruff check src/ && pyright src/ 2>&1)
+      BUILD_OUTPUT=$(ruff check amplifier_module_provider_github_copilot/ && pyright amplifier_module_provider_github_copilot/ 2>&1)
       BUILD_EXIT=$?
 
       # Run tests and capture output (system-installed tools, not uv run)
