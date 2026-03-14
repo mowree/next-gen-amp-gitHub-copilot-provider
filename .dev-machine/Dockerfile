@@ -23,8 +23,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # The pip version of pyright works for CLI but LSP needs npm's pyright-langserver
 RUN npm install -g pyright
 
-# Install uv (fast Python package manager) and PyYAML for recipe orchestration scripts
-RUN pip install --no-cache-dir uv pyyaml types-pyyaml yamllint
+# Install uv (fast Python package manager), PyYAML for recipe orchestration scripts,
+# and pyte for terminal emulation (needed by terminal_inspector tool in delegated agents)
+RUN pip install --no-cache-dir uv pyyaml types-pyyaml yamllint pyte pillow
 
 # Create writable home directory for non-root user execution
 # When docker-run.sh uses --user $(id -u):$(id -g), the container runs as host user
