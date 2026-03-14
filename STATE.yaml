@@ -1,8 +1,20 @@
-phase: 6
-phase_name: Phase 6 -- Kernel Type Migration (COMPLETE)
-epoch: 28
-next_action: Tag v0.3.0 release and run tests with real SDK when available
+phase: 7
+phase_name: Phase 7 -- TDD Discipline and E2E Coverage
+epoch: 29
+next_action: Execute F-043 to fix SDK response extraction bug and improve TDD discipline
 blockers: []
+features:
+  F-043-tdd-and-e2e-coverage:
+    status: ready
+    spec_path: specs/features/F-043-tdd-and-e2e-coverage.md
+    priority: P0
+    description: "Fix SDK response extraction bug (returns Data repr instead of .content) and strengthen TDD discipline"
+    acceptance_criteria:
+      - "Fix response extraction to handle Data.content attribute"
+      - "Add E2E test with realistic SDK response shapes"
+      - "Create contracts/sdk-response.md documenting SDK response structure"
+      - "Update fixtures to use typed realistic data"
+      - "Update working-session-instructions.md with TDD checklist"
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
