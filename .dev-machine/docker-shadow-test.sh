@@ -33,6 +33,20 @@ mkdir -p "$PROJECT_DIR/.dev-machine/shadow-results"
 echo "🚀 Starting shadow tests..."
 echo "─────────────────────────────────────────────────────"
 
+# Get token from gh auth if not already in environment
+if [ -z "$GITHUB_TOKEN" ] && [ -z "$GH_TOKEN" ] && [ -z "$COPILOT_GITHUB_TOKEN" ]; then
+    echo "No token in environment, trying gh auth token..."
+    TOKEN=$(gh auth token 2>/dev/null)
+    if [ -n "$TOKEN" ]; then
+        export GITHUB_TOKEN="$TOKEN"
+        echo "  Got token from gh auth"
+    else
+        echo "WARNING: No GitHub token available. Authentication may fail."
+    fi
+fi
+
+echo "Token status: ${GITHUB_TOKEN:+GITHUB_TOKEN set} ${GH_TOKEN:+GH_TOKEN set} ${COPILOT_GITHUB_TOKEN:+COPILOT_GITHUB_TOKEN set}"
+
 # Build docker run arguments
 DOCKER_ARGS=(
     --rm
