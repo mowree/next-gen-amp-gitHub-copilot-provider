@@ -1,0 +1,17 @@
+================================================= test session starts ==================================================
+platform linux -- Python 3.11.15, pytest-9.0.2, pluggy-1.6.0 -- /workspace/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace
+configfile: pyproject.toml
+plugins: asyncio-1.3.0, amplifier-core-1.2.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 10 items
+
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_extracts_content_from_data_object PASSED        [ 10%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_extracts_content_from_response_wrapper PASSED   [ 20%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_handles_dict_response PASSED                    [ 30%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_handles_nested_dict_in_data PASSED              [ 40%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_handles_empty_content PASSED                    [ 50%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_handles_none_response PASSED                    [ 60%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_handles_data_none PASSED                        [ 70%]
+tests/test_f043_sdk_response.py::TestSDKResponseExtraction::test_handles_content_none 
