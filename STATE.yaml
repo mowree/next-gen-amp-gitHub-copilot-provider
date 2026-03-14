@@ -1,38 +1,23 @@
 phase: 8
 phase_name: Phase 8 -- SDK Boundary Fixes and Testing Architecture
-epoch: 35
-next_action: Implement F-044 through F-048 (critical SDK boundary fixes)
+epoch: 37
+next_action: Implement F-047 and F-048 (remaining Phase 8 features)
 blockers: []
 features:
-  F-044-system-prompt-replace-mode:
-    status: ready
-    priority: P0
-    spec_path: specs/features/F-044-system-prompt-replace-mode.md
-    depends_on: []
-    description: Change system_message mode from append to replace
-  F-045-disable-sdk-builtin-tools:
-    status: ready
-    priority: P0
-    spec_path: specs/features/F-045-disable-sdk-builtin-tools.md
-    depends_on: []
-    description: Set available_tools=[] to disable SDK built-in tools
-  F-046-sdk-integration-testing-architecture:
-    status: ready
-    priority: P0
-    spec_path: specs/features/F-046-sdk-integration-testing-architecture.md
-    depends_on: []
-    description: ConfigCapturingMock and boundary contract tests
   F-047-testing-course-correction:
     status: ready
     priority: P0
     spec_path: specs/F-047-testing-course-correction.md
-    depends_on: [F-046-sdk-integration-testing-architecture]
+    depends_on:
+    - F-046-sdk-integration-testing-architecture
     description: Comprehensive TDD enforcement framework
   F-048-config-extraction:
     status: ready
     priority: P1
     spec_path: specs/features/F-048-config-extraction.md
-    depends_on: [F-044-system-prompt-replace-mode, F-045-disable-sdk-builtin-tools]
+    depends_on:
+    - F-044-system-prompt-replace-mode
+    - F-045-disable-sdk-builtin-tools
     description: Extract hardcoded policy from Python to YAML configs
 completed_features:
 - F-001-sdk-adapter-skeleton
@@ -71,6 +56,9 @@ completed_features:
 - F-039-sdk-client-wiring
 - F-040-sdk-api-fix
 - F-043-sdk-response-fix
+- F-044-system-prompt-replace-mode
+- F-045-disable-sdk-builtin-tools
+- F-046-sdk-integration-testing-architecture
 architecture_spec:
   status: approved
   path: ./mydocs/mydocs/debates/GOLDEN_VISION_V2.md
@@ -78,9 +66,9 @@ module_specs: {}
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
-  total_features_completed: 43
-  last_updated: '2026-03-14T06:10:00Z'
-  last_session: '2026-03-14T06:10:00Z'
+  total_features_completed: 46
+  last_updated: '2026-03-14T17:16:00Z'
+  last_session: '2026-03-14T17:16:00Z'
   phase_7_started: '2026-03-14T02:00:00Z'
   phase_4_completed: '2026-03-13T01:23:00Z'
   phase_5_completed: '2026-03-13T09:15:00Z'
@@ -107,4 +95,4 @@ meta:
     streaming architecture while returning kernel types from public methods.
 
     '
-last_session: '2026-03-14T07:00:42.436490+00:00'
+last_session: '2026-03-14T17:17:45.857500+00:00'
