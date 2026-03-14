@@ -68,9 +68,17 @@ and constraints before writing any code.
 
 ### 3. Write Failing Tests (RED)
 
+**Pre-Implementation Checklist** (F-043):
+- [ ] Do tests use realistic data shapes from `tests/fixtures/`?
+- [ ] Do tests verify actual behavior, not just "it runs"?
+- [ ] Do tests check for anti-patterns (e.g., repr dumps in output)?
+
+**Requirements**:
 - Write tests that describe the expected behavior
 - Run `pytest tests/ -v` to confirm they fail
-- Tests should fail because the feature doesn't exist yet, not because of typos
+- Tests MUST fail for the RIGHT reason (feature missing, not typos)
+- Tests MUST use realistic fixtures (see `tests/fixtures/sdk_responses.py`)
+- Tests MUST NOT use bare `MagicMock()` returns for SDK responses
 
 ### 4. Implement (GREEN)
 

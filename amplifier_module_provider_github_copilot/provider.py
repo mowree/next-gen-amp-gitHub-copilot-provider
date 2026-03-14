@@ -50,6 +50,45 @@ from .tool_parsing import parse_tool_calls
 logger = logging.getLogger(__name__)
 
 
+def extract_response_content(response: Any) -> str:
+    """Extract text content from SDK response.
+
+    Contract: sdk-response.md
+    Feature: F-043 AC-1
+
+    The SDK returns Data dataclass objects with .content attribute.
+    This function handles all response shapes:
+    1. Data object with .content attribute
+    2. Dict with 'content' key
+    3. Response wrapper with .data attribute (recurses)
+    4. None (returns empty string)
+
+    Args:
+        response: SDK response (Data object, dict, wrapper, or None)
+
+    Returns:
+        Extracted text content as string.
+    """
+    if response is None:
+        return ""
+
+    # Check for .data wrapper first (response.data -> Data object)
+    if hasattr(response, "data"):
+        return extract_response_content(response.data)
+
+    # Check for Data object with .content attribute (the bug fix!)
+    if hasattr(response, "content"):
+        content = response.content  # type: ignore[union-attr]
+        return str(content) if content is not None else ""
+
+    # Handle dict response
+    if isinstance(response, dict):
+        return str(response.get("content", ""))
+
+    # Fallback for unknown types (shouldn't reach here normally)
+    return ""
+
+
 # Type alias for SDK session creation function
 SDKCreateFn = Callable[[SessionConfig], Awaitable[SDKSession]]
 
@@ -377,12 +416,9 @@ class GitHubCopilotProvider:
                 sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
 
                 # Extract response content and convert to domain event
+                # F-043: Use extract_response_content() to handle Data objects
                 if sdk_response is not None:
-                    response_data = getattr(sdk_response, "data", sdk_response)
-                    if isinstance(response_data, dict):
-                        content = response_data.get("content", "")
-                    else:
-                        content = str(response_data) if response_data else ""
+                    content = extract_response_content(sdk_response)
 
                     # Create CONTENT_DELTA event with correct DomainEvent signature
                     text_event = DomainEvent(

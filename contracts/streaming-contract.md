@@ -206,6 +206,19 @@ def assemble_response(accumulator: StreamAccumulator) -> ChatResponse:
 
 ---
 
+## SDK Response Extraction (F-043)
+
+### MUST Constraints
+
+1. **MUST** extract `.content` from SDK `Data` objects — NOT `str(Data(...))`
+2. **MUST** unwrap `.data` wrapper first before checking `.content`
+3. **MUST** handle dict responses for backward compatibility
+4. **MUST** return empty string for None responses
+
+See `contracts/sdk-response.md` for full extraction specification.
+
+---
+
 ## Implementation Checklist
 
 - [ ] Import content types from `amplifier_core.content_models`
@@ -216,3 +229,4 @@ def assemble_response(accumulator: StreamAccumulator) -> ChatResponse:
 - [ ] Circuit breaker tracks turn count
 - [ ] Final response uses kernel content types
 - [ ] No custom content types defined
+- [ ] SDK response extraction uses `extract_response_content()` (F-043)

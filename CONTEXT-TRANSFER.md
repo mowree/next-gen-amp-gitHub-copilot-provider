@@ -10,6 +10,78 @@
 
 ---
 
+## Session 2026-03-14T02:00Z -- F-043 TDD Discipline and SDK Response Bug Fix
+
+### Executive Summary
+
+**F-043 IMPLEMENTED**: Fixed critical SDK response extraction bug where provider returned `Data(content='...')` repr dump instead of extracting `.content` attribute.
+
+### Work Completed
+
+**F-043: TDD Discipline and E2E Coverage** (IMPLEMENTED)
+
+Files created:
+- `amplifier_module_provider_github_copilot/provider.py` - Added `extract_response_content()` function
+- `tests/test_f043_sdk_response.py` - 9 unit tests + 1 E2E test
+- `tests/fixtures/sdk_responses.py` - Typed SDK response fixtures
+- `contracts/sdk-response.md` - SDK response extraction contract
+- `contracts/streaming-contract.md` - Updated with extraction requirements
+- `.dev-machine/working-session-instructions.md` - Added TDD checklist
+
+### The Bug and Fix
+
+**Bug**: SDK returns `Data(content="actual text")` dataclass, but code did:
+```python
+content = str(response_data) if response_data else ""  # Produces repr dump
+```
+
+**Fix**: New `extract_response_content()` function checks:
+1. `response is None` → return ""
+2. `hasattr(response, "data")` → recurse (unwrap wrapper)
+3. `hasattr(response, "content")` → extract `.content` attribute (the fix!)
+4. `isinstance(response, dict)` → get `content` key
+5. Fallback → return ""
+
+### Acceptance Criteria Status
+
+| AC | Description | Status |
+|----|-------------|--------|
+| AC-1 | Fix response extraction to handle Data.content | ✓ |
+| AC-2 | Add E2E test with realistic SDK response shapes | ✓ |
+| AC-3 | Create contracts/sdk-response.md | ✓ |
+| AC-4 | Create tests/fixtures/sdk_responses.py | ✓ |
+| AC-5 | Update working-session-instructions.md with TDD checklist | ✓ |
+
+### Build Verification
+
+- `ruff check amplifier_module_provider_github_copilot/` - PASS (0 errors)
+- `ruff format` - PASS
+- Tests blocked (amplifier-core not installed in container)
+
+### Antagonistic Review Findings (Resolved)
+
+1. **FIXED**: Contract priority mismatch - updated sdk-response.md to match code order
+2. **FIXED**: Test file using inline fixtures instead of fixtures module - refactored to import from `tests/fixtures/sdk_responses.py`
+3. **FIXED**: Missing edge case tests - added `test_handles_data_none`, `test_handles_content_none`, `test_object_with_both_data_and_content_prefers_data`
+4. **FIXED**: streaming-contract.md not updated - added SDK Response Extraction section
+
+### Key Design Decision
+
+**Extraction order: `data` before `content`**: When an object has both `.data` and `.content` attributes, we unwrap `.data` first because SDK wrappers nest content inside `.data`. This prevents extracting a wrong `.content` attribute from a wrapper object.
+
+### Commit Pending
+
+Changes ready for commit:
+- amplifier_module_provider_github_copilot/provider.py
+- tests/test_f043_sdk_response.py (new)
+- tests/fixtures/sdk_responses.py (new)
+- contracts/sdk-response.md (new)
+- contracts/streaming-contract.md
+- .dev-machine/working-session-instructions.md
+- STATE.yaml
+
+---
+
 ## Session 2026-03-13T18:24Z -- Phase 6 Verification & Archival
 
 ### Executive Summary
