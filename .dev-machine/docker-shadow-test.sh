@@ -149,6 +149,13 @@ else:
     amplifier bundle list 2>&1 || true
     
     echo ""
+    echo "=== Patching MockCoordinator in-place (fixes async/sync bug in amplifier-core) ==="
+    # Bug: MockCoordinator.mount() does `await super().mount()` on a synchronous Rust method
+    # This patch fixes the async/sync mismatch by calling Rust mount() synchronously
+    # We must patch IN-PLACE because `amplifier run` is a separate Python process
+    "$TOOL_VENV/bin/python" /workspace/.dev-machine/apply_testing_patch.py 2>&1
+    
+    echo ""
     echo "=== Diagnostic: Testing mount() directly ===" 
     # This test calls mount() with a mock coordinator INSIDE Docker
     # to catch errors before they get swallowed by Amplifier
