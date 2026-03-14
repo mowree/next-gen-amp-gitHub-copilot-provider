@@ -142,6 +142,28 @@ def translate_sdk_error(exc: Exception, config: ErrorConfig) -> CopilotProviderE
 
 ---
 
+## Session Configuration Contract
+
+The dict passed to `client.create_session()` MUST satisfy these constraints:
+
+### MUST Constraints
+
+1. **MUST** set `available_tools: []` to disable SDK built-in tools (F-045)
+2. **MUST** use `system_message.mode: "replace"` when system_message is provided (F-044)
+3. **MUST** set `on_permission_request` handler on every session (F-033)
+4. **MUST** set `streaming: true` for event-based tool capture
+5. **MUST** register `preToolUse` deny hook after session creation
+6. **MUST NOT** include keys that are not in SDK's SessionConfig TypedDict
+
+### Rationale
+
+- **available_tools=[]**: SDK exposes bash/view/edit by default. These crash the Copilot CLI when called because they expect a different calling convention. Disabling them prevents the LLM from ever requesting them.
+- **mode="replace"**: With "append", SDK injects "You are GitHub Copilot CLI..." before our system message. With "replace", our bundle persona takes precedence.
+- **on_permission_request**: SDK v0.1.33+ requires this handler. We deny all permission requests as the first line of defense.
+- **streaming=true**: Required for event-based tool capture. Non-streaming mode cannot capture tool calls.
+
+---
+
 ## Test Anchors
 
 | Anchor | Clause |
@@ -154,6 +176,12 @@ def translate_sdk_error(exc: Exception, config: ErrorConfig) -> CopilotProviderE
 | `sdk-boundary:Translation:MUST:1` | Events translated to DomainEvent |
 | `sdk-boundary:Translation:MUST:2` | Errors translated to domain exceptions |
 | `sdk-boundary:Membrane:MUST:5` | Fail at import time if SDK not installed |
+| `sdk-boundary:Config:MUST:1` | available_tools is empty list |
+| `sdk-boundary:Config:MUST:2` | system_message mode is replace |
+| `sdk-boundary:Config:MUST:3` | on_permission_request always set |
+| `sdk-boundary:Config:MUST:4` | streaming is true |
+| `sdk-boundary:Config:MUST:5` | deny hook registered post-creation |
+| `sdk-boundary:Config:MUST:6` | no unknown keys in config |
 
 ---
 

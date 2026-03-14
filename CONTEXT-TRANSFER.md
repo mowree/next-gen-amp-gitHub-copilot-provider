@@ -10,6 +10,51 @@
 
 ---
 
+## Session 2026-03-14T17:32Z -- F-047 + F-048 Implemented (Phase 8 Complete)
+
+### Executive Summary
+
+**TWO FEATURES IMPLEMENTED**: F-047 (contract updates for testing course correction) and F-048 (config extraction - partial). Phase 8 is now complete with 48 total features implemented.
+
+### Work Completed
+
+**F-047: Testing Course Correction** (IMPLEMENTED)
+- Updated `contracts/sdk-boundary.md` with Session Configuration Contract section
+- Added 6 new MUST constraints for session config (available_tools, system_message mode, permission handler, streaming, deny hook, no unknown keys)
+- Updated `contracts/deny-destroy.md` with Tool Suppression section (4th defense layer)
+- Added test anchors for new contract clauses
+
+**F-048: Config Extraction** (PARTIALLY IMPLEMENTED)
+- Created `config/models.yaml` with provider identity and model catalog
+- Added `ProviderConfig` dataclass and `_load_models_config()` function to `provider.py`
+- Updated `get_info()` and `list_models()` to use YAML config instead of hardcoded values
+- Created `tests/test_config_loading.py` with 15 tests for config loading
+- NOTE: AccumulatedResponse/StreamingAccumulator merge and error_translation cleanup deferred
+
+### Key Design Decisions
+
+1. **Graceful config fallback**: `_load_models_config()` returns sensible defaults if `config/models.yaml` is missing. This ensures unit tests pass without the config file.
+
+2. **Config loaded at init**: `GitHubCopilotProvider.__init__()` loads config once and caches it in `self._provider_config`.
+
+3. **Partial F-048 scope**: Full spec includes merging AccumulatedResponse into StreamingAccumulator and error_translation cleanup. Deferred to future session to keep this session bounded.
+
+### Build Verification
+
+- `ruff check`: PASS (0 errors)
+- `pyright`: PASS (0 errors)
+- Config loading tests: 15 pass
+- Full suite: 362 pass, 0 failures
+
+### State Updates
+
+- F-047, F-048 moved to `completed_features` (48 total)
+- `epoch`: 37 → 38
+- `phase_8_completed`: 2026-03-14T17:32:00Z
+- `next_action`: Phase 8 complete. Consider tagging v0.4.0 release
+
+---
+
 ## Session 2026-03-14T17:16Z -- F-044, F-045, F-046 Implemented (SDK Boundary Hardening)
 
 ### Executive Summary

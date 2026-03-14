@@ -24,7 +24,10 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, cast
+
+import yaml
 
 # F-038: Import kernel types
 from amplifier_core import ChatResponse, ModelInfo, ProviderInfo, ToolCall
@@ -48,6 +51,71 @@ from .streaming import (
 from .tool_parsing import parse_tool_calls
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# F-048: Config Loading
+# ============================================================================
+
+
+@dataclass
+class ProviderConfig:
+    """Policy data loaded from config/models.yaml.
+
+    Feature: F-048
+    """
+
+    provider_id: str
+    display_name: str
+    credential_env_vars: list[str]
+    capabilities: list[str]
+    defaults: dict[str, Any]
+    models: list[dict[str, Any]]
+
+
+def _load_models_config() -> ProviderConfig:
+    """Load provider and model policy from config/models.yaml.
+
+    Feature: F-048
+
+    Falls back to minimal hardcoded defaults if file is missing.
+    (Graceful degradation — same pattern as load_event_config.)
+    """
+    config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+    if not config_path.exists():
+        return _default_provider_config()
+
+    try:
+        with config_path.open() as f:
+            data = yaml.safe_load(f)
+    except Exception as e:
+        logger.warning("Failed to load models.yaml: %s", e)
+        return _default_provider_config()
+
+    if not data:
+        return _default_provider_config()
+
+    p = data.get("provider", {})
+    return ProviderConfig(
+        provider_id=p.get("id", "github-copilot"),
+        display_name=p.get("display_name", "GitHub Copilot SDK"),
+        credential_env_vars=p.get("credential_env_vars", []),
+        capabilities=p.get("capabilities", []),
+        defaults=p.get("defaults", {}),
+        models=data.get("models", []),
+    )
+
+
+def _default_provider_config() -> ProviderConfig:
+    """Minimal fallback config for environments without config files."""
+    return ProviderConfig(
+        provider_id="github-copilot",
+        display_name="GitHub Copilot SDK",
+        credential_env_vars=["COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"],
+        capabilities=["streaming", "tool_use"],
+        defaults={"model": "gpt-4o", "max_tokens": 4096},
+        models=[],
+    )
 
 
 def extract_response_content(response: Any) -> str:
@@ -292,6 +360,8 @@ class GitHubCopilotProvider:
         self._complete_fn: SDKCreateFn | None = None
         # F-039: Create SDK client wrapper for real SDK path
         self._client = CopilotClientWrapper()
+        # F-048: Load provider config from YAML
+        self._provider_config = _load_models_config()
 
     @property
     def name(self) -> str:
@@ -305,27 +375,16 @@ class GitHubCopilotProvider:
         """Return provider metadata.
 
         Contract: provider-protocol:get_info:MUST:1
-        Feature: F-020 AC-2, F-038
+        Feature: F-020 AC-2, F-038, F-048
         """
-        # F-038: Use kernel ProviderInfo with correct field names
+        # F-048: Use config from YAML instead of hardcoded values
+        cfg = self._provider_config
         return ProviderInfo(
-            id="github-copilot",
-            display_name="GitHub Copilot SDK",
-            # Official SDK priority from docs/auth/index.md
-            credential_env_vars=[
-                "COPILOT_GITHUB_TOKEN",  # Official recommended
-                "GH_TOKEN",  # GitHub CLI compatible
-                "GITHUB_TOKEN",  # GitHub Actions compatible
-            ],
-            capabilities=["streaming", "tool_use"],
-            defaults={
-                "model": "gpt-4o",
-                "max_tokens": 4096,
-                "temperature": 0.7,
-                "timeout": 60,
-                "context_window": 200000,
-                "max_output_tokens": 32000,
-            },
+            id=cfg.provider_id,
+            display_name=cfg.display_name,
+            credential_env_vars=cfg.credential_env_vars,
+            capabilities=cfg.capabilities,
+            defaults=cfg.defaults,
             config_fields=[],
         )
 
@@ -333,26 +392,32 @@ class GitHubCopilotProvider:
         """Return available models from GitHub Copilot.
 
         Contract: provider-protocol:list_models:MUST:1
-        Feature: F-020 AC-3, F-038
+        Feature: F-020 AC-3, F-038, F-048
         """
-        # F-038: Use kernel ModelInfo with correct field names
+        # F-048: Use config from YAML instead of hardcoded values
+        cfg = self._provider_config
+        if not cfg.models:
+            # Fallback if no models in config
+            return [
+                ModelInfo(
+                    id="gpt-4o",
+                    display_name="GPT-4o",
+                    context_window=128000,
+                    max_output_tokens=4096,
+                    capabilities=["streaming", "tool_use"],
+                    defaults={},
+                ),
+            ]
         return [
             ModelInfo(
-                id="gpt-4",
-                display_name="GPT-4",
-                context_window=128000,
-                max_output_tokens=4096,
-                capabilities=["streaming", "tool_use"],
-                defaults={},
-            ),
-            ModelInfo(
-                id="gpt-4o",
-                display_name="GPT-4o",
-                context_window=128000,
-                max_output_tokens=4096,
-                capabilities=["streaming", "tool_use"],
-                defaults={},
-            ),
+                id=m["id"],
+                display_name=m["display_name"],
+                context_window=m["context_window"],
+                max_output_tokens=m["max_output_tokens"],
+                capabilities=m.get("capabilities", []),
+                defaults=m.get("defaults", {}),
+            )
+            for m in cfg.models
         ]
 
     async def complete(

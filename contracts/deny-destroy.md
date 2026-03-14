@@ -37,6 +37,20 @@ These constraints are extracted from GOLDEN_VISION_V2.md and are **NEVER configu
 - **MUST NOT:** Allow the SDK's internal agent loop to execute tools
 - **MUST NOT:** Allow the SDK to retry after tool denial
 
+### 4. SDK Built-in Tool Suppression (F-045)
+
+The SDK exposes built-in tools (bash, view, edit, etc.) to the LLM by default.
+These tools crash the Copilot CLI when called because they are handled by
+Node.js runtime code that expects a different calling convention.
+
+- **MUST:** Set `available_tools: []` in every session config
+- **MUST NOT:** Allow any SDK built-in tools to be visible to the LLM
+
+This is the THIRD line of defense in the Deny+Destroy pattern:
+1. **on_permission_request** → deny all permission requests (first barrier)
+2. **preToolUse hook** → deny all tool execution (second barrier)
+3. **available_tools=[]** → prevent SDK tools from being offered to LLM at all (prevention)
+
 ---
 
 ## Architectural Rationale
@@ -81,6 +95,8 @@ From GOLDEN_VISION_V2.md:
 | `deny-destroy:NoExecution:MUST:1` | Tool requests captured from events |
 | `deny-destroy:NoExecution:MUST:2` | Tool requests returned to orchestrator |
 | `deny-destroy:NoExecution:MUST:3` | SDK never executes tools |
+| `deny-destroy:ToolSuppression:MUST:1` | available_tools=[] on every session |
+| `deny-destroy:ToolSuppression:MUST:2` | SDK built-in tools never visible to LLM |
 
 ---
 
