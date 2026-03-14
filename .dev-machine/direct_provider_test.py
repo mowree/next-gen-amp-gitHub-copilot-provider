@@ -80,10 +80,10 @@ async def test_provider_directly():
     # Step 4: Test complete() with a simple message
     print("\n[4] Testing complete() with a simple message...")
     try:
-        from amplifier_core.interfaces import Message
-
+        # Build messages in the format provider.complete() expects
+        # Looking at provider.py to find the actual interface
         messages = [
-            Message(role="user", content="Say exactly: DIRECT TEST PASSED"),
+            {"role": "user", "content": "Say exactly: DIRECT TEST PASSED"},
         ]
 
         print("    Calling provider.complete()...")
