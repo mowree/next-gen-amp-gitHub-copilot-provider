@@ -77,5 +77,5 @@ RUN git config --system user.email "amplifier-ai@microsoft.com" \
 
 # Entry point for autonomous execution
 # Recipes run FROM WITHIN an Amplifier session via the recipes tool
-ENTRYPOINT ["amplifier", "run"]
-CMD ["Execute recipe .dev-machine/build.yaml"]
+ENTRYPOINT ["amplifier", "recipe", "execute"]
+CMD [".dev-machine/build.yaml"]
