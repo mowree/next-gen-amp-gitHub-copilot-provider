@@ -135,9 +135,10 @@ else:
     
     echo ""
     echo "=== Registering shadow test bundle ==="
-    # The shadow-test-bundle.md explicitly configures provider-github-copilot.
-    # Without this, "amplifier run --bundle foundation" uses the built-in bundle
-    # which has no knowledge of our provider → "No providers mounted".
+    # Force re-register: remove stale cached bundle, then add fresh copy.
+    # amplifier bundle add does not overwrite existing registrations,
+    # so we must remove first to pick up any changes to shadow-test-bundle.md.
+    amplifier bundle remove copilot-provider-shadow-test 2>&1 || true
     amplifier bundle add /workspace/.dev-machine/shadow-test-bundle.md 2>&1 || true
     echo "Available bundles:"
     amplifier bundle list 2>&1 || true

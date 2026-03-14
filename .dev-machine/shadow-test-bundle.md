@@ -1,7 +1,7 @@
 ---
 bundle:
   name: copilot-provider-shadow-test
-  version: 0.1.0
+  version: 0.2.0
   description: Minimal bundle for testing github-copilot provider in isolation
 
 providers:
@@ -11,9 +11,11 @@ providers:
 
 session:
   orchestrator:
-    module: loop-basic
+    module: loop-streaming
+    source: git+https://github.com/microsoft/amplifier-module-loop-streaming@main
   context:
     module: context-simple
+    source: git+https://github.com/microsoft/amplifier-module-context-simple@main
 ---
 
 # Shadow Test Bundle
