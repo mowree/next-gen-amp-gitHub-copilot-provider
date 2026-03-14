@@ -134,15 +134,21 @@ else:
 "
     
     echo ""
+    echo "=== Registering shadow test bundle ==="
+    # The shadow-test-bundle.md explicitly configures provider-github-copilot.
+    # Without this, "amplifier run --bundle foundation" uses the built-in bundle
+    # which has no knowledge of our provider → "No providers mounted".
+    amplifier bundle add /workspace/.dev-machine/shadow-test-bundle.md 2>&1 || true
+    echo "Available bundles:"
+    amplifier bundle list 2>&1 || true
+    
+    echo ""
     echo "=== Running shadow test ==="
-    # Use foundation bundle with our provider already installed
-    # The provider entry point is registered, Amplifier will discover it
-    echo "Testing provider via foundation bundle..."
+    echo "Testing provider via copilot-provider-shadow-test bundle..."
     
     # Simple connectivity test using echo to provide input
-    # amplifier run reads from stdin when no prompt given
     echo "Respond with exactly: SHADOW TEST PASSED. Nothing else." | \
-      timeout 120 amplifier run --bundle foundation 2>&1 | tee /tmp/shadow-result.txt
+      timeout 120 amplifier run --bundle copilot-provider-shadow-test 2>&1 | tee /tmp/shadow-result.txt
     
     # Check if response contains expected text
     if grep -q "SHADOW TEST PASSED" /tmp/shadow-result.txt 2>/dev/null; then
