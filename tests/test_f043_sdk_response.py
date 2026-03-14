@@ -115,8 +115,10 @@ class TestSDKResponseExtraction:
             extract_response_content,
         )
 
-        # Create mock with content=None
-        mock_data = MagicMock()
+        # Create mock with content=None but NO .data attribute
+        # MagicMock auto-creates attributes, causing infinite recursion
+        # Use spec to restrict available attributes
+        mock_data = MagicMock(spec=["content"])
         mock_data.content = None
         result = extract_response_content(mock_data)
 
@@ -180,8 +182,9 @@ class TestE2ECompletionWithRealisticData:
         # MUST contain plain text, not repr dump
         content_text = ""
         for block in response.content:
-            if hasattr(block, "text"):
-                content_text += block.text
+            text = getattr(block, "text", None)
+            if text is not None:
+                content_text += str(text)
 
         assert content_text == "This is the actual response text."
         assert "Data(" not in content_text
