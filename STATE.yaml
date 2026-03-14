@@ -1,12 +1,8 @@
 phase: 7
 phase_name: Phase 7 -- TDD Discipline and E2E Coverage
 epoch: 30
-next_action: Execute F-043 to fix SDK response extraction bug and improve TDD discipline
-blockers:
-- description: 'Environment setup required: dev dependencies not installed in .venv (amplifier-core missing). Run: uv pip install -e ".[dev]"'
-  since: '2026-03-14T02:05:00.000000'
-  severity: high
-  root_cause: 'Pyright errors (85) and test failures (11) are caused by missing amplifier-core in venv, not code bugs'
+next_action: Run shadow tests to verify F-043 fix works with real SDK responses
+blockers: []
 features: {}
 completed_features:
 - F-001-sdk-adapter-skeleton
