@@ -164,7 +164,9 @@ async def complete(
     if error_config is None:
         from pathlib import Path
 
-        package_root = Path(__file__).parent.parent.parent
+        # provider.py is at amplifier_module_provider_github_copilot/provider.py
+        # config is at config/errors.yaml (2 levels up)
+        package_root = Path(__file__).parent.parent
         error_config = load_error_config(package_root / "config" / "errors.yaml")
 
     # Create session config

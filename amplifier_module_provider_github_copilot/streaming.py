@@ -189,7 +189,9 @@ def load_event_config(config_path: str | Path | None = None) -> EventConfig:
     AC-1 (F-021): Gracefully handles missing files by returning default config.
     """
     if config_path is None:
-        package_root = Path(__file__).parent.parent.parent
+        # streaming.py is at amplifier_module_provider_github_copilot/streaming.py
+        # config is at config/events.yaml (2 levels up)
+        package_root = Path(__file__).parent.parent
         config_path = str(package_root / "config" / "events.yaml")
 
     path = Path(config_path)
