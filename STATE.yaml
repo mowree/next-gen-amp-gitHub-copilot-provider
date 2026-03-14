@@ -1,8 +1,12 @@
 phase: 7
 phase_name: Phase 7 -- TDD Discipline and E2E Coverage
 epoch: 32
-next_action: Phase 7 complete. Consider tagging v0.3.1 release (F-043 SDK response fix)
-blockers: []
+next_action: Phase 7 complete. Consider tagging v0.3.1 release (F-043 SDK response
+  fix)
+blockers:
+- description: 'Completion gate failed: ruff=0 pyright=0 pytest=1'
+  since: '2026-03-14T06:11:32.875413'
+  severity: high
 features: {}
 completed_features:
 - F-001-sdk-adapter-skeleton
@@ -63,7 +67,8 @@ meta:
   - foundation:test-coverage
   phase_3_verified: '2026-03-13T00:57:00Z'
   phase_4_started: '2026-03-13T01:13:00Z'
-  kernel_migration_discovery: 'On 2026-03-13 at ~17:00 UTC, investigation revealed the provider uses local
+  kernel_migration_discovery: 'On 2026-03-13 at ~17:00 UTC, investigation revealed
+    the provider uses local
 
     dataclasses instead of amplifier_core kernel types. This was never caught
 

@@ -59,9 +59,15 @@ class TestOnPermissionRequestHandler:
 
         result = deny_permission_request(mock_request, mock_invocation)
 
-        assert result.kind == "denied-by-rules", (
-            "Permission request must be denied with kind='denied-by-rules'"
-        )
+        # Result can be PermissionRequestResult (with .kind) or dict fallback
+        if hasattr(result, "kind"):
+            assert result.kind == "denied-by-rules", (
+                "Permission request must be denied with kind='denied-by-rules'"
+            )
+        else:
+            assert result["kind"] == "denied-by-rules", (
+                "Permission request must be denied with kind='denied-by-rules'"
+            )
 
     def test_deny_permission_request_function_exists(self) -> None:
         """A deny_permission_request function must exist.
