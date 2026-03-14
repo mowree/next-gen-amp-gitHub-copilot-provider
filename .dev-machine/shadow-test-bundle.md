@@ -1,5 +1,3 @@
-# Shadow Test Bundle
-
 ---
 bundle:
   name: copilot-provider-shadow-test
@@ -29,6 +27,8 @@ tools:
       allowed_write_paths:
         - /tmp/shadow-test
 ---
+
+# Shadow Test Bundle
 
 # Shadow Test Assistant
 
