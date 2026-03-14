@@ -27,6 +27,8 @@ steps:
   # Step 1: Orient -- read STATE.yaml before dispatching the working session
   - id: "orient"
     type: "bash"
+    timeout: 60
+    on_error: "fail"
     command: |
       python3 << 'PYEOF'
       import json, yaml
@@ -68,6 +70,7 @@ steps:
   # docker-entrypoint.sh bootstraps .venv before this runs
   - id: "preflight-check"
     type: "bash"
+    timeout: 120
     command: |
       cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== PREFLIGHT ENVIRONMENT CHECK ==="
@@ -99,6 +102,7 @@ steps:
   # Step 1.5: Module health check -- flag oversized packages before working session
   - id: "module-health-check"
     type: "bash"
+    timeout: 60
     command: |
       cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
       echo "=== MODULE HEALTH CHECK ==="
@@ -203,6 +207,7 @@ steps:
       - VIOLATION OF THESE CONSTRAINTS MAY CAUSE DATA LOSS ACROSS THE ENTIRE DEVELOPMENT ENVIRONMENT.
     output: "session_result"
     timeout: 3600
+    on_error: "continue"
 
   # Step 3: Structural build gate -- catches errors the agent may have missed
   # docker-entrypoint.sh ensures .venv exists with all deps, so uv run works
@@ -226,10 +231,13 @@ steps:
       fi
     output: "build_result"
     timeout: 300
+    on_error: "continue"
 
   # Step 4: Post-session -- archive completed features + old sessions, check health
   - id: "post-session"
     type: "bash"
+    timeout: 120
+    on_error: "continue"
     command: |
       python3 << 'PYEOF'
       import json, yaml, re, os

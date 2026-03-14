@@ -37,6 +37,7 @@ steps:
   # ---------------------------------------------------------------------------
   - id: "container-check"
     type: "bash"
+    timeout: 30
     command: |
       # Check if running inside a container
       if [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ]; then
@@ -68,6 +69,8 @@ steps:
   # ---------------------------------------------------------------------------
   - id: "read-state"
     type: "bash"
+    timeout: 60
+    on_error: "fail"
     command: |
       python3 << 'PYEOF'
       import json, yaml
@@ -114,6 +117,7 @@ steps:
   # ---------------------------------------------------------------------------
   - id: "recheck-state"
     type: "bash"
+    timeout: 60
     condition: "{{initial_state.status}} == 'blocked'"
     command: |
       python3 << 'PYEOF'
@@ -138,6 +142,7 @@ steps:
   # ---------------------------------------------------------------------------
   - id: "check-health"
     type: "bash"
+    timeout: 30
     condition: "{{initial_state.status}} == 'blocked' and {{heal_status.status}} == 'blocked'"
     command: |
       echo "BLOCKED: Health check could not resolve blockers."

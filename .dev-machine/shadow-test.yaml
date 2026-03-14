@@ -204,36 +204,39 @@ except Exception as e:
       PYTHON="$TOOL_VENV/bin/python"
       
       "$PYTHON" -c "
-import asyncio
-import json
+      import textwrap
+      exec(textwrap.dedent('''
+          import asyncio
+          import json
 
-async def test_mount():
-    try:
-        from amplifier_module_provider_github_copilot import mount
-        
-        # mount() requires a coordinator - we can't fully test without one
-        # but we can verify the function is callable and inspect its signature
-        import inspect
-        sig = inspect.signature(mount)
-        params = list(sig.parameters.keys())
-        
-        # Also verify the provider class can be imported
-        from amplifier_module_provider_github_copilot.provider import GitHubCopilotProvider
-        
-        print(json.dumps({
-            'status': 'verified',
-            'mount_params': params,
-            'provider_class': 'GitHubCopilotProvider'
-        }))
-    except Exception as e:
-        print(json.dumps({
-            'status': 'failed',
-            'reason': str(e),
-            'traceback': repr(e)
-        }))
+          async def test_mount():
+              try:
+                  from amplifier_module_provider_github_copilot import mount
 
-asyncio.run(test_mount())
-" 2>&1
+                  # mount() requires a coordinator - we can't fully test without one
+                  # but we can verify the function is callable and inspect its signature
+                  import inspect
+                  sig = inspect.signature(mount)
+                  params = list(sig.parameters.keys())
+
+                  # Also verify the provider class can be imported
+                  from amplifier_module_provider_github_copilot.provider import GitHubCopilotProvider
+
+                  print(json.dumps({
+                      'status': 'verified',
+                      'mount_params': params,
+                      'provider_class': 'GitHubCopilotProvider'
+                  }))
+              except Exception as e:
+                  print(json.dumps({
+                      'status': 'failed',
+                      'reason': str(e),
+                      'traceback': repr(e)
+                  }))
+
+          asyncio.run(test_mount())
+          '''))
+      " 2>&1
     output: "mount_result"
     parse_json: true
     timeout: 60
@@ -246,7 +249,7 @@ asyncio.run(test_mount())
     type: "agent"
     agent: "self"
     condition: "{{mount_result.status}} == 'verified' and {{preflight_result.credentials}} == 'present'"
-    instruction: |
+    prompt: |
       You are running shadow tests for the github-copilot provider.
       
       Run ID: {{setup_result.run_id}}
@@ -324,7 +327,7 @@ asyncio.run(test_mount())
     type: "agent"
     agent: "foundation:session-analyst"
     condition: "{{shadow_result}} != null"
-    instruction: |
+    prompt: |
       Analyze the shadow test session for the github-copilot provider.
       
       Run ID: {{setup_result.run_id}}
