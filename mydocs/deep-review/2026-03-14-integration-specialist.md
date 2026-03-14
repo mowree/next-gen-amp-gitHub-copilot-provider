@@ -387,3 +387,110 @@ The primary protection is the Tier 7 live test suite, which is credential-gated 
 ---
 
 *Analysis performed by foundation:integration-specialist, 2026-03-14*
+
+---
+
+## VERIFICATION — 2026-03-14 (Post-Review Accuracy Check)
+
+**Verification scope:** Each "production-breaking" or high-severity claim re-checked against actual source files.
+
+---
+
+### Issue #1: Real SDK path bypasses event pipeline
+
+**Verdict: CONFIRMED. Genuinely production-breaking.**
+
+Code verified at `provider.py:479–495` (class `GitHubCopilotProvider.complete()`):
+
+```python
+async with self._client.session(model=model) as sdk_session:
+    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+    if sdk_response is not None:
+        content = extract_response_content(sdk_response)
+        text_event = DomainEvent(type=DomainEventType.CONTENT_DELTA, data={"text": content})
+        accumulator.add(text_event)
+```
+
+Exactly as described: `send_and_wait()`, one synthetic `CONTENT_DELTA`, no call to `translate_event()`, no tool call events, no usage events, no `TURN_COMPLETE`. This is a real production path and it is structurally broken for tool use and usage tracking.
+
+**One correction:** The document analysed the *module-level* `complete()` function as if it had both a test path and a real SDK path. This is **outdated**. The current module-level `complete()` (lines 258–264) raises `ProviderUnavailableError` unconditionally when `sdk_create_fn` is `None`:
+
+```python
+else:
+    raise ProviderUnavailableError(
+        "Real SDK path requires CopilotClientWrapper.session() context manager.",
+        ...
+    )
+```
+
+The real SDK path lives *only* inside `GitHubCopilotProvider.complete()`. The description of the bug is still correct; only the location attribution was imprecise.
+
+---
+
+### Issue #2: `provider.close()` is a no-op / `CopilotClientWrapper` never closed
+
+**Verdict: CONFIRMED as described, but partially mis-framed. Real resource leak, NOT immediately production-breaking.**
+
+`provider.close()` at lines 517–523 is:
+
+```python
+async def close(self) -> None:
+    # Currently no resources to clean up
+    pass
+```
+
+This is confirmed. The provider holds `self._client = CopilotClientWrapper()` which, after lazy init, owns a live `CopilotClient` that has been `.start()`ed. `provider.close()` never calls `self._client.close()`.
+
+**Correction to framing:** The document implies `CopilotClientWrapper` has no close mechanism. This is wrong. `CopilotClientWrapper.close()` is fully implemented at `client.py:258–267` and correctly calls `self._owned_client.stop()`. The bug is that `provider.close()` never invokes it.
+
+**Production-breaking assessment:** This is a resource leak on shutdown, not a functional failure during operation. The provider works correctly while running; the SDK client is simply not stopped when the provider is closed. Severity is **High (resource leak)**, not **Critical (won't work)**.
+
+---
+
+### Issue #3: No retry implementation despite `config/retry.yaml`
+
+**Verdict: CONFIRMED. Missing feature, NOT production-breaking.**
+
+There is zero retry logic in `provider.py`, `streaming.py`, or `sdk_adapter/client.py`. The `config/retry.yaml` file is dead configuration. When a retryable error (e.g., `RateLimitError`) occurs, it is correctly translated with `retryable=True` and propagated — but no retry loop exists at the provider level.
+
+**Production-breaking assessment:** This is a missing feature. The provider does not silently break — it correctly raises a translated error with the right `retryable` flag so that upstream callers (kernel/orchestrator) can decide to retry. Severity is **High (incomplete spec conformance)**, not **production-breaking in the "won't work" sense**.
+
+---
+
+### Issue #4: `provider.close()` no-op also omits circuit breaker
+
+**Verdict: CONFIRMED. Same category as retry — missing feature, not broken behavior.**
+
+---
+
+### SDK Boundary Claims — Re-verification
+
+| Claim | Verified | Notes |
+|-------|----------|-------|
+| No `_imports.py` file | ✅ CONFIRMED | `sdk_adapter/` has only `__init__.py`, `client.py`, `types.py` |
+| No `events.py` or `errors.py` in `sdk_adapter/` | ✅ CONFIRMED | Both live at package root level |
+| `SDKSession = Any` (not UUID handle) | ✅ CONFIRMED | `types.py:32`: `SDKSession = Any` |
+| `deny_permission_request` lazy SDK import | ✅ CONFIRMED | `client.py:57`: conditional `from copilot.types import PermissionRequestResult` |
+| `__init__.py` exports `CopilotClientWrapper` | ✅ CONFIRMED | `__init__.py:17–20` |
+| `available_tools=[]` set unconditionally | ✅ CONFIRMED | `client.py:220` |
+| `system_message mode="replace"` | ✅ CONFIRMED | `client.py:227` |
+| `streaming=True` always set | ✅ CONFIRMED | `client.py:229` (not noted in original doc) |
+
+---
+
+### Corrected Severity Classification
+
+| Finding | Claimed Severity | Verified Severity | Actually Production-Breaking? |
+|---------|-----------------|-------------------|-------------------------------|
+| Real SDK path uses `send_and_wait()` — no streaming, no tool events | Critical | **Critical** | **YES** — tool use non-functional |
+| `provider.close()` is a no-op — client never stopped | High | High | No — resource leak, not functional failure |
+| No retry despite `config/retry.yaml` | High | High | No — missing feature, errors propagate correctly |
+| No circuit breaker | High | High | No — missing feature |
+| `_imports.py` missing | Medium | Medium | No — structural debt |
+| `events.py`/`errors.py` outside `sdk_adapter/` | Medium | Medium | No — structural debt |
+| `SessionHandle` as UUID not implemented | Medium | Medium | No — structural debt |
+| `AbortError` not mapped | Medium | Medium | Marginal — causes spurious retry on user abort |
+
+**Summary:** Of the claimed "3 production-breaking issues," **1 is genuinely production-breaking** (Issue #1: real SDK path bypasses event pipeline). Issues #2 and #3 are real bugs/gaps but do not cause the provider to stop working — they are resource leaks and missing features respectively.
+
+*Verification performed 2026-03-14 against actual source files.*

@@ -156,6 +156,11 @@ else:
     "$TOOL_VENV/bin/python" /workspace/.dev-machine/apply_testing_patch.py 2>&1
     
     echo ""
+    echo "=== DIRECT PROVIDER TEST (bypasses bundle layer entirely) ==="
+    export SKIP_SDK_CHECK=1
+    "$TOOL_VENV/bin/python" /workspace/.dev-machine/direct_provider_test.py 2>&1
+    
+    echo ""
     echo "=== Diagnostic: Testing mount() directly ===" 
     # This test calls mount() with a mock coordinator INSIDE Docker
     # to catch errors before they get swallowed by Amplifier

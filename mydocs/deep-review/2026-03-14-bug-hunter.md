@@ -83,11 +83,11 @@ If the SDK session lacks `register_pre_tool_use_hook` (e.g., old SDK version, AP
 
 ## HIGH Severity
 
-### DEF-004 — `_load_error_config_once` Missing F-036 Context Extraction
+### DEF-004 — `_load_error_config_once` importlib Path Missing F-036 Context Extraction
 **File:** `amplifier_module_provider_github_copilot/sdk_adapter/client.py:72-113`  
 **Severity:** HIGH — Config divergence, silent feature gap  
 
-`_load_error_config_once()` manually re-implements the YAML parsing logic from `load_error_config()` but was NOT updated when F-036 added context extraction support. It builds `ErrorMapping` objects without `context_extraction`:
+`_load_error_config_once()` has two code paths. The importlib.resources path (lines 83-103) manually re-implements YAML parsing and was NOT updated when F-036 added context extraction support. It builds `ErrorMapping` objects without `context_extraction`:
 
 ```python
 # client.py:88-97 — context_extraction is not parsed
@@ -103,7 +103,7 @@ mappings.append(
 )
 ```
 
-Session-level errors (auth failures, create_session errors) flow through this function's config, not through `load_error_config()`. This means context extraction (tool_name, conflict_type, model_name, feature_name) is silently dropped for session creation failures. The `InvalidToolCallError` and `ConfigurationError` enhanced messages (F-036) will not appear in session-level error translations.
+The file-path fallback (line 110) correctly delegates to `load_error_config(config_path)` and gets full F-036 support. But in deployed/installed scenarios where importlib.resources succeeds, context extraction is silently dropped for session-level errors (auth failures, create_session errors). The `InvalidToolCallError` and `ConfigurationError` enhanced messages (F-036) will not appear in session creation failures.
 
 **Root cause pattern:** F-044/F-045 pattern — a feature was added in one place without updating the duplicate parsing logic in another place.
 
@@ -198,9 +198,10 @@ Additionally, all messages are joined with `"\n".join(prompt_parts)` — role in
 
 ```python
 assert "deny" not in key_lower or "disable" not in key_lower
+assert key_lower != "allow_tool_execution"
 ```
 
-This only catches a YAML key that contains BOTH "deny" AND "disable". Keys like `"allow_tool_execution"`, `"skip_sovereignty_check"`, `"tools_enabled"`, or `"bypass_hook"` would all pass. The test also uses `Path("config")` (relative path) — if pytest is invoked from a non-root directory, it scans zero files and passes vacuously with no assertion that files were actually scanned.
+The first assertion only catches a YAML key containing BOTH "deny" AND "disable". The second assertion only catches the literal key `allow_tool_execution`. Keys like `"skip_sovereignty_check"`, `"tools_enabled"`, or `"bypass_hook"` would all pass. The test also uses `Path("config")` (relative path) — if pytest is invoked from a non-root directory, it scans zero files and passes vacuously with no assertion that files were actually scanned.
 
 **Contract clause:** `deny-destroy:DenyHook:MUST:3` — "No configuration disables the hook." Current test cannot detect most plausible violations.
 
@@ -342,7 +343,7 @@ async def complete(...):
         package_root = Path(__file__).parent.parent
 ```
 
-`Path` is used at module-level in `_load_models_config()` without local import, but is lazy-imported inside `complete()`. This inconsistency can cause confusion during debugging (import doesn't appear at top of file). Not a functional bug, but violates the project's own style consistency.
+`Path` is imported at module-level (`from pathlib import Path` at line 27 of `provider.py`), so this lazy import is redundant and inconsistent. Not a functional bug, but violates the project's own style consistency.
 
 ---
 
@@ -376,7 +377,7 @@ async def complete(...):
 The F-044/F-045 bug pattern is described as code that was fixed in one place but not its duplicate. **DEF-004** is a direct instance of this pattern:
 
 - `load_error_config()` was updated for F-036 to parse `context_extraction` fields
-- `_load_error_config_once()` in `client.py` was NOT updated
+- `_load_error_config_once()` in `client.py` was NOT updated (importlib path only)
 - The two functions implement the same YAML parsing logic in two different places
 
 **Architectural root cause:** `_load_error_config_once()` exists because `load_error_config()` takes a file path argument, and `_load_error_config_once()` tries importlib.resources first. The fix is to make `load_error_config()` support importlib.resources, eliminating the duplicate parsing code entirely.
@@ -408,4 +409,48 @@ The most dangerous pattern is `MagicMock()` used for objects that are checked wi
 
 ---
 
+## VERIFICATION
+
+**Verified by:** Bug Hunter Agent (static read of all referenced files)  
+**Verification date:** 2026-03-14
+
+### Status of Each Defect
+
+| ID | Verification Status | Notes |
+|----|--------------------|----|
+| DEF-001 | ✅ CONFIRMED | `test_contract_deny_destroy.py:81` and `test_sdk_client.py:191` both confirmed. `Path("src/amplifier_module_provider_github_copilot")` does not exist; actual path is `amplifier_module_provider_github_copilot/`. |
+| DEF-002 | ✅ CONFIRMED | `streaming.py:211` uses `mapping["sdk_type"]` (unguarded), line 212 uses `DomainEventType[mapping["domain_type"]]` (unguarded enum lookup). Both raise `KeyError` without protection. |
+| DEF-003 | ✅ CONFIRMED | `provider.py:256` and `client.py:241` both use `if hasattr(session, "register_pre_tool_use_hook"):` with silent no-op fallback. No error raised when method absent. |
+| DEF-004 | ✅ CONFIRMED WITH NUANCE | The importlib.resources path (client.py:88-97) omits `context_extraction` as described. However, the file-path fallback (line 110) uses `load_error_config()` which IS correct. The bug affects deployed/installed scenarios where importlib.resources succeeds, not dev/test scenarios. Severity remains HIGH. |
+| DEF-005 | ✅ CONFIRMED | `provider.py:144-145` confirmed. `if hasattr(response, "data"): return extract_response_content(response.data)` with no depth limit. `Path` is imported at module level (line 27), making DEF-018 description also accurate. |
+| DEF-006 | ✅ CONFIRMED | `streaming.py:78-95` confirmed. `add()` has no `if self.is_complete: return` guard. Events after TURN_COMPLETE continue to be processed. |
+| DEF-007 | ✅ CONFIRMED | `client.py:199-200`: `self._owned_client` is assigned at line 199 before `start()` at line 200. The `except Exception` at line 212 raises but never clears `_owned_client`. `_get_client()` returns `self._sdk_client or self._owned_client`, so subsequent calls get the broken client. |
+| DEF-008 | ✅ CONFIRMED | `provider.py:443-458` confirmed. Only `text` attribute is extracted from content blocks; ThinkingContent, ToolCallContent, tool results are silently dropped. Role information also discarded. |
+| DEF-009 | ✅ CONFIRMED WITH CORRECTION | The document originally said only the "deny+disable" assertion exists. The actual code at lines 65-73 has **two** assertions: `"deny" not in key_lower or "disable" not in key_lower` AND `key_lower != "allow_tool_execution"`. The test is slightly stronger than described but still misses `bypass_hook`, `skip_sovereignty_check`, etc. Severity MEDIUM stands. |
+| DEF-010 | ✅ CONFIRMED | `error_translation.py:235-237` confirmed. `if pattern in exc_type_name:` is substring, not exact. |
+| DEF-011 | ✅ CONFIRMED | `streaming.py:231-240` confirmed. BRIDGE checked before CONSUME/DROP with no overlap validation. |
+| DEF-012 | ✅ CONFIRMED | `__init__.py:85-92` confirmed. Broad `except Exception` returns `None` with no test covering this path. |
+| DEF-013 | ✅ CONFIRMED | `test_contract_deny_destroy.py:55`: `config_dir = Path("config")` with no assertion files were found. DEF-013 overlaps with DEF-009 (same test) but focuses on the path fragility aspect, which is a separate concern. |
+| DEF-014 | ✅ CONFIRMED AS RISK | `error_translation.py:336-350` code pattern confirmed. Whether specific classes like `AbortError` accept `retry_after` cannot be verified without reading amplifier_core source. The risk is real but severity depends on amplifier_core signatures. |
+| DEF-015 | ✅ CONFIRMED | `test_contract_protocol.py:103-108` confirmed. `tc1 = MagicMock()` and `response = MagicMock()` without `spec=`. |
+| DEF-016 | ✅ CONFIRMED | `test_concurrent_sessions.py:30-31` confirmed. `mock_session = MagicMock()` — `register_pre_tool_use_hook` auto-created by MagicMock, not explicitly set or verified. |
+| DEF-017 | ✅ CONFIRMED | `client.py:258-267` confirmed. `close()` sets `_owned_client = None` in finally block but never clears `_sdk_client`. |
+| DEF-018 | ✅ CONFIRMED | `provider.py:233-234` confirmed. `from pathlib import Path` inside `complete()` function body is redundant — `Path` is already imported at module level (line 27). |
+
+### Corrections to Original Report
+
+1. **DEF-004 scope narrowed:** The bug only affects the importlib.resources code path in `_load_error_config_once()`. The file-path fallback path correctly delegates to `load_error_config()` which does include F-036 context extraction. Severity remains HIGH.
+
+2. **DEF-009 description corrected:** The test has two assertions, not one. Line 71 explicitly checks `key_lower != "allow_tool_execution"`. The original description said "Keys like `allow_tool_execution`... would all pass" — this is incorrect. However, the broader weakness (missing `bypass_hook`, `skip_sovereignty_check`, etc.) is confirmed.
+
+3. **DEF-018 nuance:** `Path` is redundantly imported inside `complete()` even though it is already imported at module level on line 27. The lazy import is genuinely redundant, not just a style choice.
+
+### No Defects Retracted
+
+All 18 defects are confirmed as real issues. The two corrections above narrow or clarify descriptions but do not change the fundamental validity of any finding.
+
+---
+
 *Report generated by systematic static analysis. No automated tools were run. All findings are based on code reading and cross-reference with contracts and golden vision invariants.*
+
+*Verification performed by reading all referenced files directly against stated line numbers and code snippets.*

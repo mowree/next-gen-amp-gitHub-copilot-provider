@@ -7,147 +7,177 @@
 - `contracts/deny-destroy.md`
 - `contracts/sdk-boundary.md`
 - `amplifier_module_provider_github_copilot/**/*.py`
-- Security-relevant tests covering auth, permission handling, SDK boundary, and live SDK assumptions
+- Security-relevant tests covering permission handling, SDK boundary behavior, provider lifecycle, and live SDK assumptions
 
 ---
 
 ## Executive Summary
 
-**Security Posture:** Adequate but contract-critical controls are only partially enforced.
+**Security Posture:** Adequate, with several evidence-backed hardening gaps.
 
 **Critical Issues:** 0
-**High Severity:** 2
-**Medium Severity:** 4
+**High Severity:** 1
+**Medium Severity:** 5
 **Low Severity:** 1
 
-**Risk Level:** High
+**Risk Level:** Medium
 
-The codebase has good defensive intent: no hardcoded credentials, environment-based token resolution, `available_tools=[]`, `on_permission_request` denial, and a registered pre-tool hook. The main risk is not obvious secret leakage or classic injection, but a gap between the Deny+Destroy contract and the real SDK path: end-to-end sovereignty is not currently proven against the live SDK, timeouts are not enforced on the blocking real path, and cleanup/error handling are best-effort in ways that can weaken ephemerality and confidentiality.
+The prior draft overstated the Deny+Destroy result. The actual code does implement the core controls in `sdk_adapter/client.py`: it installs `deny_permission_request`, sets `available_tools=[]` on every session, registers a pre-tool deny hook when supported, and disconnects sessions in `finally` blocks. The evidence-backed gaps are narrower: live verification is degraded by SDK API drift, the real blocking path has no enforced timeout, and provider-level cleanup does not stop the owned SDK client.
 
 ---
 
 ## Quick Answers to Requested Audit Questions
 
-### 1. Deny hook implementation - does it actually prevent tool execution by SDK?
-**Answer:** Not proven on the current SDK; partially enforced by defense-in-depth, but contract assurance is incomplete.
-
-**Evidence:**
-- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:216-242` sets `available_tools=[]`, `on_permission_request`, and registers `create_deny_hook()`.
-- `amplifier_module_provider_github_copilot/provider.py:478-483` uses `send_and_wait()` and does **not** pass `internal_request.tools` into the real SDK path.
-- `tests/test_live_sdk.py:37-41,134-150,319-367` marks live deny-hook verification as `xfail` due SDK API drift.
-
-**Assessment:** The implementation currently reduces tool-execution surface, but the repo does not provide a passing live proof that the SDK still honors the deny hook as the contract requires.
-
-### 2. Session destruction - are sessions properly ephemeral?
-**Answer:** Mostly, but not fully.
-
-**Evidence:**
-- Session disconnect is attempted in `finally` blocks: `sdk_adapter/client.py:248-256` and `provider.py:286-293`.
-- However, disconnect failures are only logged and suppressed.
-- The provider cleanup path is incomplete: `amplifier_module_provider_github_copilot/__init__.py:81-84` calls `provider.close()`, but `amplifier_module_provider_github_copilot/provider.py:517-523` is a no-op and does not call `self._client.close()`.
-
-**Assessment:** Per-request sessions are intended to be ephemeral, but cleanup is best-effort and the owned SDK client can outlive provider cleanup.
-
-### 3. Credential exposure - any tokens/keys logged or exposed?
-**Answer:** No hardcoded secrets found, but raw exception logging creates leakage risk.
-
-**Evidence:**
-- Tokens are resolved from environment only: `sdk_adapter/client.py:116-129`.
-- No token values are explicitly logged in normal flow.
-- `amplifier_module_provider_github_copilot/__init__.py:85-91` logs raw exception strings and full traceback.
-- `amplifier_module_provider_github_copilot/error_translation.py:317-351,364-372` propagates raw SDK exception text into kernel errors.
-
-**Assessment:** Secret handling is better than average, but error paths could expose sensitive operational data if the SDK includes tokens, headers, or prompt fragments in exceptions.
-
-### 4. Input validation - are SDK responses validated?
-**Answer:** Weakly.
-
-**Evidence:**
-- `provider.py:121-157` uses permissive `hasattr()`-based extraction and recursive `.data` unwrapping with no cycle guard.
-- `streaming.py:248-273` trusts SDK event dictionaries with minimal normalization.
-- `tool_parsing.py:53-89` parses JSON if needed but does not validate tool-call schema beyond basic shape.
-
-**Assessment:** This is acceptable for trusted SDK input, but fragile under SDK drift or malformed objects.
-
-### 5. Error message leakage - do errors expose sensitive info?
-**Answer:** Yes, potentially.
-
-**Evidence:**
-- Full traceback logging at mount failure: `__init__.py:85-91`.
-- Raw exception text preserved in translated errors: `error_translation.py:317-351,364-372`.
-
-### 6. Injection vectors - any string interpolation in prompts?
-**Answer:** No dangerous shell/SQL interpolation found, but there is prompt-boundary collapse.
-
-**Evidence:**
-- `provider.py:442-455` flattens all message content into one raw prompt string, losing role boundaries.
-
-### 7. Rate limiting - any denial-of-service vectors?
+### 1. Deny hook implementation - does code actually install it?
 **Answer:** Yes.
 
 **Evidence:**
-- Real path uses blocking `send_and_wait()` with no timeout wrapper: `provider.py:478-488`.
-- Configured timeout exists in policy but is unused: `config/models.yaml:21-27`.
-- No request-level concurrency limiter or local backpressure is present.
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:43-69` defines `deny_permission_request()` and returns `denied-by-rules`.
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:195-197` installs `deny_permission_request` when creating the owned SDK client.
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:230-231` installs `deny_permission_request` again in every session config.
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:240-243` registers `create_deny_hook()` on sessions that expose `register_pre_tool_use_hook()`.
 
-### 8. OWASP Top 10 relevance
-**Most relevant:**
-- **A01 Broken Access Control** - Deny-hook assurance gap on live SDK
-- **A03 Injection** - Prompt-boundary confusion via message flattening
-- **A04 Insecure Design** - Security contract not fully enforced/verified on real path
-- **A05 Security Misconfiguration** - Missing timeout enforcement, best-effort cleanup only
-- **A07 Identification and Authentication Failures** - Raw auth/provider errors may leak detail
-- **A09 Security Logging and Monitoring Failures** - Sensitive traceback logging
+**Assessment:** The hook is implemented and wired in code. What is missing is current live proof that the SDK still honors the pre-tool hook path under API drift.
+
+### 2. Session creation - is `available_tools=[]` actually enforced?
+**Answer:** Yes.
+
+**Evidence:**
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:216-220` unconditionally sets `session_config["available_tools"] = []`.
+- `tests/test_sdk_boundary_contract.py:25-40` asserts `available_tools` is present and equals `[]`.
+- `tests/test_sdk_boundary_contract.py:134-165` and `188-189` verify the invariant across model/system-message variations.
+
+**Assessment:** This control is implemented and covered by boundary-contract tests.
+
+### 3. Session destruction - are sessions actually destroyed?
+**Answer:** Per-session cleanup is implemented, but provider-wide cleanup is incomplete.
+
+**Evidence:**
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:248-256` disconnects each session in a `finally` block.
+- `amplifier_module_provider_github_copilot/provider.py:286-292` also disconnects test/injected sessions in a `finally` block.
+- `amplifier_module_provider_github_copilot/provider.py:517-523` leaves `GitHubCopilotProvider.close()` as a no-op.
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:258-268` contains real client shutdown logic, but it is not called by `provider.close()`.
+- `amplifier_module_provider_github_copilot/__init__.py:81-82` mount cleanup only calls `provider.close()`.
+
+**Assessment:** Session destruction exists for request-scoped sessions, but provider cleanup does not destroy the owned SDK client process.
+
+---
+
+## VERIFICATION
+
+### Verification of the prior finding: "HIGH risk: Deny+Destroy not fully enforced"
+
+**Result:** **REVISED**. The prior wording was too strong for the code that is actually present.
+
+#### What is implemented in code
+
+**1. Permission denial exists and is wired twice**
+```python
+# amplifier_module_provider_github_copilot/sdk_adapter/client.py:43-69
+def deny_permission_request(request: Any, invocation: dict[str, str]) -> Any:
+    try:
+        from copilot.types import PermissionRequestResult
+        return PermissionRequestResult(
+            kind="denied-by-rules",
+            message="Amplifier orchestrator controls all operations",
+        )
+    except ImportError:
+        return {
+            "kind": "denied-by-rules",
+            "message": "Amplifier orchestrator controls all operations",
+        }
+```
+
+```python
+# client.py:195-197
+options["on_permission_request"] = deny_permission_request
+```
+
+```python
+# client.py:230-231
+session_config["on_permission_request"] = deny_permission_request
+```
+
+**2. SDK built-in tools are explicitly suppressed**
+```python
+# client.py:216-220
+session_config: dict[str, Any] = {}
+session_config["available_tools"] = []
+```
+
+**3. Pre-tool deny hook is registered when the SDK exposes the hook API**
+```python
+# client.py:240-243
+if hasattr(sdk_session, "register_pre_tool_use_hook"):
+    sdk_session.register_pre_tool_use_hook(create_deny_hook())
+```
+
+**4. Sessions are disconnected on exit**
+```python
+# client.py:248-256
+try:
+    yield sdk_session
+finally:
+    if sdk_session is not None:
+        try:
+            await sdk_session.disconnect()
+        except Exception as disconnect_err:
+            logger.warning(f"[CLIENT] Error disconnecting session: {disconnect_err}")
+```
+
+#### What remains unproven or incomplete
+
+**1. Live SDK verification is degraded by API drift**
+- `tests/test_live_sdk.py:37-41` documents current SDK drift.
+- `tests/test_live_sdk.py:134-185`, `203-221`, and `319-369` mark deny-hook and related live checks `xfail`.
+
+**2. The real provider path does not currently exercise Amplifier tool passing**
+```python
+# amplifier_module_provider_github_copilot/provider.py:481-483
+async with self._client.session(model=model) as sdk_session:
+    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+```
+The real path does not pass `internal_request.tools` into `send_and_wait()`, so the runtime path currently reduces tool-execution surface rather than proving full tool-capture behavior.
+
+**3. Provider shutdown does not stop the owned client**
+```python
+# provider.py:517-523
+async def close(self) -> None:
+    # Currently no resources to clean up
+    pass
+```
+
+**Corrected judgment:** The codebase does **not** support the prior claim that Deny+Destroy is missing from implementation. It **does** support a narrower claim: Deny+Destroy core controls are implemented, but live verification is incomplete and provider-level destruction is not fully wired. Severity revised from **HIGH** to **MEDIUM**.
 
 ---
 
 ## Findings
 
-### 1. Deny+Destroy sovereignty is not end-to-end proven on the current SDK
-**Severity:** HIGH
+### 1. Live verification of Deny+Destroy is incomplete under current SDK API drift
+**Severity:** MEDIUM
 
 **Location:**
-- `amplifier_module_provider_github_copilot/provider.py:478-483`
-- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:216-242`
-- `tests/test_live_sdk.py:37-41,134-150,319-367`
+- `tests/test_live_sdk.py:37-41`
+- `tests/test_live_sdk.py:134-185`
+- `tests/test_live_sdk.py:203-221`
+- `tests/test_live_sdk.py:319-369`
+- `amplifier_module_provider_github_copilot/provider.py:481-483`
 
-**Evidence:**
-```python
-# provider.py
-async with self._client.session(model=model) as sdk_session:
-    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
-```
+**Issue:** The prior audit incorrectly implied the controls were absent. They are present in implementation, but the live tests that would prove current SDK behavior are `xfail`, and the real `send_and_wait()` path does not pass tool definitions.
 
-```python
-# client.py
-session_config["available_tools"] = []
-session_config["on_permission_request"] = deny_permission_request
-...
-sdk_session.register_pre_tool_use_hook(create_deny_hook())
-```
-
-```python
-# test_live_sdk.py
-_SDK_API_DRIFT_REASON = (
-    "SDK API drift: CopilotSession no longer has send_message/register_pre_tool_use_hook. "
-)
-```
-
-**Issue:** The code intends three layers of tool suppression, but the real path currently bypasses the event-driven tool-capture design and the live verification of deny-hook behavior is explicitly xfailed. The implementation is safer than a permissive one, but the central security guarantee is no longer continuously verified against the live SDK.
-
-**Exploit Scenario:** If a future SDK version changes how tools are exposed or how `register_pre_tool_use_hook()` is honored, the repo may not detect loss of sovereignty quickly because the live safety tests already acknowledge API drift and do not enforce passing behavior.
+**Exploit Scenario:** If a future SDK release changes hook semantics, the repository may not detect that regression quickly because the strongest live verification for deny-hook behavior is not currently passing.
 
 **Impact:**
-- Confidentiality: Medium
-- Integrity: High
-- Availability: Medium
+- Confidentiality: Low
+- Integrity: Medium
+- Availability: Low
 
 **Fix:**
-- Restore a real SDK path that passes tool definitions intentionally and captures tool-call events.
-- Make live deny-hook verification a required nightly gate instead of `xfail`.
-- Assert that tool denial produces no SDK-side `tool_result_*` execution events.
+- Restore passing live verification for deny-hook behavior against the current SDK API.
+- Add a real-path test that verifies the exact wrapper behavior used by `GitHubCopilotProvider.complete()`.
+- Reconcile contract language with the current `send_and_wait()` integration if tool passing remains intentionally disabled.
 
-**Explanation:** This is an insecure-design problem more than a coding mistake: the system relies on a safety boundary it no longer proves in production-like execution.
+**Explanation:** This is an assurance gap, not evidence that the deny controls are missing.
 
 ---
 
@@ -155,7 +185,7 @@ _SDK_API_DRIFT_REASON = (
 **Severity:** HIGH
 
 **Location:**
-- `amplifier_module_provider_github_copilot/provider.py:478-488`
+- `amplifier_module_provider_github_copilot/provider.py:481-483`
 - `config/models.yaml:21-27`
 
 **Evidence:**
@@ -169,9 +199,9 @@ defaults:
   timeout: 60
 ```
 
-**Issue:** The blocking real SDK path does not use `asyncio.timeout`, a circuit breaker, or a semaphore. Configured timeout policy exists but is not enforced.
+**Issue:** The blocking real SDK path does not enforce timeout policy even though timeout policy is configured.
 
-**Exploit Scenario:** An attacker can issue prompts that cause the SDK or upstream model call to hang for long periods, tying up provider workers and exhausting available sessions/process slots.
+**Exploit Scenario:** A long-running or hung SDK call can hold provider resources indefinitely and degrade service availability.
 
 **Impact:**
 - Confidentiality: None
@@ -184,9 +214,9 @@ async with self._client.session(model=model) as sdk_session:
     async with asyncio.timeout(timeout_s):
         sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
 ```
-Also add request concurrency limiting and wire timeout values from config.
+Also wire timeout values from config and consider concurrency limiting.
 
-**Explanation:** This is a classic availability weakness. The contract discusses resilience, but the active real path does not implement it.
+**Explanation:** This is the strongest evidence-backed risk in the current code.
 
 ---
 
@@ -194,7 +224,7 @@ Also add request concurrency limiting and wire timeout values from config.
 **Severity:** MEDIUM
 
 **Location:**
-- `amplifier_module_provider_github_copilot/__init__.py:81-84`
+- `amplifier_module_provider_github_copilot/__init__.py:81-82`
 - `amplifier_module_provider_github_copilot/provider.py:517-523`
 - `amplifier_module_provider_github_copilot/sdk_adapter/client.py:258-268`
 
@@ -208,7 +238,6 @@ async def cleanup() -> None:
 ```python
 # provider.py
 async def close(self) -> None:
-    # Currently no resources to clean up
     pass
 ```
 
@@ -219,9 +248,9 @@ async def close(self) -> None:
         await self._owned_client.stop()
 ```
 
-**Issue:** The provider has an owned `CopilotClientWrapper`, but `provider.close()` never delegates to `self._client.close()`. That means unmount/cleanup does not stop the owned SDK client subprocess.
+**Issue:** Mount cleanup calls `provider.close()`, but `provider.close()` does not delegate to `self._client.close()`.
 
-**Exploit Scenario:** A long-lived authenticated subprocess remains alive after provider cleanup, increasing token exposure window and resource leakage across lifecycle boundaries.
+**Exploit Scenario:** An authenticated SDK client process may remain alive after provider cleanup, extending token exposure window and consuming resources longer than intended.
 
 **Impact:**
 - Confidentiality: Medium
@@ -234,7 +263,7 @@ async def close(self) -> None:
     await self._client.close()
 ```
 
-**Explanation:** Sessions are mostly ephemeral, but the client process is not. This weakens the “destroy” half of Deny+Destroy.
+**Explanation:** Per-session ephemerality exists, but provider-level destruction is incomplete.
 
 ---
 
@@ -242,8 +271,8 @@ async def close(self) -> None:
 **Severity:** MEDIUM
 
 **Location:**
-- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:250-256`
-- `amplifier_module_provider_github_copilot/provider.py:286-293`
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:252-256`
+- `amplifier_module_provider_github_copilot/provider.py:287-292`
 
 **Evidence:**
 ```python
@@ -253,9 +282,9 @@ except Exception as disconnect_err:
     logger.warning(f"[CLIENT] Error disconnecting session: {disconnect_err}")
 ```
 
-**Issue:** Cleanup failures are logged and suppressed rather than surfaced or retried. If disconnect fails, session ephemerality becomes aspirational rather than guaranteed.
+**Issue:** Cleanup failures are logged but not surfaced, retried, or counted.
 
-**Exploit Scenario:** Repeated disconnect failures can accumulate stale sessions or zombie SDK resources, eventually degrading availability and potentially leaving residual authenticated state alive longer than intended.
+**Exploit Scenario:** Repeated disconnect failures can leave stale resources or zombie sessions alive without causing any stronger operational response.
 
 **Impact:**
 - Confidentiality: Low
@@ -263,11 +292,11 @@ except Exception as disconnect_err:
 - Availability: Medium
 
 **Fix:**
-- Emit metrics/alerts on disconnect failure.
-- Consider fallback hard cleanup of the owned client when session disconnect fails.
-- Treat repeated disconnect failures as `ProviderUnavailableError`.
+- Emit metrics/alerts for disconnect failures.
+- Consider fallback client shutdown if session disconnect fails.
+- Escalate repeated failures into provider-health errors.
 
-**Explanation:** Silent or soft-failed cleanup is a security-relevant lifecycle bug in systems that rely on ephemerality as a protection boundary.
+**Explanation:** The session cleanup code exists, but its failure mode is soft.
 
 ---
 
@@ -276,7 +305,7 @@ except Exception as disconnect_err:
 
 **Location:**
 - `amplifier_module_provider_github_copilot/__init__.py:85-91`
-- `amplifier_module_provider_github_copilot/error_translation.py:317-351,364-372`
+- `amplifier_module_provider_github_copilot/error_translation.py:317-372`
 
 **Evidence:**
 ```python
@@ -287,12 +316,17 @@ logger.error(f"[MOUNT] Traceback:\n{traceback.format_exc()}")
 ```python
 original_message = str(exc)
 ...
-kernel_error = error_class(message, provider=provider, model=model, ...)
+kernel_error = default_class(
+    original_message,
+    provider=provider,
+    model=model,
+    retryable=config.default_retryable,
+)
 ```
 
-**Issue:** Raw exception messages and full tracebacks are logged and propagated. If SDK/auth/network exceptions contain token fragments, headers, filesystem paths, working directories, or prompt content, they will leak into logs or user-facing error surfaces.
+**Issue:** Raw exception messages and tracebacks are logged and propagated without sanitization.
 
-**Exploit Scenario:** A bad upstream response or auth failure includes sensitive metadata in the exception string; the provider preserves and logs it verbatim, creating a disclosure path.
+**Exploit Scenario:** If upstream exceptions contain token fragments, prompt content, headers, filesystem paths, or environment details, those values may leak into logs or caller-visible errors.
 
 **Impact:**
 - Confidentiality: Medium
@@ -300,11 +334,11 @@ kernel_error = error_class(message, provider=provider, model=model, ...)
 - Availability: Low
 
 **Fix:**
-- Redact common secret patterns before logging or returning errors.
+- Sanitize exception strings before logging or surfacing.
 - Avoid full traceback logging for expected operational failures.
-- Prefer stable, sanitized error envelopes for caller-facing paths.
+- Prefer stable error envelopes over raw SDK text.
 
-**Explanation:** The code does not directly log tokens, but it trusts external exception text too much.
+**Explanation:** No direct secret logging was found, but exception text is trusted too broadly.
 
 ---
 
@@ -332,9 +366,9 @@ if isinstance(args, str):
     args = json.loads(args)
 ```
 
-**Issue:** The provider trusts SDK object shape with permissive `Any`, `hasattr()`, and dict access. There is no recursion guard, schema validation, or strict normalization layer.
+**Issue:** The provider trusts SDK object shapes with permissive `Any`, `hasattr()`, and dict access; there is no recursion guard or strict schema validation.
 
-**Exploit Scenario:** A compromised or drifted SDK object with cyclical `.data` references or malformed event shapes can trigger recursion errors, memory growth, or incorrect tool/event interpretation.
+**Exploit Scenario:** A malformed or drifted SDK object may trigger recursion problems, misclassification, or incorrect tool/event translation.
 
 **Impact:**
 - Confidentiality: Low
@@ -344,16 +378,16 @@ if isinstance(args, str):
 **Fix:**
 - Add explicit normalization with depth limits.
 - Validate event and response shapes before translation.
-- Reject malformed tool-call structures instead of silently normalizing them.
+- Reject malformed tool-call structures earlier.
 
-**Explanation:** This is primarily an SDK-boundary hardening issue.
+**Explanation:** This is a hardening issue at the SDK membrane.
 
 ---
 
 ### 7. Prompt construction collapses role boundaries, increasing prompt-injection risk
 **Severity:** LOW
 
-**Location:** `amplifier_module_provider_github_copilot/provider.py:442-455`
+**Location:** `amplifier_module_provider_github_copilot/provider.py:442-458`
 
 **Evidence:**
 ```python
@@ -363,12 +397,14 @@ for msg in messages:
     ...
 internal_request = CompletionRequest(
     prompt="\n".join(prompt_parts),
+    model=getattr(request, "model", None),
+    tools=getattr(request, "tools", []) or [],
 )
 ```
 
-**Issue:** Structured message roles are flattened into a single prompt string. This removes the distinction between system, user, and assistant content and makes instruction-confusion easier.
+**Issue:** Structured message roles are flattened into one prompt string before calling the SDK.
 
-**Exploit Scenario:** A malicious user message can embed text that imitates higher-priority instructions because the provider discards original role boundaries before handing content to the SDK.
+**Exploit Scenario:** A malicious user message can imitate higher-priority instructions more easily when original role boundaries are discarded.
 
 **Impact:**
 - Confidentiality: Low
@@ -377,9 +413,9 @@ internal_request = CompletionRequest(
 
 **Fix:**
 - Preserve structured roles if the SDK supports them.
-- If flattening is unavoidable, prefix each block with explicit role labels and delimiters.
+- If flattening remains necessary, prefix each block with explicit role labels and delimiters.
 
-**Explanation:** This is not shell/SQL injection, but it is still relevant under OWASP A03/A04 for LLM-integrated systems.
+**Explanation:** This is an LLM-specific injection-hardening issue rather than a shell/SQL injection issue.
 
 ---
 
@@ -387,32 +423,34 @@ internal_request = CompletionRequest(
 
 - ✅ **No hardcoded secrets found** in reviewed Python/config files.
 - ✅ **Credential resolution uses environment variables only**: `sdk_adapter/client.py:116-129`.
-- ✅ **Defense in depth is present by design**: `available_tools=[]`, `on_permission_request`, and `pre_tool_use` denial in `sdk_adapter/client.py:216-242`.
+- ✅ **Permission denial is implemented in code**: `sdk_adapter/client.py:43-69`, `195-197`, `230-231`.
+- ✅ **SDK built-in tool suppression is implemented and tested**: `sdk_adapter/client.py:216-220`, `tests/test_sdk_boundary_contract.py:25-40`.
+- ✅ **Per-session cleanup exists in `finally` blocks**: `sdk_adapter/client.py:248-256`, `provider.py:286-292`.
 - ✅ **YAML loading uses `yaml.safe_load()`**, avoiding unsafe deserialization.
-- ✅ **Tool parsing avoids code execution** by using JSON parsing rather than `eval`-style behavior.
+- ✅ **Tool parsing uses JSON parsing rather than code execution primitives**.
 
 ---
 
 ## Prioritized Remediation Plan
 
 ### High Priority
-1. **Re-establish live Deny+Destroy verification against the current SDK**
-   - Remove `xfail` posture for deny-hook verification once the SDK contract is updated.
-   - Verify no SDK-side tool execution occurs when tools are present.
-2. **Add enforced timeout/circuit-breaker behavior to the real `send_and_wait()` path**
-   - Use `asyncio.timeout`.
-   - Add concurrency limiting and failure accounting.
+1. **Enforce timeout policy on the real `send_and_wait()` path**
+   - Apply `asyncio.timeout`.
+   - Wire timeout values from `config/models.yaml`.
+   - Consider concurrency limiting for availability protection.
 
 ### Medium Priority
-3. **Fix provider cleanup to stop the owned SDK client**
-   - Implement `GitHubCopilotProvider.close()` properly.
-4. **Harden cleanup failures**
-   - Escalate repeated disconnect failures.
-   - Add metrics/alerts.
+2. **Fix provider cleanup to stop the owned SDK client**
+   - Implement `GitHubCopilotProvider.close()` by delegating to `self._client.close()`.
+3. **Re-establish live Deny+Destroy verification against the current SDK**
+   - Replace `xfail` deny-hook coverage with passing verification once SDK drift is resolved.
+   - Add a live or canary test for the exact real wrapper path.
+4. **Harden disconnect-failure handling**
+   - Emit metrics/alerts and escalate repeated failures.
 5. **Sanitize exception text before logging or surfacing**
-   - Redact token-like substrings and headers.
-6. **Add strict SDK response normalization**
-   - Validate response/event shape, including recursion limits.
+   - Redact token-like substrings and reduce raw traceback exposure.
+6. **Add stricter SDK response normalization**
+   - Enforce depth limits and schema checks.
 
 ### Low Priority
 7. **Preserve role boundaries in prompt construction**
@@ -424,19 +462,19 @@ internal_request = CompletionRequest(
 
 | OWASP Area | Relevance | Notes |
 |---|---|---|
-| A01 Broken Access Control | High | Deny-hook enforcement is contract-critical but not currently proven end-to-end on live SDK |
+| A01 Broken Access Control | Medium | Core deny controls are implemented, but live proof is degraded by SDK drift |
 | A02 Cryptographic Failures | Low | No custom crypto present; credential storage is environment-based |
-| A03 Injection | Medium | Prompt-boundary collapse increases prompt injection/confusion risk |
-| A04 Insecure Design | High | Real path diverges from contract assumptions; no active timeout/circuit breaker |
-| A05 Security Misconfiguration | Medium | Best-effort cleanup, unused timeout policy, live security checks xfailed |
+| A03 Injection | Medium | Prompt-boundary collapse increases prompt-injection/confusion risk |
+| A04 Insecure Design | Medium | Provider cleanup and live verification do not fully match the contract story |
+| A05 Security Misconfiguration | Medium | Timeout policy exists but is not enforced; cleanup failures are soft |
 | A06 Vulnerable Components | Unknown | Dependency CVE scan not performed in this review |
 | A07 Identification/Auth Failures | Medium | Raw auth/provider errors can leak detail |
 | A08 Software and Data Integrity Failures | Low | No unsafe deserialization found; config integrity relies on repository controls |
-| A09 Security Logging and Monitoring Failures | Medium | Traceback logging may expose too much; cleanup failures only warn |
+| A09 Security Logging and Monitoring Failures | Medium | Traceback logging may expose too much; disconnect failures only warn |
 | A10 SSRF | Not Evidenced | No outbound URL construction from user input found |
 
 ---
 
 ## Final Verdict
 
-The repository shows deliberate security architecture and several strong controls, but the **Deny+Destroy guarantee is stronger in documentation than in currently verified runtime behavior**. The most important security work is to re-prove sovereignty on the live SDK and add timeout/circuit-breaker enforcement to the real path; until then, the design is defensively intended but not fully security-assured.
+The corrected evidence does **not** support the prior claim that Deny+Destroy is simply "not fully enforced" at high severity. The code does implement the main controls: permission denial, built-in tool suppression, pre-tool hook registration when supported, and per-session disconnect. The strongest remaining risks are timeout enforcement, incomplete provider-level client shutdown, and degraded live verification under SDK API drift.
