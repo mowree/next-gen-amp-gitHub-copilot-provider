@@ -144,7 +144,7 @@ else:
     
     echo ""
     echo "=== Diagnostic: Testing mount() directly ==="
-    "$TOOL_VENV/bin/python" -c "
+    "$TOOL_VENV/bin/python" << 'PYEOF'
 import asyncio, sys, traceback
 
 async def test_mount():
@@ -158,7 +158,7 @@ async def test_mount():
                 self.mounted = {}
             async def mount(self, mount_point, obj, name=None):
                 self.mounted[mount_point] = (obj, name)
-                print(f'  coordinator.mount(\"{mount_point}\", {type(obj).__name__}, name=\"{name}\") called OK')
+                print(f'  coordinator.mount("{mount_point}", {type(obj).__name__}, name="{name}") called OK')
         
         coord = MockCoordinator()
         cleanup = await mount(coord, {'model': 'gpt-4o'})
@@ -172,8 +172,8 @@ async def test_mount():
             print(f'  get_info(): id={info.id}, display_name={info.display_name}')
             models = await provider.list_models()
             print(f'  list_models(): {len(models)} models')
-            print(f'  parse_tool_calls: {hasattr(provider, \"parse_tool_calls\")}')
-            print(f'  complete: {hasattr(provider, \"complete\")}')
+            print(f'  parse_tool_calls: {hasattr(provider, "parse_tool_calls")}')
+            print(f'  complete: {hasattr(provider, "complete")}')
             print('  DIAGNOSTIC: Provider protocol fully compliant')
         else:
             print('  ERROR: Provider not mounted to coordinator')
@@ -183,7 +183,7 @@ async def test_mount():
         sys.exit(1)
 
 asyncio.run(test_mount())
-" 2>&1
+PYEOF
 
     echo ""
     echo "=== Running shadow test ==="
