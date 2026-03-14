@@ -63,15 +63,33 @@ async def mount(
         config: Optional provider configuration.
 
     Returns:
-        Cleanup callable, or None.
+        Cleanup callable, or None. Returns None on failure (graceful degradation).
     """
-    provider = GitHubCopilotProvider(config, coordinator)
-    await coordinator.mount("providers", provider, name="github-copilot")
+    import logging
 
-    async def cleanup() -> None:
-        await provider.close()
+    logger = logging.getLogger(__name__)
 
-    return cleanup
+    try:
+        logger.info("[MOUNT] Creating GitHubCopilotProvider...")
+        provider = GitHubCopilotProvider(config, coordinator)
+        logger.info(f"[MOUNT] Provider created: {provider.name}")
+
+        logger.info("[MOUNT] Mounting to coordinator...")
+        await coordinator.mount("providers", provider, name="github-copilot")
+        logger.info("[MOUNT] Provider mounted successfully")
+
+        async def cleanup() -> None:
+            await provider.close()
+
+        return cleanup
+    except Exception as e:
+        # Graceful degradation: log error and return None instead of crashing
+        # This matches the production provider pattern
+        logger.error(f"[MOUNT] Failed to mount GitHubCopilotProvider: {type(e).__name__}: {e}")
+        import traceback
+
+        logger.error(f"[MOUNT] Traceback:\n{traceback.format_exc()}")
+        return None
 
 
 __all__ = ["mount", "GitHubCopilotProvider", "ProviderInfo", "ModelInfo"]

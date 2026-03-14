@@ -215,10 +215,17 @@ class CopilotClientWrapper:
                         raise translate_sdk_error(e, error_config) from e
 
         session_config: dict[str, Any] = {}
+        # F-045: Disable ALL SDK/CLI built-in tools.
+        # The LLM should only see Amplifier tools passed in completion request.
+        # Without this, SDK exposes bash/view/edit/etc. which crash in CLI.
+        session_config["available_tools"] = []
         if model:
             session_config["model"] = model
         if system_message:
-            session_config["system_message"] = {"mode": "append", "content": system_message}
+            # F-044: Use replace mode to ensure Amplifier bundle persona takes precedence.
+            # The SDK's default "GitHub Copilot CLI" prompt interferes with bundle instructions.
+            # Replace mode gives full control over agent identity.
+            session_config["system_message"] = {"mode": "replace", "content": system_message}
         session_config["streaming"] = streaming
         # F-033: SDK v0.1.33 requires on_permission_request at session level too
         session_config["on_permission_request"] = deny_permission_request

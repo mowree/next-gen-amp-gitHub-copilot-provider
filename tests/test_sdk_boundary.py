@@ -122,7 +122,8 @@ class TestSystemMessageStructure:
 
         call_args = mock_client.create_session.call_args
         config = call_args[0][0]  # First positional arg is the config dict
-        assert config["system_message"] == {"mode": "append", "content": "Be helpful"}
+        # F-044: Changed from "append" to "replace" to give Amplifier control over persona
+        assert config["system_message"] == {"mode": "replace", "content": "Be helpful"}
 
     @pytest.mark.asyncio
     async def test_session_without_system_message(self) -> None:
