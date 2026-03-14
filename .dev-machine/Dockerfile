@@ -61,8 +61,7 @@ WORKDIR /workspace
 COPY . .
 
 # Create project .venv for project dependencies (not dev tools)
-# This gets shadowed at runtime but that's OK - we only need project deps at build time
-# for validation. At runtime, uv sync will recreate it.
+# This gets shadowed at runtime but that's OK - docker-entrypoint.sh recreates it.
 RUN uv sync --extra dev
 
 # Verify project imports work at build time (validates pyproject.toml is correct)
@@ -75,8 +74,12 @@ RUN git config --system user.email "amplifier-ai@microsoft.com" \
     && git config --system --add safe.directory /workspace \
     && git config --system credential.helper "!gh auth git-credential"
 
-# Entry point for autonomous execution
-# Recipes run FROM WITHIN an Amplifier session via the recipes tool
-# The agent inside the session invokes the recipes tool to execute the recipe
-ENTRYPOINT ["amplifier", "run", "--bundle", "foundation"]
+# Copy and enable the entrypoint script
+# This script runs `uv sync --extra dev` AFTER the volume mount shadows build-time .venv
+COPY .dev-machine/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Entry point: bootstrap deps first, then run amplifier
+# docker-entrypoint.sh recreates .venv after volume mount, then exec's the CMD
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "amplifier", "run", "--bundle", "foundation"]
 CMD ["Execute the recipe at .dev-machine/build.yaml"]
