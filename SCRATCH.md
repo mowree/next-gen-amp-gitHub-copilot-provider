@@ -109,3 +109,7 @@ FAILED tests/test_permission_handler.py::TestOnPermissionRequestHandler::test_pe
 ### Final Status
 - **Build**: CLEAN (ruff + pyright pass)
 - **Tests**: 321 passed, 19 skipped, 2 xfailed, 4 warnings
+
+## Verification After Iteration 1
+- Build exit code: 0
+- Test exit code: 0
