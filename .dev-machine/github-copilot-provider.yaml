@@ -1,0 +1,16 @@
+---
+bundle:
+  name: github-copilot-provider
+  version: 0.1.0
+  description: GitHub Copilot provider bundle
+
+providers:
+  - module: provider-github-copilot
+    source: ./
+    config:
+      model: gpt-4o
+---
+
+# GitHub Copilot Provider Bundle
+
+This bundle provides the GitHub Copilot provider for Amplifier.

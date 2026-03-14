@@ -1,13 +1,11 @@
 ---
 bundle:
   name: copilot-provider-shadow-test
-  version: 0.2.0
+  version: 0.3.0
   description: Minimal bundle for testing github-copilot provider in isolation
 
-providers:
-  - module: provider-github-copilot
-    config:
-      model: gpt-4o
+includes:
+  - bundle: .dev-machine/github-copilot-provider.yaml
 
 session:
   orchestrator:
