@@ -370,5 +370,122 @@ be silently dropped when loaded via the `importlib.resources` path.
 | MEDIUM | `provider.py:250,259,274` / `client.py:204` | Deferred imports of already-available symbols | Move to module-level imports (verify no circular import) |
 | LOW | `sdk_adapter/client.py:37,43` | Unused callback parameters | Prefix with `_` |
 | LOW | `provider.py` | Dual `complete()` name (module + method) | Rename module-level to `_execute_complete()` or similar |
-| INFO | `provider.py:295` | `complete_and_collect()` — verify if still used | `grep -r "complete_and_collect" tests/` |
+| INFO | `provider.py:295` | `complete_and_collect()` — PRIMARY test interface for module-level `complete()` path | Used in 11+ test_completion.py, 9+ test_integration.py calls |
 | INFO | `sdk_adapter/types.py:SessionConfig` | `system_prompt`/`max_tokens` fields never propagated to SDK | Remove fields or wire them through |
+
+---
+
+## 9. Principal Review and Amendments
+
+**Review date:** 2026-03-14  
+**Reviewer:** Principal-level developer
+
+---
+
+### 9.1 Confirmed Findings ✅
+
+The following findings were independently verified by the principal reviewer:
+
+**Test/Production Path Asymmetry (§3.1) — CRITICAL ARCHITECTURAL BUG CONFIRMED**
+
+The principal confirms the two-path divergence:
+
+| Aspect | Module-level `complete()` | `GitHubCopilotProvider.complete()` |
+|--------|--------------------------|-----------------------------------|
+| SDK Method | `send_message()` streaming | `send_and_wait()` blocking |
+| Event Translation | `translate_event()` | None |
+| Test Coverage | HIGH | LOW |
+| Production Use | NONE | PRIMARY |
+
+Evidence chain:
+- Test path: `complete()` module-level → `send_message()` (streaming) → `translate_event()` → event classification
+- Production path: `GitHubCopilotProvider.complete()` → `send_and_wait()` (blocking) → `extract_response_content()` only
+- **Impact**: `translate_event()`, event classification from events.yaml, `load_event_config()` are NEVER EXERCISED in production
+
+**`_complete_fn` Attribute — DEAD CODE CONFIRMED** (§5.2)
+
+Verified: never set after `__init__`, no setter exists. The only injection mechanism is the `sdk_create_fn` kwarg.
+
+**Deferred Imports — UNNECESSARY CONFIRMED** (§2.2)
+
+Verified: `error_translation.py` has NO imports from `provider.py`. The deferred imports at lines 250, 259, 274 are defensive coding with no actual circular import risk.
+
+**`SessionConfig` Fields Never Propagated — CONFIRMED** (§5.4)
+
+Verified: `system_prompt` and `max_tokens` are defined but no code path propagates them to the SDK. Only `model` is used.
+
+**Contract Structure Deviation — CONFIRMED** (§6 / contracts/sdk-boundary.md)
+
+`sdk-boundary.md` MUST clause 2 specifies exactly one file `_imports.py` as the sole SDK import site. Actual structure:
+
+```
+sdk_adapter/
+├── client.py        # Contains SDK imports (lazy, inside function)
+├── types.py         # types.py not _types.py
+```
+
+The contract's prescribed structure (`_imports.py`, `_types.py`, `events.py`, `errors.py`) does not match the implemented structure. The contract is aspirational/future-state, not descriptive of current code.
+
+---
+
+### 9.2 Amended Findings ✏️
+
+**§2.1 `reportOptionalCall` Errors — PARTIALLY AMENDED**
+
+The original finding reported 3 `reportOptionalCall` errors from Pyright. The principal's review found `uv run pyright amplifier_module_provider_github_copilot/` now returns **0 errors, 0 warnings, 0 informations**.
+
+**Verification performed:** Running `uv run pyright amplifier_module_provider_github_copilot/` in the project root confirms 0 errors. However, the LSP server (pyright-langserver) **still reports these errors** at lines 337, 344, and 366 in `error_translation.py`. This is a **version discrepancy** between the Pyright binary in the venv (used by CLI) and the globally-installed `pyright-langserver` (used by the LSP).
+
+**Status:** RESOLVED in venv Pyright. The underlying code at `KERNEL_ERROR_MAP: dict[str, type[LLMError]]` with `.get(key, ProviderUnavailableError)` — where both value and default are `type[LLMError]` — is correctly handled in current Pyright. The fix recommendation in §2.1 remains valid as defensive coding but is no longer a blocking issue.
+
+**§5.1 `complete_and_collect()` — CORRECTED**
+
+Original finding marked this as "verify if still used" with status "Likely used in tests." This was **incorrect in framing** — it is extensively used and is the primary test interface:
+
+- `tests/test_completion.py` — **11 usages**
+- `tests/test_integration.py` — **9 usages**
+
+`complete_and_collect()` wraps the module-level `complete()` generator and is the **primary mechanism** by which all module-level path tests exercise the streaming code path. It is not dead code; it is a central test harness function.
+
+The table entry in §8 has been updated to reflect this.
+
+---
+
+### 9.3 Root Cause Analysis — Parallel Evolution Divergence
+
+The principal identified the underlying architectural pattern:
+
+**Pattern: Parallel Evolution Divergence**
+
+Two `complete()` implementations evolved separately, accumulating behavioral differences:
+
+1. The module-level `complete()` was the original implementation, built with `send_message()` streaming, full event translation, and test injection via `sdk_create_fn`.
+2. `GitHubCopilotProvider.complete()` evolved as the kernel integration point, adopting `send_and_wait()` (blocking) for simplicity, bypassing the entire event pipeline.
+
+The result: the test suite exercises code that is never exercised in production. Test coverage is high on the wrong path.
+
+---
+
+### 9.4 Architectural Recommendations
+
+Two paths forward:
+
+**Option A: Unify on Streaming (Recommended)**
+
+Refactor `GitHubCopilotProvider.complete()` to use the module-level `complete()` path (via `_complete_internal()` with the real SDK factory). This would:
+- Make tests exercise the production code path
+- Enable `translate_event()` and events.yaml classification in production
+- Remove `send_and_wait()` from the provider entirely
+- Require wiring the real SDK factory into `_complete_internal()`
+
+Risk: behavioral change in production (streaming vs blocking response delivery). Requires integration testing.
+
+**Option B: Document and Clean**
+
+Accept the two-path architecture as intentional, but:
+- Rename module-level `complete()` to `_legacy_complete()` or `_streaming_complete()` to make the separation explicit
+- Add tests that specifically target the `GitHubCopilotProvider.complete()` production path
+- Mark `translate_event()` and event classification as "test/legacy path only" in code comments
+- Remove or deprecate `SessionConfig.system_prompt` and `max_tokens`
+
+Risk: continued test/production divergence; event translation investment is stranded.
