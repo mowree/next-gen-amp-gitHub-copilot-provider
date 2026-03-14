@@ -171,19 +171,22 @@ steps:
       echo ""
       echo "Verifying entry point registration..."
       VERIFY_OUTPUT=$("$PYTHON" -c "
-from importlib.metadata import entry_points
-import json
-try:
-    eps = entry_points(group='amplifier.modules')
-    found = [ep for ep in eps if ep.name == 'provider-github-copilot']
-    if found:
-        mod = found[0].load()
-        print(json.dumps({'status': 'installed', 'entry_point': str(found[0]), 'module': str(mod)}))
-    else:
-        print(json.dumps({'status': 'failed', 'reason': 'Entry point not found'}))
-except Exception as e:
-    print(json.dumps({'status': 'failed', 'reason': str(e)}))
-" 2>&1)
+      import textwrap, sys
+      exec(textwrap.dedent('''
+          from importlib.metadata import entry_points
+          import json
+          try:
+              eps = entry_points(group=\"amplifier.modules\")
+              found = [ep for ep in eps if ep.name == \"provider-github-copilot\"]
+              if found:
+                  mod = found[0].load()
+                  print(json.dumps({\"status\": \"installed\", \"entry_point\": str(found[0]), \"module\": str(mod)}))
+              else:
+                  print(json.dumps({\"status\": \"failed\", \"reason\": \"Entry point not found\"}))
+          except Exception as e:
+              print(json.dumps({\"status\": \"failed\", \"reason\": str(e)}))
+          '''))
+      " 2>&1)
       
       echo "$VERIFY_OUTPUT"
     output: "install_result"
