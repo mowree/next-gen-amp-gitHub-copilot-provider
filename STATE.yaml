@@ -1,9 +1,39 @@
-phase: 7
-phase_name: Phase 7 -- TDD Discipline and E2E Coverage
-epoch: 34
-next_action: Phase 7 complete. Consider tagging v0.3.1 release (F-043 SDK response fix)
+phase: 8
+phase_name: Phase 8 -- SDK Boundary Fixes and Testing Architecture
+epoch: 35
+next_action: Implement F-044 through F-048 (critical SDK boundary fixes)
 blockers: []
-features: {}
+features:
+  F-044-system-prompt-replace-mode:
+    status: ready
+    priority: P0
+    spec_path: specs/features/F-044-system-prompt-replace-mode.md
+    depends_on: []
+    description: Change system_message mode from append to replace
+  F-045-disable-sdk-builtin-tools:
+    status: ready
+    priority: P0
+    spec_path: specs/features/F-045-disable-sdk-builtin-tools.md
+    depends_on: []
+    description: Set available_tools=[] to disable SDK built-in tools
+  F-046-sdk-integration-testing-architecture:
+    status: ready
+    priority: P0
+    spec_path: specs/features/F-046-sdk-integration-testing-architecture.md
+    depends_on: []
+    description: ConfigCapturingMock and boundary contract tests
+  F-047-testing-course-correction:
+    status: ready
+    priority: P0
+    spec_path: specs/F-047-testing-course-correction.md
+    depends_on: [F-046-sdk-integration-testing-architecture]
+    description: Comprehensive TDD enforcement framework
+  F-048-config-extraction:
+    status: ready
+    priority: P1
+    spec_path: specs/features/F-048-config-extraction.md
+    depends_on: [F-044-system-prompt-replace-mode, F-045-disable-sdk-builtin-tools]
+    description: Extract hardcoded policy from Python to YAML configs
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
