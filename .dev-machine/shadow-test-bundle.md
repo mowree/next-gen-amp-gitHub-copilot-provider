@@ -6,7 +6,6 @@ bundle:
 
 providers:
   - module: provider-github-copilot
-    source: file:///workspace
     config:
       model: gpt-4o
 

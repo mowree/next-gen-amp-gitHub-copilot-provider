@@ -1,0 +1,283 @@
+# =============================================================================
+# CHANGELOG
+# =============================================================================
+#
+# v1.0.0 (2026-03-14):
+#   - NEW FEATURE: Tightened outer loop using tightened-iteration.yaml
+#     * Identical to build.yaml except calls tightened-iteration.yaml
+#     * All enforcement gates (spec anchors, RED test, boundary contract,
+#       LOC/policy/MagicMock scan, 5-expert quorum) run inside the iteration.
+#     * Use this instead of build.yaml for Phase 8+ (post F-044/F-045 lessons).
+#
+# =============================================================================
+# provider-github-copilot-tightened-build: Enforcement-gated outer loop
+# =============================================================================
+#
+# Identical to build.yaml except it calls tightened-iteration.yaml instead
+# of iteration.yaml. All five enforcement gates are inside the iteration.
+#
+# Usage:
+#   amplifier recipe execute .dev-machine/tightened-build.yaml
+#
+# =============================================================================
+
+name: "provider-github-copilot-tightened-build"
+description: "Enforcement-gated outer loop: calls tightened-iteration.yaml with spec-anchor, RED-test, boundary-contract, policy-scan, and 5-expert-quorum gates."
+version: "1.0.0"
+author: "provider-github-copilot Development Machine"
+tags: ["orchestration", "meta-recipe", "tightened", "provider-github-copilot"]
+
+context:
+  state_file: "./STATE.yaml"
+  context_file: "./CONTEXT-TRANSFER.md"
+  specs_dir: "./specs"
+  status: "healthy"
+  session_count: "0"
+  heal_status:
+    status: "healthy"
+    message: ""
+
+steps:
+  # ---------------------------------------------------------------------------
+  # Step 0: Container safety check -- refuse to run on bare host
+  # ---------------------------------------------------------------------------
+  - id: "container-check"
+    type: "bash"
+    command: |
+      if [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ]; then
+          echo "=========================================="
+          echo "ERROR: DEV MACHINE NOT RUNNING IN CONTAINER"
+          echo "=========================================="
+          echo ""
+          echo "Running dev-machine recipes outside a container is DANGEROUS."
+          echo "Autonomous agents have unrestricted filesystem access."
+          echo ""
+          echo "Use: ./run-dev-machine.sh"
+          echo "Or:  docker compose run --rm dev-machine"
+          echo ""
+          echo "To bypass (NOT RECOMMENDED):"
+          echo "  export DEV_MACHINE_ALLOW_HOST=1"
+          echo "=========================================="
+          if [ -z "${DEV_MACHINE_ALLOW_HOST:-}" ]; then
+              exit 1
+          fi
+          echo "WARNING: DEV_MACHINE_ALLOW_HOST is set. Proceeding on bare host."
+          echo "YOU ACCEPT ALL RISKS OF FILESYSTEM DAMAGE."
+      fi
+      echo "Container check passed."
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 1: Read STATE.yaml and check for blockers
+  # ---------------------------------------------------------------------------
+  - id: "read-state"
+    type: "bash"
+    command: |
+      python3 << 'PYEOF'
+      import json, yaml
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+          blockers = state.get("blockers", [])
+          result = {
+              "phase": state.get("phase", 0),
+              "phase_name": state.get("phase_name", "unknown"),
+              "epoch": state.get("epoch", 0),
+              "next_action": state.get("next_action", ""),
+              "blocker_count": len(blockers),
+              "blockers": blockers,
+              "status": "blocked" if blockers else "healthy"
+          }
+          print(json.dumps(result))
+      except Exception as e:
+          print(json.dumps({
+              "status": "blocked",
+              "blockers": ["Failed to read STATE.yaml: " + str(e)],
+              "blocker_count": 1
+          }))
+      PYEOF
+    output: "initial_state"
+    parse_json: true
+
+  # ---------------------------------------------------------------------------
+  # Step 2: If blockers exist, run health-check to auto-fix
+  # ---------------------------------------------------------------------------
+  - id: "auto-heal"
+    type: "recipe"
+    condition: "{{initial_state.status}} == 'blocked'"
+    recipe: "./health-check.yaml"
+    context:
+      state_file: "./STATE.yaml"
+      context_file: "./CONTEXT-TRANSFER.md"
+    output: "heal_result"
+    timeout: 1800
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 2b: Re-read state after heal attempt
+  # ---------------------------------------------------------------------------
+  - id: "recheck-state"
+    type: "bash"
+    condition: "{{initial_state.status}} == 'blocked'"
+    command: |
+      python3 << 'PYEOF'
+      import json, yaml
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+          blockers = state.get("blockers", [])
+          if blockers:
+              print(json.dumps({"status": "blocked", "message": "Health check could not fix blockers"}))
+          else:
+              print(json.dumps({"status": "healthy", "message": "Blockers resolved by health check"}))
+      except Exception as e:
+          print(json.dumps({"status": "blocked", "message": str(e)}))
+      PYEOF
+    output: "heal_status"
+    parse_json: true
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step 2c: Only fail if heal didn't work
+  # ---------------------------------------------------------------------------
+  - id: "check-health"
+    type: "bash"
+    condition: "{{initial_state.status}} == 'blocked' and {{heal_status.status}} == 'blocked'"
+    command: |
+      echo "BLOCKED: Health check could not resolve blockers."
+      echo "{{heal_status.message}}"
+      echo ""
+      echo "Manual intervention required. Check ./STATE.yaml"
+      exit 1
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 3: Main work loop -- calls TIGHTENED sub-recipe per iteration
+  #
+  # DIFFERENCE FROM build.yaml: calls tightened-iteration.yaml instead of
+  # iteration.yaml. All 5 enforcement gates run inside tightened-iteration.yaml.
+  # ---------------------------------------------------------------------------
+  - id: "work-loop"
+    type: "recipe"
+    recipe: "./tightened-iteration.yaml"
+    context:
+      state_file: "./STATE.yaml"
+      context_file: "./CONTEXT-TRANSFER.md"
+      specs_dir: "./specs"
+      session_count: "{{session_count}}"
+    output: "iteration_result"
+    parse_json: true
+    timeout: 5400
+    on_error: "continue"
+    while_condition: "{{status}} == 'healthy'"
+    max_while_iterations: 50
+    break_when: "{{status}} != 'healthy'"
+    update_context:
+      status: "{{iteration_result.iteration_result.status}}"
+      session_count: "{{iteration_result.iteration_result.session_count}}"
+
+  # ---------------------------------------------------------------------------
+  # Step 4: Completion gate (same as build.yaml)
+  # ---------------------------------------------------------------------------
+  - id: "completion-gate"
+    type: "bash"
+    condition: "{{status}} == 'complete'"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo ""
+      echo "========================================"
+      echo "  COMPLETION GATE: Full Verification"
+      echo "========================================"
+      echo ""
+
+      set +e
+      RUFF_EXIT=0; PYRIGHT_EXIT=0; TEST_EXIT=0
+
+      echo "--- Lint Check (ruff) ---"
+      ruff check amplifier_module_provider_github_copilot/ 2>&1
+      RUFF_EXIT=$?
+      echo "  Exit code: $RUFF_EXIT"
+      echo ""
+
+      echo "--- Type Check (pyright) ---"
+      pyright amplifier_module_provider_github_copilot/ 2>&1
+      PYRIGHT_EXIT=$?
+      echo "  Exit code: $PYRIGHT_EXIT"
+      echo ""
+
+      echo "--- Test Suite (pytest, excluding live tests) ---"
+      pytest tests/ -v --ignore=tests/test_live_sdk.py 2>&1
+      TEST_EXIT=$?
+      echo "  Exit code: $TEST_EXIT"
+      echo ""
+
+      echo "--- Boundary Contract Tests (specific gate) ---"
+      BOUNDARY_EXIT=0
+      if [ -f tests/test_sdk_boundary_contract.py ]; then
+        uv run pytest tests/test_sdk_boundary_contract.py tests/test_session_config_invariants.py -v 2>&1 || BOUNDARY_EXIT=$?
+        echo "  Boundary exit code: $BOUNDARY_EXIT"
+      else
+        echo "  WARNING: test_sdk_boundary_contract.py not found -- F-046 must be completed"
+      fi
+      echo ""
+
+      if [ "$RUFF_EXIT" -eq 0 ] && [ "$PYRIGHT_EXIT" -eq 0 ] && [ "$TEST_EXIT" -eq 0 ] && [ "$BOUNDARY_EXIT" -eq 0 ]; then
+        echo "========================================"
+        echo "  COMPLETION GATE: PASSED"
+        echo "  All checks passed including boundary contract tests"
+        echo "========================================"
+        echo '{"gate": "passed", "ruff": 0, "pyright": 0, "pytest": 0, "boundary": 0}'
+      else
+        echo "========================================"
+        echo "  COMPLETION GATE: FAILED"
+        echo "  ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT pytest=$TEST_EXIT boundary=$BOUNDARY_EXIT"
+        echo "========================================"
+        python3 -c "import yaml, datetime; f=open('./STATE.yaml'); s=yaml.safe_load(f); f.close(); b=s.get('blockers') or []; b.append({'description': 'Completion gate failed: ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT pytest=$TEST_EXIT boundary=$BOUNDARY_EXIT', 'since': datetime.datetime.now().isoformat(), 'severity': 'high'}); s['blockers']=b; f=open('./STATE.yaml','w'); yaml.dump(s,f,default_flow_style=False,sort_keys=False); f.close()"
+        echo '{"gate": "failed", "ruff": '$RUFF_EXIT', "pyright": '$PYRIGHT_EXIT', "pytest": '$TEST_EXIT', "boundary": '$BOUNDARY_EXIT'}'
+        exit 1
+      fi
+    output: "gate_result"
+    parse_json: true
+    timeout: 600
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step 5: Final summary
+  # ---------------------------------------------------------------------------
+  - id: "final-summary"
+    type: "bash"
+    command: |
+      echo ""
+      echo "========================================"
+      echo "  provider-github-copilot TIGHTENED Build -- Run Complete"
+      echo "========================================"
+      echo ""
+      echo "  Sessions completed: {{session_count}}"
+      echo "  Final status:       {{status}}"
+      echo ""
+      if [ "{{status}}" = "blocked" ]; then
+        echo "  Stopped: BLOCKERS detected"
+        echo "  Check ./STATE.yaml for blocker details."
+        echo "  Check .dev-machine/quorum-log/ for expert veto details."
+      elif [ "{{status}}" = "complete" ]; then
+        echo "  PHASE COMPLETE - Verified by completion gate"
+        echo "  All 5 enforcement gates passed for every iteration."
+      else
+        echo "  Stopped: work loop exit (max iterations or no more work)"
+      fi
+      echo ""
+      echo "  Enforcement gates run each iteration:"
+      echo "    Gate 0: Spec contract anchor check"
+      echo "    Gate 1: RED test verification"
+      echo "    Gate 2: Boundary contract test suite (F-044/F-045 regression)"
+      echo "    Gate 3: LOC / hardcoded policy / MagicMock scan"
+      echo "    Gate 4: Full test suite"
+      echo "    Gate 5: 5-expert quorum (zen-architect, bug-hunter,"
+      echo "             integration-specialist, security-guardian, amplifier-expert)"
+      echo ""
+      echo "  State file:    ./STATE.yaml"
+      echo "  Context file:  ./CONTEXT-TRANSFER.md"
+      echo "  Quorum log:    .dev-machine/quorum-log/"
+      echo ""
+      echo "========================================"
+    output: "summary"

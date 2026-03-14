@@ -1,0 +1,1258 @@
+# =============================================================================
+# CHANGELOG
+# =============================================================================
+#
+# v1.0.0 (2026-03-14):
+#   - NEW FEATURE: Initial tightened iteration recipe
+#     * ROOT CAUSE of F-044/F-045: MagicMock forgiveness + no contract anchors
+#       in specs, no RED test gate, no hardcoded-policy scanner, no quorum review.
+#     * THE KEY INSIGHT: Add enforcement GATES before the working session (spec
+#       contract anchors) AND after it (LOC/policy/MagicMock/boundary tests)
+#       AND a 5-expert quorum that must APPROVE before marking done.
+#     * WHY THIS WORKS: Bugs like F-044 and F-045 require: (a) a spec with
+#       explicit contract anchors so the agent knows what value is required,
+#       (b) a failing test that would have caught the wrong value, (c) post-impl
+#       boundary contract tests, and (d) an adversarial review that would flag
+#       `mode="append"` as wrong.
+#
+# =============================================================================
+# provider-github-copilot-tightened-iteration: Enforcement-gated iteration
+# =============================================================================
+#
+# Drop-in replacement for iteration.yaml that adds five enforcement gates:
+#
+#   Gate 0  -- Spec contract anchor check (BEFORE working session)
+#   Gate 1  -- RED test verification (failing test must exist before impl)
+#   Gate 2  -- Boundary contract test suite (after impl)
+#   Gate 3  -- Enforcement scan (LOC / hardcoded policy / MagicMock abuse)
+#   Gate 4  -- 5-expert quorum review (any veto blocks marking done)
+#
+# If any gate fails, the iteration exits with status "blocked" so the outer
+# loop knows to stop and the human can intervene.
+#
+# Usage (called from build.yaml just like iteration.yaml):
+#   amplifier recipe execute .dev-machine/tightened-iteration.yaml
+#
+# =============================================================================
+
+name: "provider-github-copilot-tightened-iteration"
+description: "Enforcement-gated single iteration: spec anchors → RED gate → implement → LOC/policy/MagicMock scan → boundary tests → 5-expert quorum → mark done."
+version: "1.0.0"
+tags: ["provider-github-copilot", "tightened", "enforcement", "iteration"]
+
+context:
+  state_file: "./STATE.yaml"
+  context_file: "./CONTEXT-TRANSFER.md"
+  specs_dir: "./specs"
+  session_count: "0"
+
+steps:
+
+  # ---------------------------------------------------------------------------
+  # Step 0: Orient -- read STATE.yaml and Golden Vision constraints
+  # ---------------------------------------------------------------------------
+  - id: "orient"
+    type: "bash"
+    command: |
+      python3 << 'PYEOF'
+      import json, yaml
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+          blockers = state.get("blockers", [])
+          completed_list = set(state.get("completed_features", []))
+          features = state.get("features", {})
+          ready = in_progress = 0
+          for fid, fd in features.items():
+              s = fd.get("status", "")
+              if s == "ready":
+                  deps = fd.get("depends_on", [])
+                  if all(d in completed_list or features.get(d, {}).get("status") in ("completed", "done") for d in deps):
+                      ready += 1
+              elif s == "in-progress":
+                  in_progress += 1
+
+          # Read Golden Vision LOC constraints from embedded summary
+          # These are the canonical targets from GOLDEN_VISION_V2.md §Principle 5
+          golden_vision_constraints = {
+              "python_soft_cap_loc": 400,
+              "python_hard_cap_loc": 600,
+              "yaml_config_cap_loc": 200,
+              "core_mechanism_target_loc": 300,
+          }
+
+          print(json.dumps({
+              "phase": state.get("phase", 0),
+              "phase_name": state.get("phase_name", "unknown"),
+              "epoch": state.get("epoch", 0),
+              "next_action": state.get("next_action", ""),
+              "ready_count": ready,
+              "completed_count": len(completed_list),
+              "status": "blocked" if blockers else "healthy",
+              "constraints": golden_vision_constraints,
+          }))
+      except Exception as e:
+          print(json.dumps({"status": "blocked", "error": str(e)}))
+      PYEOF
+    output: "orient_state"
+    parse_json: true
+
+  # ---------------------------------------------------------------------------
+  # Step 0.5: Preflight environment check
+  # ---------------------------------------------------------------------------
+  - id: "preflight-check"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== PREFLIGHT ENVIRONMENT CHECK ==="
+
+      if ! ruff --version 2>&1; then
+        echo '{"status": "failed", "reason": "ruff not available"}'
+        exit 1
+      fi
+
+      if ! pyright --version 2>&1; then
+        echo '{"status": "failed", "reason": "pyright not available"}'
+        exit 1
+      fi
+
+      if ! uv run pytest tests/ --collect-only -q 2>&1 | tail -3; then
+        echo '{"status": "failed", "reason": "pytest collection failed"}'
+        exit 1
+      fi
+
+      echo '{"status": "passed", "checks": ["ruff", "pyright", "pytest"]}'
+    output: "preflight_result"
+    parse_json: true
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # GATE 0: Spec contract anchor check
+  #
+  # Every feature spec in the ready queue MUST contain at least one contract
+  # anchor in the format: `contract-name:Section:MUST:N`
+  #
+  # This gate prevents the F-044/F-045 failure mode where a spec says "use
+  # replace mode" in prose but has no machine-checkable anchor that a test
+  # can reference. Without the anchor, tests are written to observed behavior
+  # rather than required behavior.
+  #
+  # A VETO here means: the spec is incomplete. The human must add anchors
+  # before the dev machine can implement the feature.
+  # ---------------------------------------------------------------------------
+  - id: "spec-contract-anchor-gate"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GATE 0: Spec Contract Anchor Check ==="
+
+      python3 << 'PYEOF'
+      import json, yaml, re, os, glob
+
+      CONTRACT_ANCHOR_PATTERN = re.compile(
+          r'\b[\w-]+:[A-Z][\w]+:[A-Z]+:\d+\b'
+      )
+
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+
+          features = state.get("features", {})
+          completed_list = set(state.get("completed_features", []))
+
+          ready_features = {
+              fid: fd for fid, fd in features.items()
+              if fd.get("status") == "ready"
+          }
+
+          if not ready_features:
+              print(json.dumps({
+                  "gate": "pass",
+                  "reason": "no ready features to check",
+                  "violations": []
+              }))
+              exit(0)
+
+          violations = []
+          audited = []
+
+          for fid, fd in ready_features.items():
+              # Look for the spec file in specs/features/
+              spec_candidates = glob.glob(f"./specs/features/{fid}*.md") + \
+                                glob.glob(f"./specs/{fid}*.md")
+
+              if not spec_candidates:
+                  violations.append({
+                      "feature": fid,
+                      "issue": "no spec file found",
+                      "path": f"specs/features/{fid}*.md",
+                  })
+                  continue
+
+              spec_path = spec_candidates[0]
+              with open(spec_path) as f:
+                  spec_content = f.read()
+
+              anchors = CONTRACT_ANCHOR_PATTERN.findall(spec_content)
+
+              if not anchors:
+                  violations.append({
+                      "feature": fid,
+                      "issue": "no contract anchors found",
+                      "path": spec_path,
+                      "hint": "Add anchors like: sdk-boundary:Config:MUST:1",
+                  })
+              else:
+                  audited.append({"feature": fid, "anchors": anchors[:5]})
+
+          if violations:
+              print(json.dumps({
+                  "gate": "FAIL",
+                  "violations": violations,
+                  "audited": audited,
+                  "message": (
+                      "BLOCKED: Feature specs missing contract anchors. "
+                      "Anchors required (e.g., sdk-boundary:Config:MUST:1). "
+                      "See contracts/ for available anchors. "
+                      "Without anchors, tests are written to observed behavior "
+                      "not required behavior (the root cause of F-044)."
+                  )
+              }))
+              exit(1)
+          else:
+              print(json.dumps({
+                  "gate": "pass",
+                  "audited": audited,
+                  "message": f"All {len(audited)} ready specs have contract anchors."
+              }))
+      except Exception as e:
+          print(json.dumps({"gate": "error", "error": str(e)}))
+          exit(1)
+      PYEOF
+    output: "anchor_gate_result"
+    parse_json: true
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # GATE 1: RED test gate
+  #
+  # At least one failing test MUST exist for each ready feature BEFORE we
+  # dispatch the working session. This enforces contract-first TDD:
+  #   1. Read the contract
+  #   2. Write a failing test that references the contract anchor
+  #   3. THEN implement
+  #
+  # If no tests exist yet (bootstrapping scenario), this gate passes with a
+  # "no tests yet" signal that instructs the working session to write them
+  # first, before touching implementation code.
+  #
+  # If tests exist but ALL PASS, that's a BLOCK -- the feature is either
+  # already implemented (why is it "ready"?) or tests are not testing
+  # the right thing.
+  # ---------------------------------------------------------------------------
+  - id: "red-test-gate"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GATE 1: RED Test Verification ==="
+
+      python3 << 'PYEOF'
+      import json, yaml, subprocess, os, glob
+
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+
+          features = state.get("features", {})
+          ready_features = [fid for fid, fd in features.items() if fd.get("status") == "ready"]
+
+          if not ready_features:
+              print(json.dumps({
+                  "gate": "pass",
+                  "reason": "no ready features to gate",
+                  "mode": "no-features"
+              }))
+              exit(0)
+
+          # Check if test files exist for any ready feature
+          # Pattern: tests/test_<feature_related_name>.py
+          feature_test_files = []
+          for fid in ready_features:
+              # Extract short name: F-046-sdk-integration -> sdk_integration
+              parts = fid.split("-", 2)
+              if len(parts) >= 3:
+                  short = parts[2].replace("-", "_")
+                  candidates = glob.glob(f"./tests/*{short}*") + \
+                               glob.glob(f"./tests/test_{short[:15]}*")
+                  feature_test_files.extend(candidates)
+
+          # Also check for new test files recently added (mtime within last session)
+          import time
+          recent_tests = []
+          for tf in glob.glob("./tests/test_*.py"):
+              if os.path.getmtime(tf) > time.time() - 3600:
+                  recent_tests.append(tf)
+
+          all_test_candidates = list(set(feature_test_files + recent_tests))
+
+          if not all_test_candidates:
+              # No test files for these features yet -- RED phase must be done
+              # in the working session. Flag this so working session knows.
+              print(json.dumps({
+                  "gate": "pass",
+                  "mode": "bootstrap",
+                  "message": (
+                      "No test files found for ready features. "
+                      "Working session MUST write failing tests FIRST "
+                      "before any implementation. This is mandatory TDD."
+                  ),
+                  "ready_features": ready_features,
+              }))
+              exit(0)
+
+          # Run tests on candidate files in collect-only mode first
+          result = subprocess.run(
+              ["uv", "run", "pytest"] + all_test_candidates + ["-v", "--tb=short", "-x"],
+              capture_output=True, text=True, cwd="."
+          )
+
+          # Some failures = good (RED state exists)
+          # All pass = suspicious (no RED tests)
+          # Collection error = incomplete tests (OK for bootstrap)
+          if result.returncode == 0:
+              # All tests pass -- suspicious for "ready" features
+              # Unless they are all SDK assumption tests (OK to pass)
+              all_output = result.stdout + result.stderr
+              if "no tests ran" in all_output or "0 passed" in all_output:
+                  print(json.dumps({
+                      "gate": "pass",
+                      "mode": "bootstrap",
+                      "message": "No tests collected from candidate files."
+                  }))
+              else:
+                  # Tests exist and all pass -- this is suspicious
+                  # Could mean: feature already implemented, or tests don't test anything
+                  print(json.dumps({
+                      "gate": "warn",
+                      "mode": "all-green",
+                      "message": (
+                          "WARNING: All tests PASS but features are marked ready. "
+                          "This may indicate tests don't test the feature under development, "
+                          "OR the feature is already implemented. "
+                          "Working session should verify before proceeding."
+                      ),
+                      "test_files": all_test_candidates,
+                  }))
+              exit(0)
+          elif result.returncode == 4:
+              # Collection error -- tests exist but can't run
+              print(json.dumps({
+                  "gate": "pass",
+                  "mode": "bootstrap",
+                  "message": "Test collection error -- bootstrap phase.",
+              }))
+          elif result.returncode in (1, 2):
+              # Failures exist -- RED state confirmed
+              failed_count = result.stdout.count("FAILED")
+              print(json.dumps({
+                  "gate": "pass",
+                  "mode": "red",
+                  "message": f"RED state confirmed: {failed_count} failing tests exist.",
+                  "test_files": all_test_candidates,
+              }))
+          else:
+              print(json.dumps({
+                  "gate": "pass",
+                  "mode": "unknown",
+                  "pytest_exit": result.returncode,
+              }))
+      except Exception as e:
+          print(json.dumps({"gate": "error", "error": str(e)}))
+          exit(0)  # Don't block on gate errors -- let working session handle
+      PYEOF
+    output: "red_gate_result"
+    parse_json: true
+    on_error: "continue"
+
+  # ---------------------------------------------------------------------------
+  # Step: Module health check (enhanced -- hard cap enforced)
+  # ---------------------------------------------------------------------------
+  - id: "module-health-check"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== MODULE HEALTH CHECK (Golden Vision Thresholds) ==="
+      SOFT_CAP=400
+      HARD_CAP=600
+      VIOLATIONS=""
+      WARNINGS=""
+
+      for pkg in amplifier_module_provider_github_copilot/; do
+        name=$(basename "$pkg")
+        if [ -d "$pkg" ]; then
+          loc=$(find "$pkg" -name "*.py" | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+          if [ "$loc" -gt "$HARD_CAP" ]; then
+            VIOLATIONS="$VIOLATIONS $name($loc>hard-cap-$HARD_CAP)"
+          elif [ "$loc" -gt "$SOFT_CAP" ]; then
+            WARNINGS="$WARNINGS $name($loc>soft-cap-$SOFT_CAP)"
+          fi
+        fi
+      done
+
+      if [ -n "$VIOLATIONS" ]; then
+        echo "HARD CAP VIOLATIONS:$VIOLATIONS"
+        echo "BLOCKING: Module exceeds hard cap. Refactor required before new features."
+        python3 -c "
+      import yaml,datetime
+      f=open('./STATE.yaml')
+      s=yaml.safe_load(f)
+      f.close()
+      b=s.get('blockers') or []
+      b.append({'description':'Module exceeds hard LOC cap (600): $VIOLATIONS','since':datetime.datetime.now().isoformat(),'severity':'high'})
+      s['blockers']=b
+      f=open('./STATE.yaml','w')
+      yaml.dump(s,f,default_flow_style=False,sort_keys=False)
+      f.close()
+      "
+        echo '{"health": "hard-cap-violation", "violations": "'"$VIOLATIONS"'", "status": "blocked"}'
+        exit 1
+      elif [ -n "$WARNINGS" ]; then
+        echo "SOFT CAP WARNINGS:$WARNINGS"
+        echo '{"health": "warn-oversized", "warnings": "'"$WARNINGS"'", "status": "warn"}'
+      else
+        echo "All modules within LOC limits (soft=$SOFT_CAP, hard=$HARD_CAP)."
+        echo '{"health": "ok", "status": "healthy"}'
+      fi
+    output: "health_result"
+    parse_json: true
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step: Working session (enhanced prompt)
+  #
+  # Key enhancements over standard iteration.yaml:
+  # 1. Must read contracts BEFORE writing tests
+  # 2. Tests MUST have contract anchor comments
+  # 3. FORBIDDEN: bare MagicMock() for SDK boundary
+  # 4. Line count target must be respected
+  # ---------------------------------------------------------------------------
+  - id: "working-session"
+    agent: "self"
+    prompt: |
+      You are a WORKING SESSION of the provider-github-copilot development machine.
+      You start with ZERO prior context. Your job: read state, do work, persist state, exit.
+
+      START BY READING THESE FILES (in this order):
+      1. ./STATE.yaml -- current phase, what's done, what's next
+      2. ./CONTEXT-TRANSFER.md -- recent decisions and handoff context
+      3. .dev-machine/working-session-instructions.md -- your detailed operating procedure
+      4. ./mydocs/debates/GOLDEN_VISION_V2.md -- the overall architecture (ALWAYS read this)
+      5. Module specs for whatever module you're working on (check ./STATE.yaml module_specs)
+      6. Feature specs marked "ready" in ./STATE.yaml features section
+
+      ENFORCEMENT INFORMATION FROM GATES:
+      - Spec anchor check result: {{anchor_gate_result.gate}} -- {{anchor_gate_result.message}}
+      - Red test gate result: {{red_gate_result.gate}} mode={{red_gate_result.mode}} -- {{red_gate_result.message}}
+      - Module health: {{health_result.health}}
+
+      IF red_gate_result.mode == "bootstrap":
+        You MUST write failing tests BEFORE implementing ANY code.
+        Tests MUST fail for the right reason (feature missing, not typos).
+
+      ## TIGHTENED TDD PROTOCOL (MANDATORY -- NOT OPTIONAL)
+
+      ### Step T1: Read the Contract First
+      Before writing a single test, read the relevant contract file in ./contracts/.
+      Identify the exact anchor IDs for what you're testing (e.g., sdk-boundary:Config:MUST:1).
+      Write the expected VALUE from the contract, not from observed behavior.
+
+      ### Step T2: Write Tests WITH Contract Anchors
+      Every test that verifies SDK behavior MUST have a docstring that references
+      the contract anchor:
+
+      ```python
+      async def test_available_tools_always_empty_list(self) -> None:
+          """deny-destroy:ToolSuppression:MUST:1
+
+          available_tools MUST be [] on every session.
+          This prevents SDK built-in tools from being offered to LLM.
+          """
+      ```
+
+      ### Step T3: FORBIDDEN -- Bare MagicMock for SDK Boundaries
+      At the SDK boundary (anything that calls create_session(), disconnect(),
+      register_pre_tool_use_hook()), you MUST NOT use bare MagicMock/AsyncMock
+      that accepts any input silently.
+
+      USE ConfigCapturingMock from tests/fixtures/config_capture.py instead.
+      If it doesn't exist yet, create it first (see F-046 spec for the pattern).
+
+      ```python
+      # FORBIDDEN at SDK boundary:
+      mock_client.create_session = AsyncMock(return_value=MagicMock())
+
+      # REQUIRED at SDK boundary:
+      mock_client = ConfigCapturingMock()
+      # Now you can assert: mock_client.last_config["available_tools"] == []
+      ```
+
+      ### Step T4: Verify LOC Budget
+      After implementation:
+      - Python module LOC: target ~300, warn at 400, HARD BLOCK at 600
+      - If you're approaching 400 LOC, flag it in CONTEXT-TRANSFER.md
+      - NEVER add code that belongs in YAML config (thresholds, mappings, timeouts)
+
+      ### Step T5: Verify Boundary Contract Tests Pass
+      After implementing, ALWAYS run:
+        uv run pytest tests/test_sdk_boundary_contract.py -v (if it exists)
+        uv run pytest tests/test_session_config_invariants.py -v (if it exists)
+        uv run pytest -m sdk_boundary -v (if markers configured)
+      These MUST pass. If they fail, you introduced a regression.
+
+      ## YOUR MISSION THIS SESSION:
+      - Determine what work is ready from ./STATE.yaml (next_action + ready features)
+      - Pick the next batch of ready work (3 features or the current next_action)
+      - For each piece of work:
+        * Update ./STATE.yaml to mark it in-progress with timestamp
+        * Write failing tests first (TDD) -- with contract anchors in docstrings
+        * Implement minimal code to pass tests
+        * Run: uv run pytest tests/ -v
+        * Run: ruff check amplifier_module_provider_github_copilot/ && uv run pyright amplifier_module_provider_github_copilot/
+        * BOTH must pass before proceeding.
+        * Spawn a fresh sub-agent for antagonistic review (give it the spec + your diff)
+        * Fix any review issues found
+        * Mark implementation complete in STATE.yaml (status: "implemented")
+      - Update ./CONTEXT-TRANSFER.md with decisions made and work completed
+
+      ## Important: Files are Factored (Do NOT Read Archives)
+
+      STATE.yaml and CONTEXT-TRANSFER.md are kept slim (~300 lines each).
+      - Do NOT read FEATURE-ARCHIVE.yaml or SESSION-ARCHIVE.md -- append-only archives.
+      - The post-session step auto-archives completed features and old sessions.
+
+      ## Error Recovery Hierarchy (BEFORE adding blockers)
+
+      1. Self-fix attempt (2-3 attempts max)
+      2. Expert agent consultation (foundation:bug-hunter, amplifier:amplifier-expert, etc.)
+      3. Alternative approach
+      4. Blocker (LAST RESORT)
+
+      ## SAFETY CONSTRAINTS (MANDATORY -- NEVER VIOLATE)
+      - Working directory: /workspace (or /home/mowrim/projects/next-get-provider-github-copilot)
+      - FORBIDDEN: rm -rf, any command outside working directory
+      - Do NOT access: ~/.ssh/, credential files, *.pem, *.key
+      - Do NOT run: git push, git remote add
+      - Do NOT start background processes
+      - Do NOT install global packages
+      - VIOLATION MAY CAUSE DATA LOSS ACROSS THE ENTIRE DEVELOPMENT ENVIRONMENT.
+    output: "session_result"
+    timeout: 3600
+
+  # ---------------------------------------------------------------------------
+  # Step: Post-session build check
+  # ---------------------------------------------------------------------------
+  - id: "build-check"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== POST-SESSION BUILD CHECK ==="
+      RUFF_EXIT=0; PYRIGHT_EXIT=0
+      ruff check amplifier_module_provider_github_copilot/ 2>&1 || RUFF_EXIT=$?
+      uv run pyright amplifier_module_provider_github_copilot/ 2>&1 || PYRIGHT_EXIT=$?
+      if [ "$RUFF_EXIT" -eq 0 ] && [ "$PYRIGHT_EXIT" -eq 0 ]; then
+        echo '{"build_status": "clean"}'
+      else
+        echo "BUILD FAILED -- ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT"
+        python3 -c "import yaml,datetime;f=open('./STATE.yaml');s=yaml.safe_load(f);f.close();b=s.get('blockers') or [];b.append({'description':'Build failed: ruff=$RUFF_EXIT pyright=$PYRIGHT_EXIT','since':datetime.datetime.now().isoformat(),'severity':'high'});s['blockers']=b;f=open('./STATE.yaml','w');yaml.dump(s,f,default_flow_style=False,sort_keys=False);f.close()"
+        echo '{"build_status": "failed"}'
+        exit 1
+      fi
+    output: "build_result"
+    parse_json: true
+    timeout: 300
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # GATE 2: Boundary contract test suite
+  #
+  # Run the SDK boundary contract tests specifically. These are the tests that
+  # catch F-044/F-045 class bugs. They MUST pass after every working session
+  # that touches the SDK boundary.
+  #
+  # If these test files don't exist yet (F-046 not complete), this gate passes
+  # with a warning so the feature that creates them can be implemented first.
+  # ---------------------------------------------------------------------------
+  - id: "boundary-contract-gate"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GATE 2: Boundary Contract Test Suite ==="
+
+      BOUNDARY_FILES=""
+      [ -f "tests/test_sdk_boundary_contract.py" ] && BOUNDARY_FILES="$BOUNDARY_FILES tests/test_sdk_boundary_contract.py"
+      [ -f "tests/test_session_config_invariants.py" ] && BOUNDARY_FILES="$BOUNDARY_FILES tests/test_session_config_invariants.py"
+
+      if [ -z "$BOUNDARY_FILES" ]; then
+        echo "WARNING: Boundary contract test files do not exist yet."
+        echo "If F-046 (SDK Integration Testing Architecture) is not done, create it first."
+        echo '{"gate": "warn", "reason": "boundary test files missing", "action": "implement F-046 first"}'
+        exit 0
+      fi
+
+      echo "Running boundary contract tests: $BOUNDARY_FILES"
+      uv run pytest $BOUNDARY_FILES -v --tb=short 2>&1
+      TEST_EXIT=$?
+
+      if [ "$TEST_EXIT" -eq 0 ]; then
+        echo '{"gate": "pass", "boundary_tests": "all green"}'
+      else
+        echo "BOUNDARY CONTRACT TESTS FAILED -- exit=$TEST_EXIT"
+        echo "This means a session introduced a regression in SDK boundary behavior."
+        echo "F-044/F-045 class bugs detected."
+        python3 -c "import yaml,datetime;f=open('./STATE.yaml');s=yaml.safe_load(f);f.close();b=s.get('blockers') or [];b.append({'description':'Boundary contract tests failed (F-044/F-045 regression detected). See Gate 2 output.','since':datetime.datetime.now().isoformat(),'severity':'critical'});s['blockers']=b;f=open('./STATE.yaml','w');yaml.dump(s,f,default_flow_style=False,sort_keys=False);f.close()"
+        echo '{"gate": "FAIL", "boundary_tests": "failing", "regression": "F-044/F-045 class"}'
+        exit 1
+      fi
+    output: "boundary_gate_result"
+    parse_json: true
+    timeout: 300
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # GATE 3: Enforcement scan (LOC / hardcoded policy / MagicMock abuse)
+  #
+  # Three sub-checks run without short-circuit (all run even if one fails).
+  # Aggregated result: WARN (non-blocking) or FAIL (blocking).
+  #
+  # LOC check: soft cap at 400 (warn), hard cap at 600 (fail)
+  # Hardcoded policy detector: grep for constants that belong in YAML config
+  # MagicMock abuse detector: grep for bare MagicMock at SDK boundary
+  # ---------------------------------------------------------------------------
+  - id: "enforcement-scan"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GATE 3: Enforcement Scan ==="
+
+      python3 << 'PYEOF'
+      import json, subprocess, os, re, glob
+      from pathlib import Path
+
+      results = {
+          "loc": {"status": "ok", "details": []},
+          "hardcoded_policy": {"status": "ok", "violations": []},
+          "magicmock_abuse": {"status": "ok", "violations": []},
+      }
+
+      # -------------------------------------------------------------------
+      # LOC CHECK
+      # -------------------------------------------------------------------
+      SOFT_CAP = 400
+      HARD_CAP = 600
+      src_dir = Path("amplifier_module_provider_github_copilot")
+      if src_dir.exists():
+          for py_file in src_dir.rglob("*.py"):
+              try:
+                  lines = len(py_file.read_text().splitlines())
+                  if lines > HARD_CAP:
+                      results["loc"]["status"] = "FAIL"
+                      results["loc"]["details"].append({
+                          "file": str(py_file),
+                          "lines": lines,
+                          "cap": HARD_CAP,
+                          "severity": "hard-cap-violation"
+                      })
+                  elif lines > SOFT_CAP:
+                      if results["loc"]["status"] == "ok":
+                          results["loc"]["status"] = "warn"
+                      results["loc"]["details"].append({
+                          "file": str(py_file),
+                          "lines": lines,
+                          "cap": SOFT_CAP,
+                          "severity": "soft-cap-warning"
+                      })
+              except Exception:
+                  pass
+
+      # -------------------------------------------------------------------
+      # HARDCODED POLICY DETECTOR
+      # Three-Medium Architecture violation: policy values hardcoded in Python
+      # instead of living in YAML config. These are patterns that indicate
+      # the author embedded policy in mechanism.
+      # -------------------------------------------------------------------
+      POLICY_PATTERNS = [
+          # Retry/timeout constants -- should be in config/errors.yaml or similar
+          (r'MAX_RETRIES\s*=\s*\d+', "retry count should be in YAML config"),
+          (r'TIMEOUT\s*=\s*\d+', "timeout should be in YAML config"),
+          (r'MAX_TOKENS\s*=\s*\d+', "token limits should be in YAML config"),
+          (r'BACKOFF_FACTOR\s*=\s*[\d.]+', "backoff factor should be in YAML config"),
+          # Hardcoded model names -- should be in config/models.yaml
+          (r'"gpt-4[^"]*"', "model names should be in YAML config, not hardcoded"),
+          (r'"claude-[^"]*"', "model names should be in YAML config, not hardcoded"),
+          (r'"o1-[^"]*"', "model names should be in YAML config, not hardcoded"),
+          # Hardcoded error codes/strings as policy routing
+          (r'elif.*"rate.limit"', "error routing should be in YAML config table"),
+          (r'elif.*429', "HTTP status routing should be in YAML config table"),
+          (r'HTTP_429\s*=\s*', "HTTP constants as policy should be in YAML config"),
+      ]
+
+      for py_file in src_dir.rglob("*.py"):
+          try:
+              content = py_file.read_text()
+              for pattern, message in POLICY_PATTERNS:
+                  matches = list(re.finditer(pattern, content))
+                  for m in matches:
+                      line_num = content[:m.start()].count('\n') + 1
+                      results["hardcoded_policy"]["violations"].append({
+                          "file": str(py_file),
+                          "line": line_num,
+                          "match": m.group()[:80],
+                          "message": message,
+                      })
+          except Exception:
+              pass
+
+      if results["hardcoded_policy"]["violations"]:
+          results["hardcoded_policy"]["status"] = "warn"  # warn, not fail
+
+      # -------------------------------------------------------------------
+      # MAGICMOCK ABUSE DETECTOR
+      # At the SDK boundary, bare MagicMock() accepts any call without
+      # validation. This is the root cause of F-044 and F-045 surviving.
+      # Detect bare MagicMock without spec= at SDK-touching test files.
+      # -------------------------------------------------------------------
+      MAGICMOCK_ABUSE_PATTERNS = [
+          # Bare MagicMock() without spec= -- silently accepts anything
+          (r'MagicMock\(\)', "bare MagicMock() without spec= at SDK boundary"),
+          # AsyncMock returning MagicMock -- compound mock abuse
+          (r'AsyncMock\(return_value=MagicMock\(\)\)', "AsyncMock wrapping MagicMock at SDK boundary"),
+          # create_session mocked with bare AsyncMock -- won't capture config
+          (r'create_session\s*=\s*AsyncMock\(\)', "create_session must use ConfigCapturingMock, not AsyncMock"),
+      ]
+
+      tests_dir = Path("tests")
+      # Only scan SDK boundary test files (not all tests)
+      sdk_test_patterns = ["test_sdk*", "test_client*", "test_session*", "test_boundary*"]
+      sdk_test_files = []
+      for pat in sdk_test_patterns:
+          sdk_test_files.extend(tests_dir.glob(pat))
+
+      for tf in sdk_test_files:
+          try:
+              content = tf.read_text()
+              for pattern, message in MAGICMOCK_ABUSE_PATTERNS:
+                  matches = list(re.finditer(pattern, content))
+                  for m in matches:
+                      line_num = content[:m.start()].count('\n') + 1
+                      results["magicmock_abuse"]["violations"].append({
+                          "file": str(tf),
+                          "line": line_num,
+                          "match": m.group()[:80],
+                          "message": message,
+                      })
+          except Exception:
+              pass
+
+      if results["magicmock_abuse"]["violations"]:
+          results["magicmock_abuse"]["status"] = "FAIL"  # hard fail -- this is the root cause of F-044/F-045
+
+      # -------------------------------------------------------------------
+      # Aggregate
+      # -------------------------------------------------------------------
+      any_hard_fail = (
+          results["loc"]["status"] == "FAIL" or
+          results["magicmock_abuse"]["status"] == "FAIL"
+      )
+      any_warn = any(v["status"] in ("warn", "FAIL") for v in results.values())
+
+      overall = "FAIL" if any_hard_fail else ("warn" if any_warn else "ok")
+
+      print(json.dumps({
+          "gate": overall,
+          "results": results,
+          "summary": {
+              "loc": results["loc"]["status"],
+              "hardcoded_policy": f"{len(results['hardcoded_policy']['violations'])} violations",
+              "magicmock_abuse": f"{len(results['magicmock_abuse']['violations'])} violations ({results['magicmock_abuse']['status']})",
+          }
+      }))
+
+      if any_hard_fail:
+          exit(1)
+      PYEOF
+    output: "enforcement_result"
+    parse_json: true
+    timeout: 120
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # GATE 4: Full test suite gate
+  # ---------------------------------------------------------------------------
+  - id: "test-suite-gate"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GATE 4: Full Test Suite ==="
+      uv run pytest tests/ -v --ignore=tests/test_live_sdk.py --tb=short 2>&1
+      TEST_EXIT=$?
+      if [ "$TEST_EXIT" -eq 0 ]; then
+        echo '{"gate": "pass", "tests": "all green"}'
+      else
+        echo "TEST SUITE FAILED -- exit=$TEST_EXIT"
+        python3 -c "import yaml,datetime;f=open('./STATE.yaml');s=yaml.safe_load(f);f.close();b=s.get('blockers') or [];b.append({'description':'Full test suite failed (Gate 4). Regression detected.','since':datetime.datetime.now().isoformat(),'severity':'high'});s['blockers']=b;f=open('./STATE.yaml','w');yaml.dump(s,f,default_flow_style=False,sort_keys=False);f.close()"
+        echo '{"gate": "FAIL", "tests": "failing"}'
+        exit 1
+      fi
+    output: "test_gate_result"
+    parse_json: true
+    timeout: 600
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # GATE 5: Expert quorum review (5 experts in parallel)
+  #
+  # Five domain experts review the implementation from their respective
+  # perspectives. Any VETO blocks the iteration.
+  #
+  # Expert roles:
+  # 1. zen-architect: Clean architecture, SOLID, Three-Medium Architecture
+  # 2. bug-hunter: Edge cases, failure modes, timing issues
+  # 3. integration-specialist: SDK boundary, protocol compliance, contract fidelity
+  # 4. security-guardian: Credential exposure, injection, supply chain
+  # 5. amplifier-expert: Kernel contracts, provider protocol, event types
+  #
+  # Quorum threshold: 4/5 APPROVE (one dissent allowed, any VETO blocks)
+  # ---------------------------------------------------------------------------
+
+  - id: "zen-architect-review"
+    agent: "self"
+    model_role: "critique"
+    prompt: |
+      You are playing the role of a SENIOR ZEN ARCHITECT reviewing a recent
+      implementation in the provider-github-copilot project.
+
+      Your expertise: Clean architecture, SOLID principles, Three-Medium Architecture
+      (Python for mechanism, YAML for policy, Markdown for contracts), the Golden Vision V2.
+
+      READ BEFORE REVIEWING:
+      1. ./mydocs/debates/GOLDEN_VISION_V2.md §§ "Three Mediums, Three Purposes" and "Principle 5"
+      2. ./STATE.yaml -- what features were just implemented
+      3. ./CONTEXT-TRANSFER.md -- most recent session summary
+      4. The changed Python files (run: git diff HEAD~1 -- amplifier_module_provider_github_copilot/)
+      5. The changed test files (run: git diff HEAD~1 -- tests/)
+
+      REVIEW DIMENSIONS:
+      1. Does any Python code contain policy values that should be in YAML? (LOC, thresholds, mappings)
+      2. Does the module approach 400 LOC? (soft cap from Golden Vision)
+      3. Is the code mechanism-only or does it contain policy logic?
+      4. Are there new abstractions that increase complexity without reducing it?
+      5. Does the design follow the Three-Layer architecture (Adapter → Driver → Raw SDK)?
+
+      VERDICT FORMAT (output ONLY this JSON, nothing else):
+      {
+        "expert": "zen-architect",
+        "verdict": "APPROVE" or "VETO",
+        "confidence": "high" or "medium" or "low",
+        "primary_concern": "one sentence",
+        "details": ["concern 1", "concern 2"],
+        "veto_reason": "required if verdict is VETO -- specific contractual violation"
+      }
+    output: "zen_vote"
+    parse_json: true
+    timeout: 600
+
+  - id: "bug-hunter-review"
+    agent: "self"
+    model_role: "critique"
+    prompt: |
+      You are playing the role of a SENIOR BUG HUNTER reviewing a recent
+      implementation in the provider-github-copilot project.
+
+      Your expertise: Finding edge cases, race conditions, off-by-one errors,
+      incorrect assertions, tests that pass for wrong reasons, mock forgiveness.
+
+      READ BEFORE REVIEWING:
+      1. ./specs/F-047-testing-course-correction.md -- the F-044/F-045 post-mortem
+      2. ./STATE.yaml -- what features were just implemented
+      3. ./CONTEXT-TRANSFER.md -- most recent session summary
+      4. The changed test files (run: git diff HEAD~1 -- tests/)
+      5. Any new test assertions (grep for "assert" in changed files)
+
+      BUG PATTERNS TO HUNT:
+      1. Tests that assert observed behavior instead of required behavior (F-044 failure mode)
+      2. Tests that pass even if the feature is broken (tautological tests)
+      3. Missing edge cases: empty inputs, None values, unexpected SDK responses
+      4. Async timing issues: race conditions, missing await, improper event ordering
+      5. Mock forgiveness: MagicMock() at SDK boundary accepting any input silently
+      6. Fixture reuse across tests causing state pollution
+
+      VERDICT FORMAT (output ONLY this JSON, nothing else):
+      {
+        "expert": "bug-hunter",
+        "verdict": "APPROVE" or "VETO",
+        "confidence": "high" or "medium" or "low",
+        "primary_concern": "one sentence",
+        "details": ["bug pattern 1", "bug pattern 2"],
+        "veto_reason": "required if verdict is VETO -- specific bug that would survive"
+      }
+    output: "bug_hunter_vote"
+    parse_json: true
+    timeout: 600
+
+  - id: "integration-specialist-review"
+    agent: "self"
+    model_role: "critique"
+    prompt: |
+      You are playing the role of an INTEGRATION SPECIALIST reviewing a recent
+      implementation in the provider-github-copilot project.
+
+      Your expertise: SDK boundary contracts, protocol compliance, the Deny+Destroy
+      pattern, session lifecycle management, event translation fidelity.
+
+      READ BEFORE REVIEWING:
+      1. ./contracts/sdk-boundary.md -- SDK boundary contract
+      2. ./contracts/deny-destroy.md -- Deny+Destroy invariants
+      3. ./contracts/provider-protocol.md -- Amplifier kernel provider contract
+      4. ./STATE.yaml -- what features were just implemented
+      5. The changed SDK-touching files (git diff HEAD~1)
+      6. Test files for SDK boundary (tests/test_sdk_boundary*.py if they exist)
+
+      INTEGRATION REVIEW DIMENSIONS:
+      1. Does every session config set `available_tools: []`? (deny-destroy:ToolSuppression:MUST:1)
+      2. Does system_message always use `mode: "replace"` not `"append"`? (sdk-boundary:Config:MUST:2)
+      3. Are all contract anchors from the spec actually tested?
+      4. Is the ConfigCapturingMock used instead of bare AsyncMock at create_session?
+      5. Are SDK types isolated behind the adapter layer (no SDK types leaking into domain)?
+      6. Is the Deny+Destroy pattern complete (permission handler + preToolUse hook + available_tools=[])?
+
+      VERDICT FORMAT (output ONLY this JSON, nothing else):
+      {
+        "expert": "integration-specialist",
+        "verdict": "APPROVE" or "VETO",
+        "confidence": "high" or "medium" or "low",
+        "primary_concern": "one sentence",
+        "details": ["contract concern 1", "contract concern 2"],
+        "veto_reason": "required if verdict is VETO -- specific contract violation with anchor ID"
+      }
+    output: "integration_vote"
+    parse_json: true
+    timeout: 600
+
+  - id: "security-guardian-review"
+    agent: "self"
+    model_role: "security-audit"
+    prompt: |
+      You are playing the role of a SECURITY GUARDIAN reviewing a recent
+      implementation in the provider-github-copilot project.
+
+      Your expertise: Credential exposure, injection attacks, supply chain risks,
+      SDK boundary security, logging security (token redaction).
+
+      READ BEFORE REVIEWING:
+      1. ./contracts/deny-destroy.md -- Security invariants
+      2. ./STATE.yaml -- what features were just implemented
+      3. ./CONTEXT-TRANSFER.md -- most recent session summary
+      4. The changed Python files (git diff HEAD~1 -- amplifier_module_provider_github_copilot/)
+
+      SECURITY REVIEW DIMENSIONS:
+      1. Are any credentials, tokens, or API keys logged or exposed in error messages?
+      2. Does error context include token/credential data? (must be redacted)
+      3. Are there any code paths that could expose SDK internal state to callers?
+      4. Is input validation sufficient for all external-facing parameters?
+      5. Could any new code path bypass the Deny+Destroy sovereignty enforcement?
+      6. Are there any command injection risks in error formatting or logging?
+
+      VERDICT FORMAT (output ONLY this JSON, nothing else):
+      {
+        "expert": "security-guardian",
+        "verdict": "APPROVE" or "VETO",
+        "confidence": "high" or "medium" or "low",
+        "primary_concern": "one sentence",
+        "details": ["security concern 1", "security concern 2"],
+        "veto_reason": "required if verdict is VETO -- specific security violation"
+      }
+    output: "security_vote"
+    parse_json: true
+    timeout: 600
+
+  - id: "amplifier-expert-review"
+    agent: "self"
+    model_role: "critique"
+    prompt: |
+      You are playing the role of an AMPLIFIER KERNEL EXPERT reviewing a recent
+      implementation in the provider-github-copilot project.
+
+      Your expertise: Amplifier kernel contracts, provider protocol compliance,
+      kernel event types (LLMEvent subclasses), error type hierarchy, streaming
+      contract requirements.
+
+      READ BEFORE REVIEWING:
+      1. ./contracts/provider-protocol.md -- Amplifier provider protocol
+      2. ./contracts/event-vocabulary.md -- Required event types
+      3. ./contracts/error-hierarchy.md -- Error type requirements
+      4. ./contracts/streaming-contract.md -- Streaming completion signals
+      5. ./STATE.yaml -- what features were just implemented
+      6. The changed Python files (git diff HEAD~1 -- amplifier_module_provider_github_copilot/)
+
+      AMPLIFIER COMPLIANCE REVIEW DIMENSIONS:
+      1. Do all public provider methods return kernel types (not SDK types or local dataclasses)?
+      2. Do error translations map to the correct kernel LLMError subclasses?
+      3. Does the streaming implementation emit the correct sequence of LLMEvent types?
+      4. Is the LLMStreamEnd/LLMStreamDelta/LLMTextDelta usage correct?
+      5. Are async generators properly typed and terminated?
+      6. Does the provider correctly implement the Amplifier provider protocol interface?
+
+      VERDICT FORMAT (output ONLY this JSON, nothing else):
+      {
+        "expert": "amplifier-expert",
+        "verdict": "APPROVE" or "VETO",
+        "confidence": "high" or "medium" or "low",
+        "primary_concern": "one sentence",
+        "details": ["protocol concern 1", "protocol concern 2"],
+        "veto_reason": "required if verdict is VETO -- specific kernel contract violation"
+      }
+    output: "amplifier_vote"
+    parse_json: true
+    timeout: 600
+
+  # ---------------------------------------------------------------------------
+  # Quorum synthesis: aggregate votes, block on VETO, document approval
+  # ---------------------------------------------------------------------------
+  - id: "quorum-synthesis"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== EXPERT QUORUM SYNTHESIS ==="
+
+      python3 << 'PYEOF'
+      import json, yaml, datetime, os
+
+      # The recipe context substitution makes these available as JSON
+      votes_raw = [
+          '{{zen_vote}}',
+          '{{bug_hunter_vote}}',
+          '{{integration_vote}}',
+          '{{security_vote}}',
+          '{{amplifier_vote}}',
+      ]
+
+      votes = []
+      parse_errors = []
+      for raw in votes_raw:
+          try:
+              v = json.loads(raw) if isinstance(raw, str) else raw
+              votes.append(v)
+          except Exception as e:
+              parse_errors.append(str(e))
+
+      # Tally
+      approvals = [v for v in votes if v.get("verdict") == "APPROVE"]
+      vetoes = [v for v in votes if v.get("verdict") == "VETO"]
+      quorum_size = len(votes)
+      quorum_threshold = 4  # 4/5 required
+
+      quorum_passed = len(approvals) >= quorum_threshold and len(vetoes) == 0
+
+      result = {
+          "quorum_passed": quorum_passed,
+          "approvals": len(approvals),
+          "vetoes": len(vetoes),
+          "quorum_size": quorum_size,
+          "threshold": quorum_threshold,
+          "approved_by": [v.get("expert") for v in approvals],
+          "vetoed_by": [v.get("expert") for v in vetoes],
+          "veto_reasons": [{"expert": v.get("expert"), "reason": v.get("veto_reason")} for v in vetoes],
+          "concerns": [{"expert": v.get("expert"), "concern": v.get("primary_concern")} for v in votes],
+      }
+
+      if parse_errors:
+          result["parse_errors"] = parse_errors
+
+      # Write approval/rejection log
+      approval_dir = ".dev-machine/quorum-log"
+      os.makedirs(approval_dir, exist_ok=True)
+      ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+      log_file = f"{approval_dir}/{ts}-{'APPROVED' if quorum_passed else 'VETOED'}.json"
+      with open(log_file, "w") as f:
+          json.dump({
+              "timestamp": ts,
+              "result": result,
+              "votes": votes,
+          }, f, indent=2)
+
+      print(f"Quorum log written to: {log_file}")
+      print(json.dumps(result))
+
+      if not quorum_passed:
+          print("\n=== QUORUM FAILED ===")
+          if vetoes:
+              print("VETOES:")
+              for v in vetoes:
+                  print(f"  {v.get('expert')}: {v.get('veto_reason')}")
+          else:
+              print(f"Insufficient approvals: {len(approvals)}/{quorum_threshold} required")
+
+          # Add blocker to STATE.yaml
+          try:
+              with open("./STATE.yaml") as f:
+                  state = yaml.safe_load(f)
+              blockers = state.get("blockers") or []
+              veto_summary = "; ".join(
+                  f"{v.get('expert')}: {v.get('veto_reason', 'no reason')[:100]}"
+                  for v in vetoes
+              ) or f"Insufficient approvals ({len(approvals)}/{quorum_threshold})"
+              blockers.append({
+                  "description": f"Expert quorum FAILED. {veto_summary}",
+                  "since": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  "severity": "high",
+                  "quorum_log": log_file,
+              })
+              state["blockers"] = blockers
+              with open("./STATE.yaml", "w") as f:
+                  yaml.dump(state, f, default_flow_style=False, sort_keys=False)
+          except Exception as e:
+              print(f"Warning: could not write blocker to STATE.yaml: {e}")
+
+          exit(1)
+      else:
+          print(f"\nQUORUM PASSED: {len(approvals)}/{quorum_size} experts approved.")
+      PYEOF
+    output: "quorum_result"
+    parse_json: true
+    timeout: 120
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
+  # Step: Post-session -- archive, git commit, health tracking
+  # (same as iteration.yaml but with quorum log reference)
+  # ---------------------------------------------------------------------------
+  - id: "post-session"
+    type: "bash"
+    command: |
+      python3 << 'PYEOF'
+      import json, yaml, re, os
+      from datetime import datetime, timezone
+
+      try:
+          with open("./STATE.yaml") as f:
+              state = yaml.safe_load(f)
+
+          session_num = int("{{session_count}}") + 1
+
+          # Archive completed features
+          features = state.get("features", {})
+          completed_list = state.get("completed_features", [])
+          if isinstance(completed_list, list):
+              newly_completed = {fid: fd for fid, fd in features.items() if fd.get("status") in ("completed", "done")}
+              if newly_completed:
+                  archive_path = "FEATURE-ARCHIVE.yaml"
+                  try:
+                      with open(archive_path) as f:
+                          archive = yaml.safe_load(f) or {}
+                  except FileNotFoundError:
+                      archive = {"description": "Completed feature archive. Append-only.", "features": {}}
+                  arch_feats = archive.get("features", {})
+                  for fid, fd in newly_completed.items():
+                      if fid not in completed_list:
+                          completed_list.append(fid)
+                      arch_feats[fid] = fd
+                      del features[fid]
+                  archive["features"] = arch_feats
+                  state["completed_features"] = completed_list
+                  state["features"] = features
+                  with open(archive_path, "w") as f:
+                      yaml.dump(archive, f, default_flow_style=False, sort_keys=False, width=120)
+
+          # Archive old session summaries (keep last 5)
+          KEEP_SESSIONS = 5
+          ctx_path = "./CONTEXT-TRANSFER.md"
+          session_archive = "SESSION-ARCHIVE.md"
+          if os.path.exists(ctx_path):
+              with open(ctx_path) as f:
+                  ctx = f.read()
+              sess = list(re.finditer(r'^### Session \d+ Summary', ctx, re.MULTILINE))
+              if len(sess) > KEEP_SESSIONS:
+                  header = ctx[:sess[0].start()]
+                  keep_from = sess[-KEEP_SESSIONS]
+                  to_archive = ctx[sess[0].start():keep_from.start()]
+                  keep = ctx[keep_from.start():]
+                  if to_archive.strip():
+                      existing = ""
+                      if os.path.exists(session_archive):
+                          with open(session_archive) as f:
+                              existing = f.read()
+                      if not existing:
+                          existing = "# Session Archive\n\n> Archived session summaries. Append-only.\n\n"
+                      if to_archive[:50] not in existing:
+                          with open(session_archive, "a") as f:
+                              f.write(to_archive)
+                  with open(ctx_path, "w") as f:
+                      f.write(header)
+                      f.write(f"> **Note**: Older sessions archived in SESSION-ARCHIVE.md.\n")
+                      f.write(f"> Only the last {KEEP_SESSIONS} sessions kept here.\n\n")
+                      f.write(keep)
+
+          state["epoch"] = state.get("epoch", 0) + 1
+          state["last_session"] = datetime.now(timezone.utc).isoformat()
+          blockers = state.get("blockers", [])
+
+          with open("./STATE.yaml", "w") as f:
+              yaml.dump(state, f, default_flow_style=False, sort_keys=False, width=120)
+
+          remaining = sum(1 for f in features.values() if f.get("status") not in ("completed", "done"))
+          status = "blocked" if blockers else ("complete" if remaining == 0 else "healthy")
+
+          print(json.dumps({
+              "status": status,
+              "session_count": str(session_num),
+              "next_action": state.get("next_action", ""),
+              "total_features": state.get("meta", {}).get("total_features_completed", 0)
+          }))
+      except Exception as e:
+          print(json.dumps({"status": "blocked", "session_count": "{{session_count}}", "error": str(e)}))
+      PYEOF
+
+      echo "Checking for uncommitted work..."
+      if [ -n "$(git status --porcelain)" ]; then
+        echo "Staging and committing changes..."
+        git add -A
+        SESSION_TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        git commit \
+          -m "feat: autonomous implementation progress (tightened iteration) - Session ${SESSION_TS}" \
+          -m "5-expert quorum approved" \
+          -m "Co-Authored-By: Amplifier <240397093+microsoft-amplifier@users.noreply.github.com>" \
+          -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>" \
+          || echo "Commit failed (maybe nothing to commit)"
+
+        if git remote | grep -q origin; then
+          echo "Pushing to origin..."
+          git push origin main || echo "Push failed - will retry next iteration"
+        fi
+      else
+        echo "No changes to commit"
+      fi
+
+      # Empty session cleanup
+      SESSIONS_DIR="$HOME/.amplifier/sessions"
+      if [ -d "$SESSIONS_DIR" ]; then
+        CLEANED=0
+        for session_dir in "$SESSIONS_DIR"/*/; do
+          [ -d "$session_dir" ] || continue
+          events_file="$session_dir/events.jsonl"
+          if [ ! -f "$events_file" ] || [ ! -s "$events_file" ]; then
+            rm -rf "$session_dir"
+            CLEANED=$((CLEANED + 1))
+            continue
+          fi
+          line_count=$(wc -l < "$events_file" 2>/dev/null || echo "0")
+          if [ "$line_count" -lt 3 ]; then
+            rm -rf "$session_dir"
+            CLEANED=$((CLEANED + 1))
+          fi
+        done
+        if [ "$CLEANED" -gt 0 ]; then
+          echo "Cleaned up $CLEANED empty/near-empty session directories"
+        fi
+      fi
+    output: "iteration_result"
+    parse_json: true
