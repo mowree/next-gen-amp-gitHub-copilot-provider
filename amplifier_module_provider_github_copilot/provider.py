@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 # F-038: Import kernel types
 from amplifier_core import ChatResponse, ModelInfo, ProviderInfo, ToolCall
@@ -83,7 +83,7 @@ def extract_response_content(response: Any) -> str:
 
     # Handle dict response
     if isinstance(response, dict):
-        return str(response.get("content", ""))
+        return str(cast(dict[str, Any], response).get("content", ""))
 
     # Fallback for unknown types (shouldn't reach here normally)
     return ""

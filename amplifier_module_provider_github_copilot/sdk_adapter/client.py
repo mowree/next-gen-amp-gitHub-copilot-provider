@@ -117,11 +117,12 @@ def _resolve_token() -> str | None:
     """Resolve auth token from environment (SDK priority order).
 
     Official SDK priority from docs/auth/index.md:
-    1. COPILOT_GITHUB_TOKEN - Official recommended
-    2. GH_TOKEN - GitHub CLI compatible
-    3. GITHUB_TOKEN - GitHub Actions compatible
+    1. COPILOT_AGENT_TOKEN - Copilot agent mode
+    2. COPILOT_GITHUB_TOKEN - Official recommended
+    3. GH_TOKEN - GitHub CLI compatible
+    4. GITHUB_TOKEN - GitHub Actions compatible
     """
-    for var in ("COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
+    for var in ("COPILOT_AGENT_TOKEN", "COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
         token = os.environ.get(var)
         if token:
             return token

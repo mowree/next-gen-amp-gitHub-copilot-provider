@@ -105,7 +105,7 @@ class TestArchitectureFitness:
 
     def test_sdk_adapter_contains_sdk_imports(self) -> None:
         """Verify sdk_adapter/ is the membrane for SDK imports."""
-        adapter_dir = Path("src/amplifier_module_provider_github_copilot/sdk_adapter")
+        adapter_dir = Path("amplifier_module_provider_github_copilot/sdk_adapter")
 
         assert adapter_dir.exists(), "sdk_adapter/ directory must exist"
 

@@ -6,6 +6,9 @@ Provides fixtures for Tier 6 (SDK assumption tests) and Tier 7 (live smoke tests
 from __future__ import annotations
 
 import os
+
+# Allow test imports without SDK installed - tests use skip markers for SDK tests
+os.environ["SKIP_SDK_CHECK"] = "1"
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 

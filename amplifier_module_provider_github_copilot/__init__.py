@@ -19,16 +19,21 @@ from __future__ import annotations
 # the automatic dependency-installation fallback from ever running.
 # Using importlib.metadata avoids importing the SDK itself at module load time.
 # Contract: sdk-boundary.md MUST:5
+#
+# TESTING: Set SKIP_SDK_CHECK=1 to allow test imports without SDK installed.
+# Tests use pytest.importorskip() and skip markers to handle SDK availability.
+import os as _os
 from importlib.metadata import PackageNotFoundError as _PkgNotFoundError
 from importlib.metadata import version as _pkg_version
 
-try:
-    _pkg_version("github-copilot-sdk")
-except _PkgNotFoundError as _e:
-    raise ImportError(
-        "Required dependency 'github-copilot-sdk' is not installed. "
-        "Install with:  pip install 'github-copilot-sdk>=0.1.32,<0.2.0'"
-    ) from _e
+if not _os.environ.get("SKIP_SDK_CHECK"):
+    try:
+        _pkg_version("github-copilot-sdk")
+    except _PkgNotFoundError as _e:
+        raise ImportError(
+            "Required dependency 'github-copilot-sdk' is not installed. "
+            "Install with:  pip install 'github-copilot-sdk>=0.1.32,<0.2.0'"
+        ) from _e
 
 from collections.abc import Awaitable, Callable
 from typing import Any
