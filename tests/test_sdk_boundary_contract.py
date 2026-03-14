@@ -10,8 +10,6 @@ Feature: F-046 (testing architecture), F-044 (system_message replace), F-045 (di
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 import pytest
 
 from amplifier_module_provider_github_copilot.sdk_adapter.client import (
@@ -120,15 +118,14 @@ class TestSessionConfigContract:
         Contract: deny-destroy:DenyHook:MUST:1
         """
         mock_client = ConfigCapturingMock()
-        # Ensure mock session has the registration method
-        mock_client._mock_session.register_pre_tool_use_hook = MagicMock()
 
         wrapper = CopilotClientWrapper(sdk_client=mock_client)
 
         async with wrapper.session(model="gpt-4o"):
             pass
 
-        mock_client._mock_session.register_pre_tool_use_hook.assert_called_once()
+        # The strict stub records hook registrations via _hook_mock
+        mock_client._mock_session._hook_mock.assert_called_once()
 
 
 class TestConfigInvariants:

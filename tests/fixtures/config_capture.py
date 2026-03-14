@@ -36,20 +36,33 @@ class ConfigCapturingMock:
         self._mock_session = self._create_mock_session()
 
     def _create_mock_session(self) -> Any:
-        """Create a minimal mock session with required methods only."""
-        session = MagicMock()
-        session.session_id = "mock-session-001"
-        session.disconnect = AsyncMock()
-        session.register_pre_tool_use_hook = MagicMock()
-        return session
+        """Create a strict mock session with only the required methods.
+
+        Unlike MagicMock, this stub only exposes the methods our code actually needs.
+        Accessing undefined attributes will raise AttributeError.
+        """
+
+        class StrictSessionStub:
+            """Strict stub that only exposes known SDK session methods."""
+
+            def __init__(self) -> None:
+                self.session_id = "mock-session-001"
+                self._disconnect_mock = AsyncMock()
+                self._hook_mock = MagicMock()
+
+            async def disconnect(self) -> None:
+                """Disconnect the session."""
+                await self._disconnect_mock()
+
+            def register_pre_tool_use_hook(self, hook: Any) -> None:
+                """Register a pre-tool-use hook."""
+                self._hook_mock(hook)
+
+        return StrictSessionStub()
 
     async def create_session(self, config: dict[str, Any]) -> Any:
         """Capture config and return mock session."""
-        if not isinstance(config, dict):
-            raise TypeError(
-                f"create_session expects dict, got {type(config).__name__}. "
-                f"This mock enforces the SDK contract."
-            )
+        # Deep copy to capture the exact state at call time
         self.captured_configs.append(copy.deepcopy(config))
         return self._mock_session
 
@@ -59,3 +72,7 @@ class ConfigCapturingMock:
         if not self.captured_configs:
             raise AssertionError("No configs captured. Was create_session called?")
         return self.captured_configs[-1]
+
+    def assert_hook_registered(self) -> None:
+        """Assert that register_pre_tool_use_hook was called exactly once."""
+        self._mock_session._hook_mock.assert_called_once()

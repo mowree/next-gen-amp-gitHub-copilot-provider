@@ -74,6 +74,11 @@ fi
 docker run "${DOCKER_ARGS[@]}" \
     --entrypoint bash "$IMAGE_NAME" -c '
     set -e
+    echo "=== Clearing cached provider (prevents host cache poisoning) ==="
+    rm -rf /home/amplifier/.amplifier/cache/amplifier-module-provider-github-copilot-*
+    echo "  Cached provider cleared"
+    
+    echo ""
     echo "=== Installing provider into Amplifier runtime ==="
     
     # Find Amplifier tool venv

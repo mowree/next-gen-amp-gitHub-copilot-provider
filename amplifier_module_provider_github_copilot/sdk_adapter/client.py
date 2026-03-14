@@ -160,16 +160,15 @@ class CopilotClientWrapper:
         model: str | None = None,
         *,
         system_message: str | None = None,
-        streaming: bool = True,
     ) -> AsyncIterator[Any]:
         """Create an ephemeral session with proper cleanup.
 
         Sessions are always destroyed on exit (success or error).
+        Streaming is always enabled (required for event-based tool capture).
 
         Args:
             model: Model ID to use
-            system_message: Optional system message
-            streaming: Enable streaming events (default: True)
+            system_message: Optional system message (mode: replace)
 
         Yields:
             Raw SDK session (opaque Any)
@@ -226,7 +225,8 @@ class CopilotClientWrapper:
             # The SDK's default "GitHub Copilot CLI" prompt interferes with bundle instructions.
             # Replace mode gives full control over agent identity.
             session_config["system_message"] = {"mode": "replace", "content": system_message}
-        session_config["streaming"] = streaming
+        # F-046: Streaming MUST always be enabled for event-based tool capture
+        session_config["streaming"] = True
         # F-033: SDK v0.1.33 requires on_permission_request at session level too
         session_config["on_permission_request"] = deny_permission_request
 
