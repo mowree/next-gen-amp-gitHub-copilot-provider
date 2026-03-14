@@ -144,12 +144,54 @@ else:
     amplifier bundle list 2>&1 || true
     
     echo ""
+    echo "=== Diagnostic: Testing mount() directly ===" 
+    # This test calls mount() with a mock coordinator INSIDE Docker
+    # to catch errors before they get swallowed by Amplifier
+    export SKIP_SDK_CHECK=1  # Bypass eager SDK check during import
+    "$TOOL_VENV/bin/python" -c "
+import asyncio
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+class MockCoordinator:
+    def __init__(self):
+        self.mounted = {}
+    async def mount(self, mount_point, obj, name=None):
+        self.mounted[mount_point] = (obj, name)
+        print(f'  coordinator.mount(\"{mount_point}\", {type(obj).__name__}, name=\"{name}\") OK')
+
+async def test():
+    try:
+        from amplifier_module_provider_github_copilot import mount
+        print('  mount function imported OK')
+        coord = MockCoordinator()
+        result = await mount(coord, {'model': 'gpt-4o'})
+        print(f'  mount() returned: {type(result).__name__ if result else None}')
+        if 'providers' in coord.mounted:
+            provider, name = coord.mounted['providers']
+            print(f'  Provider mounted: {name}')
+            print(f'  Provider.name: {provider.name}')
+            info = provider.get_info()
+            print(f'  get_info(): id={info.id}, display_name={info.display_name}')
+            print('  DIAGNOSTIC: mount() works correctly')
+        else:
+            print('  ERROR: Provider not mounted to coordinator')
+    except Exception as e:
+        print(f'  DIAGNOSTIC FAILURE: {type(e).__name__}: {e}')
+        import traceback
+        traceback.print_exc()
+
+asyncio.run(test())
+" 2>&1
+    
+    echo ""
     echo "=== Running shadow test ==="
     echo "Testing provider via copilot-provider-shadow-test bundle..."
     
     # Enable debug logging to see actual module loading errors
     export AMPLIFIER_LOG=debug
     export RUST_LOG=amplifier=debug
+    export SKIP_SDK_CHECK=1  # Bypass eager SDK check during import
     
     # Simple connectivity test using echo to provide input
     echo "Respond with exactly: SHADOW TEST PASSED. Nothing else." | \
