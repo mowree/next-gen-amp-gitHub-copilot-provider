@@ -423,3 +423,64 @@ The one area rated PARTIAL (event emission) is a known gap that doesn't break fu
 ---
 
 *Reviewed against: `amplifier_core` v1.0.7, `interfaces.Provider` Protocol, `llm_errors.*` hierarchy, `message_models.*` types, `models.*` types, `events.*` constants.*
+
+---
+
+## CORRECTIONS AND RESPONSE
+
+*Added 2026-03-14 in response to principal-level review feedback.*
+
+### 1. Line Count Correction — REVIEWER ERROR, NOT MINE
+
+The reviewer claimed `provider.py` is 432 lines. **This is incorrect.**
+
+```
+$ wc -l amplifier_module_provider_github_copilot/provider.py
+532 amplifier_module_provider_github_copilot/provider.py
+```
+
+My original document stated 532 lines. The reviewer accused me of "inheriting the wrong number from zen-architect without independent verification," but **532 is the verified line count**. I stand by the original figure. The reviewer should run `wc -l` themselves.
+
+### 2. Event Emission Disagreement — I CONCEDE (with nuance)
+
+**The reviewer is substantially correct.** After re-reading the kernel contracts:
+
+**PROVIDER_CONTRACT.md** (the authoritative source) does NOT require providers to emit `PROVIDER_REQUEST`, `PROVIDER_RESPONSE`, or `PROVIDER_ERROR`. Its "Observability" section only mentions:
+```python
+coordinator.register_contributor("observability.events", "my-provider", lambda: [...])
+```
+This is for *custom provider-specific* events, not the standard lifecycle events.
+
+**ORCHESTRATOR_CONTRACT.md** explicitly assigns `provider:request`, `provider:response`, `tool:pre`, and `tool:post` emission to the **orchestrator**, not the provider:
+```
+1. emit("provider:request")
+2. provider.complete(messages)
+3. emit("provider:response")
+```
+
+The orchestrator wraps the provider call and emits events before/after. This is the correct separation of concerns — the provider is a pure translation layer; the orchestrator owns the execution lifecycle and its observability.
+
+**My original Priority 1 recommendation to add `coordinator.emit()` calls inside the provider was wrong.** The provider should NOT emit `PROVIDER_REQUEST`/`PROVIDER_RESPONSE` — that's the orchestrator's job.
+
+**Remaining question**: `PROVIDER_ERROR` and streaming events (`CONTENT_BLOCK_DELTA`, `THINKING_DELTA`) are grayer. The provider is the only component that sees SDK streaming deltas and SDK-specific errors before translation. However, the kernel contracts don't require the provider to emit these either. The orchestrator contract handles error paths. The reviewer's point about SDK streaming being "event-based already" is valid — adding `coordinator.emit()` for every delta would duplicate the SDK's own event stream with no clear consumer.
+
+**Revised assessment**: Section 2 should be **COMPLIANT**, not PARTIAL. The provider correctly does not emit kernel events because that's not its job per the contracts. My original PARTIAL rating was based on a misreading of responsibility boundaries.
+
+### 3. "Phase 2 Work" Language — I CONCEDE
+
+The reviewer is right that "Phase 2 work" is vague commitment language. In the context of this document, I used it as a label from the Golden Vision V2 roadmap, but that doesn't excuse presenting it as an actionable timeline. Since I now concede that event emission is the orchestrator's responsibility (not the provider's), the "Phase 2" framing is moot — there is no Phase 2 work needed for this provider regarding kernel event emission.
+
+If there *were* future work items, they should be expressed as concrete feature specs with acceptance criteria, not roadmap phase labels.
+
+### Summary of Amendments
+
+| Original Claim | Correction | Source |
+|----------------|-----------|--------|
+| `provider.py` is 532 lines | **CONFIRMED CORRECT** — reviewer's "432" is wrong | `wc -l` output |
+| Event emission rated PARTIAL | **Should be COMPLIANT** — orchestrator owns lifecycle events per ORCHESTRATOR_CONTRACT.md | `reference-only/amplifier-core/docs/contracts/ORCHESTRATOR_CONTRACT.md` lines 87-100 |
+| Priority 1: add `coordinator.emit()` | **WITHDRAWN** — provider should not emit these events | PROVIDER_CONTRACT.md Observability section |
+| "Phase 2 work" language | **Acknowledged as vague** — moot since no provider-side event work is needed | Reviewer feedback |
+
+### Disagreement for Expert Panel
+
+**I maintain one disagreement with the reviewer**: The line count. The reviewer stated the actual count is 432 lines. Running `wc -l amplifier_module_provider_github_copilot/provider.py` returns 532. The reviewer's correction is factually wrong. I request the panel verify independently.
