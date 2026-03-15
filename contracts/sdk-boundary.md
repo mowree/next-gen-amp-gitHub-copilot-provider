@@ -1,9 +1,10 @@
 # Contract: SDK Boundary (The Membrane)
 
 ## Version
-- **Current:** 1.0
-- **Module Reference:** src/amplifier_module_provider_github_copilot/sdk_adapter/
+- **Current:** 1.1 (Path-Corrected)
+- **Module Reference:** amplifier_module_provider_github_copilot/sdk_adapter/
 - **Status:** Non-Negotiable Constraint
+- **Correction:** 2026-03-15 — Removed erroneous `src/` prefix; updated MUST→SHOULD for planned _imports.py
 
 ---
 
@@ -20,8 +21,9 @@ This contract ensures the provider remains testable, maintainable, and isolated 
 ### MUST Constraints
 
 1. **MUST** confine ALL SDK imports to `sdk_adapter/` package
-2. **MUST** have exactly ONE file (`_imports.py`) that imports from `github_copilot_sdk`
-3. **MUST NOT** allow SDK imports in ANY other module
+2. **SHOULD** consolidate SDK imports into ONE file (`_imports.py`) — **Target: F-088**
+   > **Note:** Currently SDK imports are spread across multiple files in sdk_adapter/. F-088 will create _imports.py to quarantine all SDK imports.
+3. **MUST NOT** allow SDK imports in ANY module outside `sdk_adapter/`
 4. **MUST NOT** export SDK types from `sdk_adapter/__init__.py`
 5. **MUST** fail at import time with a clear error if `github-copilot-sdk` is not installed (eager dependency check)
 

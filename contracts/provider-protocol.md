@@ -2,7 +2,7 @@
 
 ## Version
 - **Current:** 1.0 (v2.1 Kernel-Validated)
-- **Module Reference:** src/amplifier_module_provider_github_copilot/provider.py
+- **Module Reference:** amplifier_module_provider_github_copilot/provider.py
 - **Amplifier Contract:** amplifier-core PROVIDER_CONTRACT.md
 - **Status:** Specification
 

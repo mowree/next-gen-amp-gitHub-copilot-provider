@@ -1,10 +1,11 @@
 # Contract: Streaming
 
 ## Version
-- **Current:** 1.0 (v2.1 Kernel-Validated)
-- **Module Reference:** src/amplifier_module_provider_github_copilot/streaming.py
-- **Kernel Types:** `amplifier_core.content_models`
+- **Current:** 1.1 (v2.2 Kernel-Corrected)
+- **Module Reference:** amplifier_module_provider_github_copilot/streaming.py
+- **Kernel Types:** `amplifier_core.message_models` (Pydantic, NOT content_models dataclass)
 - **Status:** Specification
+- **Correction:** 2026-03-15 — Expert panel (core-expert) verified: ChatResponse.content uses message_models types
 
 ---
 
@@ -16,43 +17,42 @@ This contract defines how streaming events are accumulated into a complete respo
 
 ## Kernel Content Types
 
-Use types from `amplifier_core.content_models`:
+Use types from `amplifier_core.message_models` (Pydantic models, NOT content_models dataclasses):
 
 ```python
-from amplifier_core.content_models import (
-    ContentBlock,
-    ContentBlockType,
-    TextContent,
-    ThinkingContent,
-    ToolCallContent,
-    ToolResultContent,
+from amplifier_core import (
+    TextBlock,
+    ThinkingBlock,
+    ToolCall,
 )
 ```
 
-### TextContent
+> **IMPORTANT:** The kernel has TWO content type systems:
+> - `content_models`: TextContent, ThinkingContent (dataclass) — for internal kernel use
+> - `message_models`: TextBlock, ThinkingBlock (Pydantic) — for ChatResponse.content
+>
+> Providers MUST use message_models types because ChatResponse.content is typed as `list[TextBlock | ThinkingBlock | RedactedThinkingBlock | ToolCall]`.
+
+### TextBlock (Pydantic)
 ```python
-@dataclass
-class TextContent(ContentBlock):
-    type: ContentBlockType = ContentBlockType.TEXT
-    text: str = ""
+class TextBlock(BaseModel):
+    type: Literal["text"] = "text"
+    text: str
 ```
 
-### ThinkingContent
+### ThinkingBlock (Pydantic)
 ```python
-@dataclass
-class ThinkingContent(ContentBlock):
-    type: ContentBlockType = ContentBlockType.THINKING
-    text: str = ""
+class ThinkingBlock(BaseModel):
+    type: Literal["thinking"] = "thinking"
+    thinking: str
 ```
 
-### ToolCallContent
+### ToolCall (Pydantic)
 ```python
-@dataclass
-class ToolCallContent(ContentBlock):
-    type: ContentBlockType = ContentBlockType.TOOL_CALL
-    id: str = ""
-    name: str = ""
-    arguments: dict[str, Any] | None = None
+class ToolCall(BaseModel):
+    id: str
+    name: str
+    arguments: dict[str, Any]
 ```
 
 ---
