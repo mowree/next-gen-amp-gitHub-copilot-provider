@@ -1,233 +1,539 @@
+# =============================================================================
+# STATE.yaml — Single Source of Truth for provider-github-copilot
+# =============================================================================
+# Authority: DEPENDENCY-GRAPH-PHASE9.md + AMPLIFIER-DIRECTIVE-2026-03-15.md
+# Updated: 2026-03-15T18:05:00Z
+#
+# Phase 9 is subdivided into 9 sub-phases per the expert panel's dependency
+# graph. The iteration.yaml orient step uses depends_on to determine which
+# features are unblocked and ready for implementation.
+#
+# Dropped features (NOT listed):
+#   F-057 — superseded by F-082
+#   F-058 — merged into F-085
+#   F-071 — merged into F-089
+# =============================================================================
+
 phase: 9
-phase_name: Phase 9 -- Deep Review Remediation
+phase_name: "Phase 9 — Deep Review Remediation (9 sub-phases)"
 epoch: 39
-next_action: "Phase 9: Deep Review Remediation - 41 features ready for implementation (expert panel complete)"
+next_action: "Sub-phase 1: Zero-risk cleanups + sovereignty — F-049 first (unblocks everything)"
 blockers: []
+
 features:
+  # ---------------------------------------------------------------------------
+  # Sub-phase 1: Zero-Risk Cleanups + Sovereignty (~1 iteration)
+  # Order: F-049 → [F-079, F-077, F-084] parallel → F-050
+  # ---------------------------------------------------------------------------
   F-049-fix-architecture-test-paths:
     status: ready
     priority: P0
+    sub_phase: 1
+    spec: specs/features/F-049-fix-architecture-test-paths.md
     source: deep-review/bug-hunter.md
-  F-050-mandatory-deny-hook-installation:
-    status: ready
-    priority: P1
-    source: deep-review/bug-hunter.md
-  F-051-defensive-event-config-loading:
-    status: ready
-    priority: P0
-    source: deep-review/bug-hunter.md
-  F-052-real-sdk-streaming-pipeline:
-    status: ready
-    priority: P0
-    source: specs/features/F-052-real-sdk-streaming-pipeline.md
-  F-053-unify-error-config-loading:
-    status: ready
-    priority: P1
-    source: deep-review/bug-hunter.md
-  F-054-response-extraction-recursion-guard:
-    status: ready
-    priority: P1
-    source: deep-review/bug-hunter.md
-  F-055-streaming-accumulator-completion-guard:
-    status: ready
-    priority: P1
-    source: deep-review/bug-hunter.md
-  F-056-sdk-client-failed-start-cleanup:
-    status: ready
-    priority: P1
-    source: deep-review/bug-hunter.md
-  F-057-provider-close-cleanup:
-    status: ready
-    priority: P1
-    source: deep-review/integration-specialist.md, deep-review/security-guardian.md
-  F-058-sdk-request-timeout-enforcement:
-    status: ready
-    priority: P1
-    source: deep-review/security-guardian.md
-  F-059-chatrequest-multi-turn-context:
-    status: ready
-    priority: P1
-    source: deep-review/bug-hunter.md
-  F-060-config-driven-retry:
-    status: ready
-    priority: P2
-    source: deep-review/integration-specialist.md
-  F-061-error-config-missing-mappings:
-    status: ready
-    priority: P2
-    source: deep-review/integration-specialist.md, deep-review/spec-reviewer-part3.md
-  F-062-architecture-test-hardening:
-    status: ready
-    priority: P2
-    source: deep-review/bug-hunter.md
-  F-063-sdk-boundary-structure:
-    status: ready
-    priority: P2
-    source: deep-review/spec-reviewer-part2.md, deep-review/integration-specialist.md
-  F-064-pypi-publishing-readiness:
-    status: ready
-    priority: P2
-    source: deep-review/foundation-expert.md
-  F-065-provider-decomposition:
-    status: ready
-    priority: P2
-    source: deep-review/spec-reviewer-part1.md
-  F-066-error-translation-safety:
-    status: ready
-    priority: P2
-    source: deep-review/bug-hunter.md, deep-review/security-guardian.md
-  F-067-test-quality-improvements:
-    status: ready
-    priority: P2
-    source: deep-review/bug-hunter.md
-  F-068-event-classification-validation:
-    status: ready
-    priority: P2
-    source: deep-review/bug-hunter.md
-  F-069-remove-complete-fn-dead-code:
-    status: ready
-    priority: P2
-    source: deep-review/code-intel.md
-  F-070-cleanup-deferred-imports:
-    status: ready
-    priority: P2
-    source: deep-review/code-intel.md
-  F-071-remove-unused-sessionconfig-fields:
-    status: ready
-    priority: P2
-    source: deep-review/code-intel.md
-  F-072-real-sdk-path-error-translation:
-    status: ready
-    priority: P0
-    source: deep-review/code-navigator-v2.md
-  F-073-real-sdk-path-error-test:
-    status: ready
-    priority: P1
-    source: deep-review/code-navigator-v2.md
-  F-074-config-not-in-wheel:
-    status: ready
-    priority: P0
-    source: deep-review/code-quality-reviewer.md
-  F-075-retry-yaml-dead-config:
-    status: ready
-    priority: P2
-    source: deep-review/code-quality-reviewer.md
-  F-076-fix-async-mock-warning:
-    status: ready
-    priority: P2
-    source: deep-review/code-quality-reviewer.md
-  F-077-delete-tombstone-test-files:
-    status: ready
-    priority: P3
-    source: deep-review/code-quality-reviewer.md
-  F-078-add-context-window-to-fallback-config:
-    status: ready
-    priority: P1
-    source: deep-review/core-expert.md
+    depends_on: []
+    description: "Fix architecture test paths + contract paths — foundation for everything"
+
   F-079-add-py-typed-marker:
     status: ready
     priority: P2
+    sub_phase: 1
+    spec: specs/features/F-079-add-py-typed-marker.md
     source: packaging-review
-  F-080-add-missing-pypi-metadata:
+    depends_on: []
+    description: "Add py.typed marker for downstream type checking"
+
+  F-077-delete-tombstone-test-files:
     status: ready
-    priority: P2
-    source: packaging-review
-  F-081-fix-context-extraction-in-client-error-loading:
-    status: ready
-    priority: P0
-    source: manual-investigation
-  F-082-wire-provider-close-to-client-close:
-    status: ready
-    priority: P1
-    source: deep-review/integration-specialist.md, principal-review
-  F-083-fix-test-contract-events-enum-type:
-    status: ready
-    priority: P2
-    source: deep-review/python-dev.md, principal-review
+    priority: P3
+    sub_phase: 1
+    spec: specs/features/F-077-delete-tombstone-test-files.md
+    source: deep-review/code-quality-reviewer.md
+    depends_on: []
+    description: "Delete tombstone test files (dead file cleanup)"
+
   F-084-remove-redundant-path-import:
     status: ready
     priority: P3
-    source: deep-review/python-dev.md, principal-review
+    sub_phase: 1
+    spec: specs/features/F-084-remove-redundant-path-import.md
+    source: deep-review/python-dev.md
+    depends_on: []
+    description: "Remove redundant Path import from provider.py"
+
+  F-050-mandatory-deny-hook-installation:
+    status: ready
+    priority: P1
+    sub_phase: 1
+    spec: specs/features/F-050-mandatory-deny-hook-installation.md
+    source: deep-review/bug-hunter.md
+    depends_on: []
+    description: "Establish sovereignty invariant — deny hook on every SDK session"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 2: Config Foundation (~1-2 iterations)
+  # Order: F-074 → [F-081, F-078] parallel
+  # ---------------------------------------------------------------------------
+  F-074-config-not-in-wheel:
+    status: ready
+    priority: P0
+    sub_phase: 2
+    spec: specs/features/F-074-config-not-in-wheel.md
+    source: deep-review/code-quality-reviewer.md
+    depends_on:
+      - F-049-fix-architecture-test-paths
+    description: "Move config into wheel — CRITICAL foundation for all config features"
+
+  F-081-fix-context-extraction-in-client-error-loading:
+    status: ready
+    priority: P0
+    sub_phase: 2
+    spec: specs/features/F-081-fix-context-extraction-in-client-error-loading.md
+    source: manual-investigation
+    depends_on:
+      - F-049-fix-architecture-test-paths
+    description: "Fix context_extraction parsing in _load_error_config_once()"
+
+  F-078-add-context-window-to-fallback-config:
+    status: ready
+    priority: P1
+    sub_phase: 2
+    spec: specs/features/F-078-add-context-window-to-fallback-config.md
+    source: deep-review/core-expert.md
+    depends_on:
+      - F-074-config-not-in-wheel
+    description: "Add context_window to fallback ProviderInfo config"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 3: P0 Critical Path (~2 iterations)
+  # Order: F-072 → [F-073, F-051] parallel → F-052
+  # ---------------------------------------------------------------------------
+  F-072-real-sdk-path-error-translation:
+    status: ready
+    priority: P0
+    sub_phase: 3
+    spec: specs/features/F-072-real-sdk-path-error-translation.md
+    source: deep-review/code-navigator-v2.md
+    depends_on:
+      - F-050-mandatory-deny-hook-installation
+      - F-074-config-not-in-wheel
+    description: "Add try/except + translate_sdk_error to real SDK path"
+
+  F-073-real-sdk-path-error-test:
+    status: ready
+    priority: P1
+    sub_phase: 3
+    spec: specs/features/F-073-real-sdk-path-error-test.md
+    source: deep-review/code-navigator-v2.md
+    depends_on:
+      - F-072-real-sdk-path-error-translation
+    description: "Tests for F-072 error translation on real SDK path"
+
+  F-051-defensive-event-config-loading:
+    status: ready
+    priority: P0
+    sub_phase: 3
+    spec: specs/features/F-051-defensive-event-config-loading.md
+    source: deep-review/bug-hunter.md
+    depends_on:
+      - F-074-config-not-in-wheel
+    description: "Defensive event config loading with fallback"
+
+  F-052-real-sdk-streaming-pipeline:
+    status: ready
+    priority: P0
+    sub_phase: 3
+    spec: specs/features/F-052-real-sdk-streaming-pipeline.md
+    source: deep-review/bug-hunter.md
+    depends_on:
+      - F-050-mandatory-deny-hook-installation
+      - F-072-real-sdk-path-error-translation
+    description: "Replace send_and_wait with streaming on()+queue pattern"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 4: Robustness Hardening (~2 iterations)
+  # Order: [F-082, F-055, F-054, F-056] parallel → F-053 → F-085
+  # ---------------------------------------------------------------------------
+  F-082-wire-provider-close-to-client-close:
+    status: ready
+    priority: P1
+    sub_phase: 4
+    spec: specs/features/F-082-wire-provider-close-to-client-close.md
+    source: deep-review/integration-specialist.md
+    depends_on: []
+    description: "Wire provider.close() to client.close() — fix resource leak"
+
+  F-055-streaming-accumulator-completion-guard:
+    status: ready
+    priority: P1
+    sub_phase: 4
+    spec: specs/features/F-055-streaming-accumulator-completion-guard.md
+    source: deep-review/bug-hunter.md
+    depends_on: []
+    description: "Guard accumulator against events after completion"
+
+  F-054-response-extraction-recursion-guard:
+    status: ready
+    priority: P1
+    sub_phase: 4
+    spec: specs/features/F-054-response-extraction-recursion-guard.md
+    source: deep-review/bug-hunter.md
+    depends_on: []
+    description: "Add depth limit to extract_response_content()"
+
+  F-056-sdk-client-failed-start-cleanup:
+    status: ready
+    priority: P1
+    sub_phase: 4
+    spec: specs/features/F-056-sdk-client-failed-start-cleanup.md
+    source: deep-review/bug-hunter.md
+    depends_on: []
+    description: "Cleanup _owned_client on SDK start failure"
+
+  F-053-unify-error-config-loading:
+    status: ready
+    priority: P1
+    sub_phase: 4
+    spec: specs/features/F-053-unify-error-config-loading.md
+    source: deep-review/bug-hunter.md
+    depends_on:
+      - F-074-config-not-in-wheel
+      - F-081-fix-context-extraction-in-client-error-loading
+    description: "Unify error config loading into single code path"
+
   F-085-add-timeout-enforcement-real-sdk-path:
     status: ready
     priority: P1
+    sub_phase: 4
+    spec: specs/features/F-085-add-timeout-enforcement-real-sdk-path.md
     source: principal-review
+    depends_on:
+      - F-072-real-sdk-path-error-translation
+      - F-052-real-sdk-streaming-pipeline
+    description: "Add asyncio.wait_for timeout on real SDK path (absorbs F-058)"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 5: Error & Integration (~1-2 iterations)
+  # Order: F-066 → F-061; [F-068, F-059, F-086] parallel
+  # ---------------------------------------------------------------------------
+  F-066-error-translation-safety:
+    status: ready
+    priority: P2
+    sub_phase: 5
+    spec: specs/features/F-066-error-translation-safety.md
+    source: deep-review/bug-hunter.md
+    depends_on:
+      - F-074-config-not-in-wheel
+    description: "Fix error matching algorithm safety — BEFORE adding mappings"
+
+  F-061-error-config-missing-mappings:
+    status: ready
+    priority: P2
+    sub_phase: 5
+    spec: specs/features/F-061-error-config-missing-mappings.md
+    source: deep-review/integration-specialist.md
+    depends_on:
+      - F-066-error-translation-safety
+      - F-074-config-not-in-wheel
+    description: "Add missing error mappings to config/errors.yaml"
+
+  F-068-event-classification-validation:
+    status: ready
+    priority: P2
+    sub_phase: 5
+    spec: specs/features/F-068-event-classification-validation.md
+    source: deep-review/bug-hunter.md
+    depends_on:
+      - F-051-defensive-event-config-loading
+      - F-074-config-not-in-wheel
+    description: "Validate event classifications for overlap/gaps"
+
+  F-059-chatrequest-multi-turn-context:
+    status: ready
+    priority: P1
+    sub_phase: 5
+    spec: specs/features/F-059-chatrequest-multi-turn-context.md
+    source: deep-review/bug-hunter.md
+    depends_on: []
+    description: "Enhance ChatRequest→prompt conversion for conversation history"
+
   F-086-handle-session-disconnect-failures:
     status: ready
     priority: P2
+    sub_phase: 5
+    spec: specs/features/F-086-handle-session-disconnect-failures.md
     source: principal-review
-  F-087-strengthen-complete-parameter-type:
+    depends_on: []
+    description: "Enhance disconnect error handling in session finally block"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 6: Retry System (~1 iteration)
+  # Order: F-075 → F-060; F-090 parallel
+  # ---------------------------------------------------------------------------
+  F-075-retry-yaml-dead-config:
     status: ready
     priority: P2
-    source: manual-review
-  F-088-create-imports-py-sdk-quarantine:
+    sub_phase: 6
+    spec: specs/features/F-075-retry-yaml-dead-config.md
+    source: deep-review/code-quality-reviewer.md
+    depends_on: []
+    description: "Delete dead retry.yaml config"
+
+  F-060-config-driven-retry:
     status: ready
     priority: P2
-    source: manual-review
-  F-089-align-sessionconfig-shape-with-contract:
-    status: ready
-    priority: P2
-    source: manual-review
+    sub_phase: 6
+    spec: specs/features/F-060-config-driven-retry.md
+    source: deep-review/integration-specialist.md
+    depends_on:
+      - F-074-config-not-in-wheel
+      - F-075-retry-yaml-dead-config
+    description: "Implement config-driven retry with YAML parameters"
+
   F-090-behavioral-tests-for-behaviors-contract:
     status: ready
     priority: P1
+    sub_phase: 6
+    spec: specs/features/F-090-behavioral-tests-for-behaviors-contract.md
     source: manual-review
+    depends_on: []
+    description: "Contract compliance tests for behaviors.md"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 7: Structural Refactoring (~2 iterations)
+  # Order: [F-088, F-067, F-069, F-089] parallel → [F-063, F-070, F-087]
+  # ---------------------------------------------------------------------------
+  F-088-create-imports-py-sdk-quarantine:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-088-create-imports-py-sdk-quarantine.md
+    source: manual-review
+    depends_on: []
+    description: "Create _imports.py for SDK import quarantine"
+
+  F-067-test-quality-improvements:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-067-test-quality-improvements.md
+    source: deep-review/bug-hunter.md
+    depends_on: []
+    description: "Test quality improvements — BEFORE decomposition"
+
+  F-069-remove-complete-fn-dead-code:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-069-remove-complete-fn-dead-code.md
+    source: deep-review/code-intel.md
+    depends_on: []
+    description: "Remove complete_fn dead code from provider.py"
+
+  F-089-align-sessionconfig-shape-with-contract:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-089-align-sessionconfig-shape-with-contract.md
+    source: manual-review
+    depends_on: []
+    description: "Align SessionConfig shape with contract (absorbs F-071)"
+
+  F-063-sdk-boundary-structure:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-063-sdk-boundary-structure.md
+    source: deep-review/spec-reviewer-part2.md
+    depends_on:
+      - F-088-create-imports-py-sdk-quarantine
+    description: "Extend SDK boundary structure — depends on quarantine"
+
+  F-070-cleanup-deferred-imports:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-070-cleanup-deferred-imports.md
+    source: deep-review/code-intel.md
+    depends_on:
+      - F-069-remove-complete-fn-dead-code
+    description: "Move deferred imports to top-level in provider.py"
+
+  F-087-strengthen-complete-parameter-type:
+    status: ready
+    priority: P2
+    sub_phase: 7
+    spec: specs/features/F-087-strengthen-complete-parameter-type.md
+    source: manual-review
+    depends_on: []
+    description: "Strengthen complete() parameter type from Any"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 8: Provider Decomposition (~1-2 iterations)
+  # F-065 depends on ALL provider.py features
+  # ---------------------------------------------------------------------------
+  F-065-provider-decomposition:
+    status: ready
+    priority: P2
+    sub_phase: 8
+    spec: specs/features/F-065-provider-decomposition.md
+    source: deep-review/spec-reviewer-part1.md
+    depends_on:
+      - F-052-real-sdk-streaming-pipeline
+      - F-054-response-extraction-recursion-guard
+      - F-059-chatrequest-multi-turn-context
+      - F-067-test-quality-improvements
+      - F-069-remove-complete-fn-dead-code
+      - F-070-cleanup-deferred-imports
+      - F-072-real-sdk-path-error-translation
+      - F-078-add-context-window-to-fallback-config
+      - F-082-wire-provider-close-to-client-close
+      - F-084-remove-redundant-path-import
+      - F-085-add-timeout-enforcement-real-sdk-path
+      - F-087-strengthen-complete-parameter-type
+    description: "Decompose provider.py into provider + completion + response modules"
+
+  # ---------------------------------------------------------------------------
+  # Sub-phase 9: Test & Packaging Polish (~1-2 iterations)
+  # Order: [F-080, F-083, F-076, F-091] parallel → F-062 → F-064 (LAST)
+  # ---------------------------------------------------------------------------
+  F-080-add-missing-pypi-metadata:
+    status: ready
+    priority: P2
+    sub_phase: 9
+    spec: specs/features/F-080-add-missing-pypi-metadata.md
+    source: packaging-review
+    depends_on: []
+    description: "Add missing PyPI metadata to pyproject.toml"
+
+  F-083-fix-test-contract-events-enum-type:
+    status: ready
+    priority: P2
+    sub_phase: 9
+    spec: specs/features/F-083-fix-test-contract-events-enum-type.md
+    source: deep-review/python-dev.md
+    depends_on: []
+    description: "Fix enum type in test_contract_events.py"
+
+  F-076-fix-async-mock-warning:
+    status: ready
+    priority: P2
+    sub_phase: 9
+    spec: specs/features/F-076-fix-async-mock-warning.md
+    source: deep-review/code-quality-reviewer.md
+    depends_on: []
+    description: "Fix async mock deprecation warnings in tests"
+
   F-091-ephemeral-session-invariant-tests:
     status: ready
     priority: P1
+    sub_phase: 9
+    spec: specs/features/F-091-ephemeral-session-invariant-tests.md
     source: manual-review
+    depends_on: []
+    description: "Ephemeral session invariant tests for deny-destroy contract"
+
+  F-062-architecture-test-hardening:
+    status: ready
+    priority: P2
+    sub_phase: 9
+    spec: specs/features/F-062-architecture-test-hardening.md
+    source: deep-review/bug-hunter.md
+    depends_on:
+      - F-049-fix-architecture-test-paths
+      - F-065-provider-decomposition
+    description: "Harden architecture tests against final structure"
+
+  F-064-pypi-publishing-readiness:
+    status: ready
+    priority: P2
+    sub_phase: 9
+    spec: specs/features/F-064-pypi-publishing-readiness.md
+    source: deep-review/foundation-expert.md
+    depends_on:
+      - F-079-add-py-typed-marker
+      - F-074-config-not-in-wheel
+      - F-080-add-missing-pypi-metadata
+    description: "PyPI publishing readiness — LAST feature (terminal)"
+
+# =============================================================================
+# Completed Features (48 total — details in FEATURE-ARCHIVE.yaml)
+# =============================================================================
 completed_features:
-- F-001-sdk-adapter-skeleton
-- F-002-error-translation
-- F-003-session-factory
-- F-004-tool-parsing
-- F-005-event-translation
-- F-006-streaming-handler
-- F-007-completion-lifecycle
-- F-008-provider-orchestrator
-- F-009-integration-verification
-- F-010-sdk-client-wrapper
-- F-011-loop-controller
-- F-017-technical-debt-cleanup
-- F-018-aggressive-simplification
-- F-019-critical-security-fixes
-- F-020-protocol-compliance
-- F-021-bug-fixes
-- F-022-foundation-integration
-- F-023-test-coverage
-- F-024-code-quality
-- F-025-ci-pipeline
-- F-026-contract-compliance-tests
-- F-027-real-sdk-integration
-- F-028-entry-point
-- F-029-documentation-update
-- F-030-changelog
-- F-031-system-notification-event
-- F-032-permission-handler-tests
-- F-033-permission-handler-fix
-- F-034-sdk-version-tests
-- F-035-error-type-expansion
-- F-036-error-context-enhancement
-- F-037-observability-improvements
-- F-038-kernel-type-migration
-- F-039-sdk-client-wiring
-- F-040-sdk-api-fix
-- F-043-sdk-response-fix
-- F-044-system-prompt-replace-mode
-- F-045-disable-sdk-builtin-tools
-- F-046-sdk-integration-testing-architecture
-- F-047-testing-course-correction
-- F-048-config-extraction
+  - F-001-sdk-adapter-skeleton
+  - F-002-error-translation
+  - F-003-session-factory
+  - F-004-tool-parsing
+  - F-005-event-translation
+  - F-006-streaming-handler
+  - F-007-completion-lifecycle
+  - F-008-provider-orchestrator
+  - F-009-integration-verification
+  - F-010-sdk-client-wrapper
+  - F-011-loop-controller
+  - F-017-technical-debt-cleanup
+  - F-018-aggressive-simplification
+  - F-019-critical-security-fixes
+  - F-020-protocol-compliance
+  - F-021-bug-fixes
+  - F-022-foundation-integration
+  - F-023-test-coverage
+  - F-024-code-quality
+  - F-025-ci-pipeline
+  - F-026-contract-compliance-tests
+  - F-027-real-sdk-integration
+  - F-028-entry-point
+  - F-029-documentation-update
+  - F-030-changelog
+  - F-031-system-notification-event
+  - F-032-permission-handler-tests
+  - F-033-permission-handler-fix
+  - F-034-sdk-version-tests
+  - F-035-error-type-expansion
+  - F-036-error-context-enhancement
+  - F-037-observability-improvements
+  - F-038-kernel-type-migration
+  - F-039-sdk-client-wiring
+  - F-040-sdk-api-fix
+  - F-043-sdk-response-fix
+  - F-044-system-prompt-replace-mode
+  - F-045-disable-sdk-builtin-tools
+  - F-046-sdk-integration-testing-architecture
+  - F-047-testing-course-correction
+  - F-048-config-extraction
+
+# =============================================================================
+# Architecture & Module Specs
+# =============================================================================
 architecture_spec:
   status: approved
   path: ./mydocs/debates/GOLDEN_VISION_V2.md
 module_specs: {}
+
+# =============================================================================
+# Expert Panel References (read-only guidance for working sessions)
+# =============================================================================
+expert_panel:
+  constitution: mydocs/deep-review/AMPLIFIER-DIRECTIVE-2026-03-15.md
+  dependency_graph: mydocs/DEPENDENCY-GRAPH-PHASE9.md
+  architecture_notes: mydocs/PHASE-ARCHITECTURE-NOTES.md
+  kernel_compliance: mydocs/deep-review/KERNEL-COMPLIANCE-CHECKLIST.md
+  dev_machine_ready: mydocs/DEV-MACHINE-READY.md
+
+# =============================================================================
+# Metadata
+# =============================================================================
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
   total_features_completed: 48
-  last_updated: '2026-03-15T00:17:39Z'
-  last_session: '2026-03-15T00:17:39Z'
+  total_features_remaining: 41
+  dropped_features:
+    - "F-057 — superseded by F-082"
+    - "F-058 — merged into F-085"
+    - "F-071 — merged into F-089"
+  last_updated: '2026-03-15T18:05:00Z'
+  last_session: '2026-03-15T18:05:00Z'
   phase_9_started: '2026-03-15T00:17:39Z'
   phase_8_completed: '2026-03-14T17:32:00Z'
   phase_7_started: '2026-03-14T02:00:00Z'
@@ -237,23 +543,16 @@ meta:
   phase_6_completed: '2026-03-13T18:24:00Z'
   phase_2_commit: f0a1da9
   phase_3_design_agents:
-  - zen-architect
-  - foundation:integration-specialist
-  - foundation:test-coverage
+    - zen-architect
+    - foundation:integration-specialist
+    - foundation:test-coverage
   phase_3_verified: '2026-03-13T00:57:00Z'
   phase_4_started: '2026-03-13T01:13:00Z'
-  kernel_migration_discovery: 'On 2026-03-13 at ~17:00 UTC, investigation revealed the provider uses local
-
+  kernel_migration_discovery: >-
+    On 2026-03-13 at ~17:00 UTC, investigation revealed the provider uses local
     dataclasses instead of amplifier_core kernel types. This was never caught
-
-    because tests use MagicMock() coordinators that don''t validate types.
-
-
+    because tests use MagicMock() coordinators that don't validate types.
     Expert panel (5 agents) confirmed the root cause and reviewed the migration spec.
-
     F-038 addresses this with a boundary-only migration that preserves internal
-
     streaming architecture while returning kernel types from public methods.
-
-    '
-last_session: '2026-03-15T00:17:39Z'
+last_session: '2026-03-15T18:05:00Z'
