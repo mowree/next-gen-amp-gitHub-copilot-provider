@@ -27,7 +27,7 @@ features:
   F-052-real-sdk-streaming-pipeline:
     status: ready
     priority: P0
-    source: deep-review/integration-specialist.md
+    source: specs/features/F-052-real-sdk-streaming-pipeline.md
   F-053-unify-error-config-loading:
     status: ready
     priority: P1

@@ -2,7 +2,7 @@
 
 **Authority:** Principal Engineering Review
 **Date:** 2026-03-15
-**Version:** 1.0 (Definitive)
+**Version:** 1.1 (F-052 Unblocked)
 **Purpose:** Complete, self-contained directive for autonomous dev-machine execution
 
 ---
@@ -18,8 +18,8 @@ This document is the **SINGLE SOURCE OF TRUTH** for Phase 9 implementation. Ampl
 | **Completed Features (STATE.yaml)** | 48 |
 | **Pending Features (Phase 9)** | 43 (F-049 to F-091) |
 | **Features to DROP** | 2 (F-057, F-058) |
-| **Features BLOCKED** | 1 (F-052 - needs SDK verification) |
-| **Net Implementable Features** | 40 |
+| **Features BLOCKED** | 0 |
+| **Net Implementable Features** | 41 |
 | **Implementation Phases** | 9 |
 
 ---
@@ -235,48 +235,79 @@ This section documents the ACTUAL Copilot SDK Python API capabilities, verified 
 | `on(handler)` | `def on(self, handler: Callable[[SessionEvent], None]) -> Callable[[], None]` | Unsubscribe function | Event subscription. Handler receives all session events. |
 | `disconnect()` | `async def disconnect(self) -> None` | None | Closes session. |
 
-## 3.2 CRITICAL: No AsyncIterator API
+## 3.2 SDK Streaming API (VERIFIED 2026-03-15)
 
-**F-052 assumes this pattern:**
+**Evidence:** `copilot-sdk/python/e2e/test_streaming_fidelity.py` lines 14-42
+
+**Pattern:** The SDK uses `streaming: True` session option + `on()` handler to receive deltas:
+
 ```python
-async for sdk_event in session.send_message(request.prompt, request.tools):
-    domain_event = translate_event(sdk_event, event_config)
+# 1. Create session with streaming enabled
+session = await client.create_session({
+    "streaming": True,
+    "on_permission_request": PermissionHandler.approve_all
+})
+
+# 2. Register event handler
+events = []
+session.on(lambda event: events.append(event))
+
+# 3. Send and wait (or send() with manual wait)
+await session.send_and_wait({"prompt": prompt})
+
+# 4. Event types received:
+#    - assistant.message_delta → event.data.delta_content (str)
+#    - assistant.message → event.data.content (final complete)
+#    - session.idle → completion signal
 ```
 
-**REALITY:** The SDK has NO `send_message()` method that returns an AsyncIterator.
+**Key SessionEventTypes for streaming:**
+- `ASSISTANT_MESSAGE_DELTA` - incremental content chunk
+- `ASSISTANT_MESSAGE` - final complete response
+- `SESSION_IDLE` - processing complete
+- `SESSION_ERROR` - error occurred
+## 3.3 F-052 Implementation Pattern (VERIFIED)
 
-**Evidence (copilot-sdk/python/copilot/session.py lines 117-207):**
-- `send()` returns `str` (message ID)
-- `send_and_wait()` returns `SessionEvent | None` (blocking)
-- `on()` provides callback-based event subscription
-
-**Why test path works:**
 ```python
-# provider.py line 271 (test path)
-async for sdk_event in session.send_message(request.prompt, request.tools):
+from copilot.generated.session_events import SessionEventType
+
+async def _send_real_sdk_streaming(
+    self, session: CopilotSession, request: ChatRequest
+) -> AsyncIterator[StreamEvent]:
+    """Real SDK streaming path - VERIFIED pattern."""
+    queue: asyncio.Queue[SessionEvent | None] = asyncio.Queue()
+    
+    def handler(event: SessionEvent) -> None:
+        queue.put_nowait(event)
+    
+    unsubscribe = session.on(handler)
+    try:
+        await session.send({"prompt": request.prompt})
+        
+        while True:
+            event = await queue.get()
+            if event is None:
+                break
+            
+            if event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
+                yield StreamEvent(
+                    type=StreamEventType.CONTENT_DELTA,
+                    content=event.data.delta_content
+                )
+            elif event.type == SessionEventType.ASSISTANT_MESSAGE:
+                yield StreamEvent(
+                    type=StreamEventType.CONTENT_COMPLETE,
+                    content=event.data.content
+                )
+            elif event.type == SessionEventType.SESSION_IDLE:
+                break
+            elif event.type == SessionEventType.SESSION_ERROR:
+                raise ProviderUnavailableError(str(event.data))
+    finally:
+        unsubscribe()
 ```
-This works because tests MOCK `session.send_message` — the real SDK doesn't have it.
 
-## 3.3 Streaming Pattern (If Needed)
-
-To receive streaming events from SDK:
-```python
-# Correct pattern using send() + on()
-def handler(event: SessionEvent) -> None:
-    # Process each event as it arrives
-    domain_event = translate_event(event, event_config)
-    accumulator.add(domain_event)
-
-unsubscribe = session.on(handler)
-try:
-    await session.send({"prompt": prompt})
-    # Wait for completion signal
-    await wait_for_idle()
-finally:
-    unsubscribe()
-```
-
-**DECISION:** F-052 must be BLOCKED until this pattern is verified with live SDK testing.
+**DECISION:** F-052 is **UNBLOCKED** — pattern verified via SDK e2e tests.
 
 ---
 
@@ -289,7 +320,7 @@ finally:
 | F-049-fix-architecture-test-paths | P0 | ready | IMPLEMENT + EXPAND | 1 |
 | F-050-mandatory-deny-hook-installation | P1 | ready | IMPLEMENT | 3 |
 | F-051-defensive-event-config-loading | P0 | ready | IMPLEMENT | 3 |
-| F-052-real-sdk-streaming-pipeline | P0 | **BLOCKED** | DEFER — SDK verification needed | — |
+| F-052-real-sdk-streaming-pipeline | P0 | ready | IMPLEMENT (pattern verified) | 3 |
 | F-053-unify-error-config-loading | P1 | ready | IMPLEMENT | 4 |
 | F-054-response-extraction-recursion-guard | P1 | ready | IMPLEMENT | 4 |
 | F-055-streaming-accumulator-completion-guard | P1 | ready | IMPLEMENT | 4 |
@@ -331,10 +362,9 @@ finally:
 | F-091-ephemeral-session-invariant-tests | P1 | ready | IMPLEMENT | 9 |
 
 **Summary:**
-- IMPLEMENT: 37 features
+- IMPLEMENT: 38 features (including F-052)
 - DROP: 2 (F-057, F-058)
 - AMEND: 2 (F-072, F-073)
-- BLOCKED: 1 (F-052)
 - SUPERSEDED: 1 (F-071 → F-089)
 
 ---
@@ -385,37 +415,69 @@ except Exception as e:
 
 ---
 
-## 5.3 F-052 Amendment: Mark BLOCKED
+## 5.3 F-052 Amendment: Add Verified Implementation Pattern
 
 **File:** `specs/features/F-052-real-sdk-streaming-pipeline.md`
 
-**Add new section after Status header:**
-```markdown
-**Status:** blocked
+**Status:** ready (UNBLOCKED 2026-03-15)
 **Priority:** P0
 **Source:** deep-review/integration-specialist.md
-**Defect ID:** N/A (structural correctness failure)
-**Blocked By:** SDK capability verification required
 
-## BLOCKING ISSUE
+**Replace Implementation Approach section with:**
+```markdown
+## Implementation Approach (Verified 2026-03-15)
 
-This spec assumes the SDK supports streaming event iteration via `async for`. 
+The SDK uses callback-based event subscription via `on()` handler with `streaming: True` session option.
 
-**VERIFIED SDK REALITY (copilot-sdk/python/copilot/session.py):**
-- `send(options)` → returns message ID only (non-blocking)
-- `send_and_wait(options, timeout)` → returns final SessionEvent (blocking)
-- `on(handler)` → event subscription via callback
-- **NO `send_message()` AsyncIterator method exists**
+**Evidence:** `copilot-sdk/python/e2e/test_streaming_fidelity.py` lines 14-42
 
-**Resolution Options:**
-1. **OPTION A:** Redesign spec to use `send()` + `on()` event callback pattern
-2. **OPTION B:** Defer feature and implement F-072 first (makes blocking path safe)
-3. **OPTION C:** Verify if newer SDK versions added async iterator API
+### Verified Pattern
 
-**RECOMMENDED:** OPTION B — Implement F-072 first. Defer F-052 until SDK streaming capabilities are verified with live testing.
+```python
+from copilot.generated.session_events import SessionEventType
+import asyncio
 
-## Original Problem Statement
-[... rest of spec unchanged ...]
+async def _send_real_sdk_streaming(
+    self, session: CopilotSession, request: ChatRequest
+) -> AsyncIterator[StreamEvent]:
+    """Real SDK streaming path using verified on() + queue pattern."""
+    queue: asyncio.Queue[SessionEvent | None] = asyncio.Queue()
+    
+    def handler(event: SessionEvent) -> None:
+        queue.put_nowait(event)
+    
+    unsubscribe = session.on(handler)
+    try:
+        await session.send({"prompt": request.prompt})
+        
+        while True:
+            event = await queue.get()
+            if event is None:
+                break
+            
+            if event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
+                yield StreamEvent(
+                    type=StreamEventType.CONTENT_DELTA,
+                    content=event.data.delta_content
+                )
+            elif event.type == SessionEventType.ASSISTANT_MESSAGE:
+                yield StreamEvent(
+                    type=StreamEventType.CONTENT_COMPLETE,
+                    content=event.data.content
+                )
+            elif event.type == SessionEventType.SESSION_IDLE:
+                break
+            elif event.type == SessionEventType.SESSION_ERROR:
+                raise ProviderUnavailableError(str(event.data))
+    finally:
+        unsubscribe()
+```
+
+### Key Event Types
+- `ASSISTANT_MESSAGE_DELTA` - streaming content chunk (`event.data.delta_content`)
+- `ASSISTANT_MESSAGE` - final complete response (`event.data.content`)
+- `SESSION_IDLE` - processing complete signal
+- `SESSION_ERROR` - error condition
 ```
 
 ---
