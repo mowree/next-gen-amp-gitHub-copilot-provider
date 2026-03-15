@@ -69,3 +69,8 @@ from ._imports import Client, Session
 - Adding new SDK imports beyond what client.py currently uses
 - Refactoring SDK adapter internals beyond import redirection
 - SDK version compatibility shims (future work)
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

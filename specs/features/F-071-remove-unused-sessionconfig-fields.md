@@ -40,3 +40,8 @@
 - Adding system_prompt or max_tokens support (wiring them through to the SDK)
 - Refactoring SessionConfig for other reasons
 - Changes to how `model` is propagated
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

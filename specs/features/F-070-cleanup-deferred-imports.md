@@ -38,3 +38,8 @@
 - Refactoring error_translation.py
 - Changing error class hierarchy
 - Other import cleanup beyond the identified deferred imports
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

@@ -50,3 +50,8 @@ No new tests needed — this is a no-op cleanup. Verify existing tests still pas
 
 - Auditing other files for duplicate imports
 - Reorganizing the import block
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

@@ -42,3 +42,8 @@ Several test quality issues identified:
 ## Not In Scope
 - Rewriting test architecture
 - Adding new test frameworks
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

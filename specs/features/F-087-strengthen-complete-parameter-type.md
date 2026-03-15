@@ -63,3 +63,8 @@ This may require importing `ChatRequest` from `amplifier_core` or defining a loc
 - Runtime type validation or enforcement beyond the annotation
 - Changes to callers of `complete()`
 - Refactoring internal request handling logic
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

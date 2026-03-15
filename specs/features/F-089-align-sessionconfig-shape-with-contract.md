@@ -57,3 +57,8 @@ The recommended approach is safer since the current field names may be driven by
 - Adding new fields to SessionConfig beyond what the contract specifies
 - Refactoring SessionConfig consumers beyond field name updates
 - Runtime validation of SessionConfig values
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

@@ -37,3 +37,8 @@ The `_complete_fn` attribute is initialized at provider.py line 35 but is never 
 
 - Refactoring the `sdk_create_fn` injection mechanism
 - Changes to the completion lifecycle beyond removing the dead attribute
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+

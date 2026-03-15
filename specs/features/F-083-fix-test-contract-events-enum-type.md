@@ -49,3 +49,8 @@ No new tests needed — this is a fix to an existing test file. Verify existing 
 
 - Auditing other test files for similar string-vs-enum issues
 - Changing `DomainEvent` to reject string values at runtime
+
+## 7. Test Strategy
+
+N/A — cleanup/refactor feature, no behavioral tests required.
+
