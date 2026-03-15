@@ -39,3 +39,20 @@
 ## Not In Scope
 - Circuit breaker implementation (separate feature)
 - Kernel-level retry coordination
+
+## 7. Test Strategy (TDD)
+
+Write tests BEFORE implementation:
+
+| Test | Type | What it verifies | Contract Anchor |
+|------|------|------------------|-----------------|
+| `test_happy_path` | Unit | Primary behavior | `<contract>:<Section>:MUST:N` |
+| `test_error_case` | Unit | Error handling | `<contract>:<Section>:MUST:N` |
+| `test_edge_case` | Unit | Boundary conditions | `<contract>:<Section>:SHOULD:N` |
+
+**Test file:** `tests/test_<module_name>.py`
+
+Tests MUST:
+- Reference contract clause in docstring
+- Use `ConfigCapturingMock` for SDK boundary tests
+- Fail before implementation (Red phase)
