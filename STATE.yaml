@@ -514,6 +514,7 @@ module_specs:
   error_translation: specs/modules/error-translation.md
   session_factory: specs/modules/session-factory.md
   streaming: specs/modules/completion.md
+  tool_parsing: specs/modules/tool-parsing.md
 
 # =============================================================================
 # Expert Panel References (read-only guidance for working sessions)

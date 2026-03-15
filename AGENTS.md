@@ -88,3 +88,10 @@ creates invisible state that the next session can't see. Run the recipe.
 - Do NOT read FEATURE-ARCHIVE.yaml or SESSION-ARCHIVE.md (append-only archives)
 - Do NOT assume context from any "previous conversation" -- you have none
 - Do NOT treat STATE.yaml as suggestions -- it is the ground truth
+
+## Module Spec Maintenance
+
+When adding or significantly refactoring a module:
+1. If >100 lines: Create/update `specs/modules/<module>.md`
+2. Register in `STATE.yaml` under `module_specs`
+3. Module specs define API and dependencies; contracts define invariants
