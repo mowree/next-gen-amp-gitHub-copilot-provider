@@ -127,3 +127,15 @@ class TestMountFunction:
         assert cleanup is not None
         assert callable(cleanup)
         assert inspect.iscoroutinefunction(cleanup)
+
+
+def test_package_has_version() -> None:
+    """Verify package exposes __version__.
+
+    Supersedes: test_placeholder.py::test_version_exists
+    Contract: provider-protocol:EP:MUST:1 (package identity)
+    """
+    from amplifier_module_provider_github_copilot import __version__
+
+    assert isinstance(__version__, str)
+    assert len(__version__) > 0
