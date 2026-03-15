@@ -1,8 +1,9 @@
 # Contract: Event Vocabulary
 
 ## Version
-- **Current:** 1.0
-- **Module Reference:** src/amplifier_module_provider_github_copilot/streaming.py
+- **Current:** 1.1 (Path-Corrected)
+- **Module Reference:** amplifier_module_provider_github_copilot/streaming.py
+- **Correction:** 2026-03-15 — Removed erroneous `src/` prefix
 - **Config:** config/events.yaml
 - **Status:** Specification
 

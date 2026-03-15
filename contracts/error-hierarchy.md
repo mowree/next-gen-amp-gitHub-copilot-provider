@@ -1,8 +1,9 @@
 # Contract: Error Hierarchy
 
 ## Version
-- **Current:** 1.0 (v2.1 Kernel-Validated)
-- **Module Reference:** src/amplifier_module_provider_github_copilot/error_translation.py
+- **Current:** 1.1 (v2.2 Path-Corrected)
+- **Module Reference:** amplifier_module_provider_github_copilot/error_translation.py
+- **Correction:** 2026-03-15 — Removed erroneous `src/` prefix
 - **Config:** config/errors.yaml
 - **Kernel Source:** `amplifier_core.llm_errors`
 - **Status:** Specification

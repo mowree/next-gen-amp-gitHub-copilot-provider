@@ -1,9 +1,10 @@
 # Contract: Deny + Destroy Pattern
 
 ## Version
-- **Current:** 1.0
-- **Module Reference:** modules/provider-core/session_factory.py
+- **Current:** 1.1 (Path-Corrected)
+- **Module Reference:** amplifier_module_provider_github_copilot/sdk_adapter/client.py
 - **Status:** Non-Negotiable Constraint
+- **Correction:** 2026-03-15 — Fixed path from `modules/provider-core/session_factory.py` to actual location
 
 ---
 
