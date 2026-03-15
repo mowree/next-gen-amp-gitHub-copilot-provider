@@ -230,8 +230,6 @@ async def complete(
 
     error_config = config.error_config
     if error_config is None:
-        from pathlib import Path
-
         # provider.py is at amplifier_module_provider_github_copilot/provider.py
         # config is at config/errors.yaml (2 levels up)
         package_root = Path(__file__).parent.parent
@@ -253,8 +251,17 @@ async def complete(
                     "SDK session factory returned None",
                     provider="github-copilot",
                 )
-            if hasattr(session, "register_pre_tool_use_hook"):
-                session.register_pre_tool_use_hook(create_deny_hook())
+            # F-050: Deny hook installation is MANDATORY (deny-destroy:DenyHook:MUST:1)
+            if not hasattr(session, "register_pre_tool_use_hook"):
+                from .error_translation import ProviderUnavailableError
+
+                raise ProviderUnavailableError(
+                    "SDK session lacks register_pre_tool_use_hook method - "
+                    "deny hook cannot be installed. Deny+Destroy pattern requires "
+                    "hook registration on every session.",
+                    provider="github-copilot",
+                )
+            session.register_pre_tool_use_hook(create_deny_hook())
         else:
             from .error_translation import ProviderUnavailableError
 

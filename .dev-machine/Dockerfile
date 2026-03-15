@@ -42,6 +42,7 @@ RUN UV_TOOL_DIR=/home/amplifier/.local/share/uv/tools \
     --with aiohttp \
     --with mcp \
     --with beautifulsoup4 \
+    --with duckduckgo-search \
     && chmod -R 777 /home/amplifier/.local
 ENV PATH="/home/amplifier/.local/bin:$PATH"
 

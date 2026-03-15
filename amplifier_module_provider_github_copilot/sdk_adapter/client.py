@@ -237,10 +237,19 @@ class CopilotClientWrapper:
             logger.debug(  # type: ignore[union-attr]
                 f"[CLIENT] Session created: {getattr(sdk_session, 'session_id', '?')}"  # type: ignore[arg-type]
             )
-            # F-019 AC-1: MUST register deny hook on real SDK path
-            if hasattr(sdk_session, "register_pre_tool_use_hook"):  # type: ignore[arg-type]
-                sdk_session.register_pre_tool_use_hook(create_deny_hook())  # type: ignore[union-attr]
-                logger.debug("[CLIENT] Deny hook registered on session")
+            # F-019 AC-1 + F-050: MUST register deny hook on real SDK path
+            # deny-destroy:DenyHook:MUST:1 - deny hook installation is MANDATORY
+            if not hasattr(sdk_session, "register_pre_tool_use_hook"):  # type: ignore[arg-type]
+                from ..error_translation import ProviderUnavailableError
+
+                raise ProviderUnavailableError(
+                    "SDK session lacks register_pre_tool_use_hook method - "
+                    "deny hook cannot be installed. Deny+Destroy pattern requires "
+                    "hook registration on every session.",
+                    provider="github-copilot",
+                )
+            sdk_session.register_pre_tool_use_hook(create_deny_hook())  # type: ignore[union-attr]
+            logger.debug("[CLIENT] Deny hook registered on session")
         except Exception as e:
             error_config = self._get_error_config()
             raise translate_sdk_error(e, error_config) from e

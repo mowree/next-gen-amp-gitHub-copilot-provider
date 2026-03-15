@@ -1,7 +1,7 @@
 phase: 9
 phase_name: "Phase 9 \u2014 Deep Review Remediation (9 sub-phases)"
-epoch: 41
-next_action: 'Sub-phase 1: Continue with F-084 and F-050'
+epoch: 43
+next_action: Sub-phase 1 complete. Continue with Sub-phase 2 (F-074, F-081)
 blockers: []
 features:
   F-049-fix-architecture-test-paths:
@@ -33,21 +33,23 @@ features:
     completed_at: '2026-03-15T23:58:00Z'
     note: Files already deleted in previous session
   F-084-remove-redundant-path-import:
-    status: ready
+    status: implemented
     priority: P3
     sub_phase: 1
     spec: specs/features/F-084-remove-redundant-path-import.md
     source: deep-review/python-dev.md
     depends_on: []
     description: Remove redundant Path import from provider.py
+    completed_at: '2026-03-16T00:00:00Z'
   F-050-mandatory-deny-hook-installation:
-    status: ready
+    status: implemented
     priority: P1
     sub_phase: 1
     spec: specs/features/F-050-mandatory-deny-hook-installation.md
     source: deep-review/bug-hunter.md
     depends_on: []
     description: "Establish sovereignty invariant \u2014 deny hook on every SDK session"
+    completed_at: '2026-03-16T00:00:00Z'
   F-074-config-not-in-wheel:
     status: ready
     priority: P0
@@ -454,4 +456,4 @@ meta:
     of amplifier_core kernel types. This was never caught because tests use MagicMock() coordinators that don't validate types.
     Expert panel (5 agents) confirmed the root cause and reviewed the migration spec. F-038 addresses this with a boundary-only
     migration that preserves internal streaming architecture while returning kernel types from public methods.
-last_session: '2026-03-15T23:56:42.846681+00:00'
+last_session: '2026-03-15T23:59:54.936721+00:00'

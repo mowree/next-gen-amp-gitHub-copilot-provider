@@ -10,6 +10,49 @@
 
 ---
 
+## Session 2026-03-16T00:00Z -- Phase 9 Sub-phase 1: F-084 + F-050 Implemented
+
+### Executive Summary
+
+**TWO FEATURES IMPLEMENTED**: F-084 (remove redundant Path import) and F-050 (mandatory deny hook installation). Sub-phase 1 is now complete.
+
+### Work Completed
+
+**F-084: Remove Redundant Path Import** (IMPLEMENTED)
+- Removed duplicate `from pathlib import Path` at line 233 in `provider.py`
+- Module-level import at line 27 is sufficient
+- Files modified: `amplifier_module_provider_github_copilot/provider.py`
+
+**F-050: Mandatory Deny Hook Installation** (IMPLEMENTED)
+- Changed conditional `if hasattr(...)` to mandatory registration with error raising
+- Both `provider.py` (line 256) and `client.py` (line 241) now raise `ProviderUnavailableError` if `register_pre_tool_use_hook` method is absent
+- Contract: `deny-destroy:DenyHook:MUST:1` - deny hook MUST be installed on every SDK session
+- Created `tests/test_f050_deny_hook_mandatory.py` with 4 tests covering both code paths
+- Files modified: `amplifier_module_provider_github_copilot/provider.py`, `amplifier_module_provider_github_copilot/sdk_adapter/client.py`
+
+### State Updates
+
+- `epoch`: 41 → 42
+- F-084, F-050 marked `status: implemented`
+- `next_action`: Sub-phase 1 complete. Continue with Sub-phase 2 (F-074, F-081)
+
+### Build Verification
+
+- Unable to run pytest/ruff/pyright (tools not installed in this environment)
+- Human should run: `uv run pytest tests/test_f050_deny_hook_mandatory.py -v`
+- Human should run: `uv run ruff check amplifier_module_provider_github_copilot/ && uv run pyright amplifier_module_provider_github_copilot/`
+
+### Key Design Decision
+
+**Fail-fast on missing deny hook**: Rather than silently skipping deny hook installation when SDK session lacks `register_pre_tool_use_hook`, the provider now fails immediately with `ProviderUnavailableError`. This enforces the Deny+Destroy sovereignty pattern as a mandatory invariant.
+
+### Next Steps
+
+1. Human commits changes with Amplifier co-author trailer
+2. Continue with Sub-phase 2: F-074 (config not in wheel) and F-081 (fix context extraction)
+
+---
+
 ## Session 2026-03-15T23:56Z -- Phase 9 Sub-phase 1: Zero-Risk Cleanups (3 features implemented)
 
 ### Executive Summary
