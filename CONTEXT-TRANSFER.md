@@ -30,6 +30,26 @@ Per repo protocol for operator sessions, no direct document edit was made. This 
 
 ---
 
+## Session 2026-03-15T02:03Z -- Blocker: Principal review of core-expert document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-core-expert.md` based on principal feedback.
+
+### Verified Evidence
+
+- `amplifier_module_provider_github_copilot/provider.py:481-488` is the real SDK path used by `GitHubCopilotProvider.complete()` and has no local `try/except` around `sdk_session.send_and_wait(...)` or `extract_response_content(...)`.
+- The only confirmed error translation path reviewed here is the module-level `complete()` test path at `provider.py:272-284`, which catches exceptions, skips double-wrapping for `LLMError`, and calls `translate_sdk_error(...)` before re-raising.
+- This creates a dual-path architecture gap from F-039/F-040: test path translates SDK errors, real SDK path does not.
+- `provider.py` fallback provider defaults still omit required `defaults.context_window`; the deep review should treat that as a MUST violation, not a minor gap.
+- Relevant remediation specs already exist in state: `F-072-real-sdk-path-error-translation` and `F-078` was requested by the reviewer, but no `F-078` entry was found in `STATE.yaml` during this session.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-14T17:32Z -- F-047 + F-048 Implemented (Phase 8 Complete)
 
 ### Executive Summary
