@@ -76,7 +76,7 @@ class TestSkillFile:
             / "three-medium-extension"
             / "skill.md"
         )
-        content = skill_path.read_text()
+        content = skill_path.read_text(encoding="utf-8")
         assert content.startswith("---"), "skill.md should start with YAML frontmatter"
         assert "skill:" in content, "skill.md should have skill section"
 
