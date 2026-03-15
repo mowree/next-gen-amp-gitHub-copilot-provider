@@ -3,6 +3,7 @@ phase_name: Phase 9 -- Deep Review Remediation
 epoch: 39
 next_action: "Phase 9: Deep Review Remediation - 23 features ready for implementation"
 blockers:
+  - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-spec-reviewer-part2.md. Verified the feedback: the document's SDK-boundary findings remain valid, the real SDK path at provider.py:481-495 has no try/except or translate_sdk_error() call so raw SDK exceptions can escape (F-072, P0), and new specs F-088/F-089 are now tracked. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-code-quality-reviewer.md, but operator sessions in this repo must not modify repo files outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-core-expert.md. Verified the feedback: the real SDK path at provider.py:481-488 has no try/except or translate_sdk_error() call, so raw SDK exceptions can escape; fallback ProviderInfo defaults also omit required defaults.context_window. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-foundation-expert.md. Verified the feedback: GitHubCopilotProvider.complete() real SDK path at provider.py:481-488 has no try/except or translate_sdk_error() call, so provider-protocol complete() must be FAIL, not PASS; bundle.md context.include references contracts/provider-protocol.md and contracts/deny-destroy.md, and because pyproject.toml packages only amplifier_module_provider_github_copilot, those contracts are outside the wheel unless separately included. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
@@ -163,6 +164,14 @@ features:
     priority: P2
     source: principal-review
   F-087-strengthen-complete-parameter-type:
+    status: ready
+    priority: P2
+    source: manual-review
+  F-088-create-imports-py-sdk-quarantine:
+    status: ready
+    priority: P2
+    source: manual-review
+  F-089-align-sessionconfig-shape-with-contract:
     status: ready
     priority: P2
     source: manual-review

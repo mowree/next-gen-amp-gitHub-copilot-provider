@@ -10,6 +10,26 @@
 
 ---
 
+## Session 2026-03-15T05:40Z -- Blocker: Principal review of spec-reviewer-part2 document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-spec-reviewer-part2.md` based on principal feedback.
+
+### Verified Evidence
+
+- The document's key boundary findings remain evidence-backed: there is no `_imports.py` quarantine file, `sdk_adapter/types.py` exposes `SDKSession = Any`, and `SessionConfig` shape still diverges from the contract.
+- `sdk_adapter/client.py` still installs the deny hook conditionally via `if hasattr(..., "register_pre_tool_use_hook")`, so the document's contract-based concern about a skip path remains valid; the principal's compatibility concern is also real, so the pragmatic resolution is to either update the contract or fail fast on incompatible SDK versions.
+- `amplifier_module_provider_github_copilot/provider.py:481-495` is the real SDK path and has no local `try/except` around `sdk_session.send_and_wait(...)` or `extract_response_content(...)`; because it does not call `translate_sdk_error(...)`, raw SDK exceptions can escape the provider boundary. This omitted P0 issue matches ready spec `F-072-real-sdk-path-error-translation`.
+- `STATE.yaml` now tracks the newly requested follow-on specs `F-088-create-imports-py-sdk-quarantine` and `F-089-align-sessionconfig-shape-with-contract`.
+- Any amended review should add a principal-review section that preserves the validated findings, notes the conditional-hook compatibility nuance, and records the missed F-072 issue plus references to F-088/F-089.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-15T05:12Z -- Blocker: Principal review of security-guardian document verified, but direct amendment remains outside operator scope
 
 ### Summary

@@ -35,3 +35,10 @@ Scope: reviewed only `contracts/sdk-boundary.md`, `contracts/deny-destroy.md`, `
 - Make preToolUse deny-hook registration mandatory, not conditional.
 - Align `sdk_adapter/types.py` with the contract-defined `SessionConfig` and add the missing domain types.
 - Implement or surface the required tool-capture/return path without letting SDK types cross the boundary.
+
+### PRINCIPAL REVIEW AND AMENDMENTS
+- **Document rating:** 7/10 — Strong contract-based review.
+- **Verified correct findings:** The principal review confirmed the key boundary findings in this document are correct: missing `_imports.py` quarantine, `SDKSession = Any` breaching the membrane, `SessionConfig` shape drift from contract requirements, conditional `preToolUse` hook installation, the deny-destroy contract violation caused by that skip path, and the missing eager dependency check.
+- **Pragmatic hook-registration nuance:** The `if hasattr(..., "register_pre_tool_use_hook")` branch is still a contract violation as written, but the principal review correctly notes it may have been added for SDK-version compatibility. Pragmatic resolution should be one of two explicit choices: either relax the contract to acknowledge SDK variability, or treat a missing hook API as an incompatible SDK and fail fast rather than silently skipping installation.
+- **Missed P0 amendment:** This review missed the dominant production-path failure already tracked as `F-072-real-sdk-path-error-translation`. In `amplifier_module_provider_github_copilot/provider.py:481-495`, the real SDK path calls `sdk_session.send_and_wait(...)` and `extract_response_content(...)` with no local `try/except` and no `translate_sdk_error(...)` call, so raw SDK exceptions can escape the provider boundary untranslated.
+- **New specs to reference:** `F-088-create-imports-py-sdk-quarantine` tracks the `_imports.py` quarantine requirement, and `F-089-align-sessionconfig-shape-with-contract` tracks the `SessionConfig` contract-shape mismatch.
