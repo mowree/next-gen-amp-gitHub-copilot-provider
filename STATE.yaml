@@ -7,6 +7,7 @@ blockers:
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-core-expert.md. Verified the feedback: the real SDK path at provider.py:481-488 has no try/except or translate_sdk_error() call, so raw SDK exceptions can escape; fallback ProviderInfo defaults also omit required defaults.context_window. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-foundation-expert.md. Verified the feedback: GitHubCopilotProvider.complete() real SDK path at provider.py:481-488 has no try/except or translate_sdk_error() call, so provider-protocol complete() must be FAIL, not PASS; bundle.md context.include references contracts/provider-protocol.md and contracts/deny-destroy.md, and because pyproject.toml packages only amplifier_module_provider_github_copilot, those contracts are outside the wheel unless separately included. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-integration-specialist.md. Verified the feedback: provider.py real SDK path at 481-488 has no try/except around sdk_session.send_and_wait(...), so it bypasses both event translation and error translation; raw SDK exceptions can escape untranslated, matching F-072. provider.close() at 517-523 is a no-op even though sdk_adapter/client.py has a working close(), so this should be tracked as P1 spec F-082. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
+  - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-python-dev.md. Verified the feedback: the document's 'production code is clean' and 'error handling is proper' claims are overstated because provider.py real SDK path at 481-488 has no try/except or translate_sdk_error() call, so raw SDK exceptions can escape the provider boundary (tracked as F-072, P0). Reviewer severity corrections also demote test_contract_events.py enum misuse to P2, redundant Path import to P3, and asyncio.iscoroutinefunction deprecation to P4; requested new reference F-083 for the enum-type test issue still needs recipe-managed document update and, if absent from state, explicit spec registration. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
 features:
   F-049-fix-architecture-test-paths:
     status: ready
@@ -144,6 +145,14 @@ features:
     status: ready
     priority: P1
     source: deep-review/integration-specialist.md, principal-review
+  F-083-fix-test-contract-events-enum-type:
+    status: ready
+    priority: P2
+    source: deep-review/python-dev.md, principal-review
+  F-084-remove-redundant-path-import:
+    status: ready
+    priority: P3
+    source: deep-review/python-dev.md, principal-review
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation

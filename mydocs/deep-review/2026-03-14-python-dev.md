@@ -232,3 +232,75 @@ The `B017` issue in `test_integration.py:429` is meaningful: `pytest.raises(Exce
 ### P4 — Consider (Design)
 11. **Private symbol access in tests** — Each test that accesses `_private` symbols should have a comment explaining why white-box access is necessary, or the symbols should be made accessible via a narrow testing interface.
 12. **`_complete_internal()` return type** — Change `AsyncIterator[DomainEvent]` to `AsyncGenerator[DomainEvent, None]` for accuracy, or leave as-is (functionally correct).
+
+---
+
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Reviewed by:** Principal-Level Developer  
+**Date:** 2026-03-15  
+**Document Rating:** 6/10 — Thorough linting review, but missed dominant P0 bug
+
+### Verified Correct ✅
+
+1. **Redundant Path import at provider.py:233** — VERIFIED (Lines 27 and 233 both have `from pathlib import Path`)
+2. **test_contract_events.py:98 passes string not enum** — VERIFIED (`DomainEvent(type="CONTENT_DELTA", ...)` but type should be `DomainEventType`)
+3. **`_load_error_config_once()` duplicates YAML parsing** — VERIFIED (missing `context_extraction`)
+4. **DRY violation between AccumulatedResponse and StreamingAccumulator** — Intentional design pattern, acceptable
+5. **Test fixtures missing type annotations** — ACCURATE (common in pytest codebases)
+
+### Critical Correction 🚨
+
+**Original Claim:** "Production code is clean" and "Error handling is ✅ Proper"  
+**Corrected Claim:** Production code passes static analysis; **architectural gaps exist**
+
+The real SDK path at provider.py:479-495 has **NO try/except**:
+
+```python
+# Lines 479-495 - NO error handling
+async with self._client.session(model=model) as sdk_session:
+    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+    if sdk_response is not None:
+        content = extract_response_content(sdk_response)
+        text_event = DomainEvent(type=DomainEventType.CONTENT_DELTA, data={"text": content})
+        accumulator.add(text_event)
+```
+
+If the SDK raises ANY exception:
+- No translation via `translate_sdk_error()`
+- No wrapping in `LLMError`
+- Raw SDK exception propagates to kernel
+- **P0 contract violation**
+
+**Root Cause:** Static analysis tools (ruff, pyright) don't catch "you forgot to wrap this code in try/except" — that's architectural review.
+
+**Remediation:** F-072 spec covers this fix.
+
+### Severity Corrections
+
+| Finding | Original Rating | Corrected Rating |
+|---------|-----------------|------------------|
+| Production error handling | "✅ Proper" | ❌ Missing on real SDK path |
+| test_contract_events.py:98 | P1 | **P2** |
+| Redundant Path import | P1 | **P3** |
+| asyncio.iscoroutinefunction deprecation | P2 | **P4** (Python 3.14 not relevant yet) |
+
+### Methodology Note
+
+This document is **competent within its scope** (static analysis) but **scope is insufficient**:
+
+1. **Relied solely on tools**: ruff and pyright don't validate behavioral correctness
+2. **No code path analysis**: Didn't trace complete() to find dual paths
+3. **Missed contract compliance**: No check against provider-protocol.md requirements
+4. **Self-limiting**: "Production code is clean" based on zero linting errors, ignoring design gaps
+
+**Lesson:** Static analysis ≠ architectural review. Both are needed for comprehensive code quality assessment.
+
+### New Specs from This Review
+
+- **F-083** (P2): Fix test_contract_events.py to use DomainEventType enum instead of string
+- **F-084** (P3): Remove redundant Path import at provider.py:233
+
+---
+
+*End of principal amendments. Original findings retained where accurate.*

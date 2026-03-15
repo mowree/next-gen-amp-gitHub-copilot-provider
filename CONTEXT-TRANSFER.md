@@ -10,6 +10,26 @@
 
 ---
 
+## Session 2026-03-15T04:45Z -- Blocker: Principal review of python-dev document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-python-dev.md` based on principal feedback.
+
+### Verified Evidence
+
+- `amplifier_module_provider_github_copilot/provider.py:481-488` is the real SDK path used by `GitHubCopilotProvider.complete()` and has no local `try/except` around `sdk_session.send_and_wait(...)` or `extract_response_content(...)`.
+- Because that path does not call `translate_sdk_error(...)`, raw SDK exceptions can escape the provider boundary; the review's claims that production code is "clean" and error handling is "proper" are too strong. Static analysis passed, but the dominant architectural gap is still present and already tracked as `F-072-real-sdk-path-error-translation`.
+- The principal severity corrections are consistent with the evidence: `test_contract_events.py:98` enum misuse is a test-only correctness issue and should be framed as P2, the redundant `Path` import in `provider.py` is P3, and `asyncio.iscoroutinefunction` deprecation is P4.
+- The review methodology note is valid: ruff and pyright establish static cleanliness, not end-to-end architectural compliance with `contracts/provider-protocol.md`.
+- Requested new reference `F-083` for the enum-type test issue was not yet verified as present in `STATE.yaml` during this session.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-15T03:10Z -- Blocker: Principal review of integration-specialist document verified, but direct amendment remains outside operator scope
 
 ### Summary
