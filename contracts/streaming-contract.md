@@ -93,7 +93,7 @@ SDK Event Stream
 class StreamAccumulator:
     text_blocks: list[str]              # Accumulated text per block
     thinking_blocks: list[str]          # Accumulated thinking per block
-    tool_calls: list[ToolCallContent]   # Captured tool calls
+    tool_calls: list[ToolCall]           # Captured tool calls
     usage: Usage | None                 # Token usage
     finish_reason: str                  # Final finish reason
 ```
@@ -122,14 +122,14 @@ async def _stream_completion(
 
 1. **MUST** capture tool calls from SDK events
 2. **MUST NOT** execute tool calls (deny-destroy.md)
-3. **MUST** return tool calls as `ToolCallContent` in response
+3. **MUST** return tool calls as `ToolCall` in response
 4. **MUST** preserve tool call IDs for correlation
 
 ### Tool Call Accumulation
 
 ```python
 def handle_tool_call_event(self, event: DomainEvent) -> None:
-    tool_call = ToolCallContent(
+    tool_call = ToolCall(
         id=event.data["id"],
         name=event.data["name"],
         arguments=event.data["arguments"],
@@ -161,30 +161,30 @@ circuit_breaker:
 ## Final Response Assembly
 
 ```python
-from amplifier_core.content_models import TextContent, ThinkingContent, ToolCallContent
+from amplifier_core import TextBlock, ThinkingBlock, ToolCall
 
 def assemble_response(accumulator: StreamAccumulator) -> ChatResponse:
     """
     Assemble final response from accumulated state.
     
-    Uses kernel content types, not custom types.
+    Uses kernel message types (Pydantic), not content_models dataclasses.
     """
-    content_blocks: list[ContentBlock] = []
+    content_blocks: list[TextBlock | ThinkingBlock | ToolCall] = []
     
     for text in accumulator.text_blocks:
         if text:
-            content_blocks.append(TextContent(text=text))
+            content_blocks.append(TextBlock(text=text))
     
     for thinking in accumulator.thinking_blocks:
         if thinking:
-            content_blocks.append(ThinkingContent(text=thinking))
+            content_blocks.append(ThinkingBlock(thinking=thinking))
     
     for tc in accumulator.tool_calls:
-        content_blocks.append(tc)  # Already ToolCallContent
+        content_blocks.append(tc)  # Already ToolCall
     
     return ChatResponse(
         content=content_blocks,
-        tool_calls=[...],  # Converted to ToolCall list
+        tool_calls=[...],  # ToolCall list
         usage=accumulator.usage,
         finish_reason=accumulator.finish_reason,
     )
@@ -221,12 +221,12 @@ See `contracts/sdk-response.md` for full extraction specification.
 
 ## Implementation Checklist
 
-- [ ] Import content types from `amplifier_core.content_models`
+- [ ] Import message types from `amplifier_core` (TextBlock, ThinkingBlock, ToolCall)
 - [ ] StreamAccumulator tracks all state
 - [ ] Text deltas accumulated per block
-- [ ] Thinking deltas accumulated per block
-- [ ] Tool calls captured as ToolCallContent
+- [ ] Thinking deltas accumulated per block (ThinkingBlock.thinking, not .text)
+- [ ] Tool calls captured as ToolCall
 - [ ] Circuit breaker tracks turn count
-- [ ] Final response uses kernel content types
+- [ ] Final response uses kernel message types (Pydantic)
 - [ ] No custom content types defined
 - [ ] SDK response extraction uses `extract_response_content()` (F-043)
