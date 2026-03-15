@@ -59,14 +59,40 @@ else
 fi
 
 # Step 3: Verify installation using system Python
-echo "[3/5] Verifying installation..."
-python -c "
-import amplifier_module_provider_github_copilot
-print('      ✓ Provider module importable')
+echo "[3/5] Verifying installation and showing versions..."
+python << 'VERSIONS'
+import sys
+print(f"      Python: {sys.version.split()[0]}")
+
+# Get package versions
+from importlib.metadata import version, PackageNotFoundError
+
+packages = [
+    ("amplifier-core", "amplifier_core"),
+    ("github-copilot-sdk", "github_copilot_sdk"),
+    ("amplifier-module-provider-github-copilot", "amplifier_module_provider_github_copilot"),
+]
+
+for pkg_name, import_name in packages:
+    try:
+        v = version(pkg_name)
+        # Check if editable/local install
+        import importlib
+        mod = importlib.import_module(import_name)
+        location = getattr(mod, '__file__', 'unknown')
+        is_local = '/workspace' in str(location)
+        source = "(LOCAL)" if is_local else "(published)"
+        print(f"      {pkg_name}: {v} {source}")
+    except PackageNotFoundError:
+        print(f"      {pkg_name}: NOT INSTALLED")
+    except Exception as e:
+        print(f"      {pkg_name}: error - {e}")
+
+# Verify provider works
 from amplifier_module_provider_github_copilot.provider import GitHubCopilotProvider
 p = GitHubCopilotProvider(config={})
-print(f'      ✓ Provider info: {p.get_info().id}')
-"
+print(f"      ✓ Provider: {p.get_info().id} ({p.get_info().display_name})")
+VERSIONS
 
 # Step 4: Pre-seed settings.yaml to bypass first-run wizard
 echo "[4/5] Pre-seeding Amplifier settings..."

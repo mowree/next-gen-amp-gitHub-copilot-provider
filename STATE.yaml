@@ -135,6 +135,10 @@ features:
     status: ready
     priority: P2
     source: packaging-review
+  F-081-fix-context-extraction-in-client-error-loading:
+    status: ready
+    priority: P0
+    source: manual-investigation
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation

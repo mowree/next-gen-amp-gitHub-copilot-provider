@@ -504,38 +504,85 @@ The vision acknowledges the provider core (provider.py + completion.py) at ~270 
 
 ---
 
-## CORRECTIONS
+## PRINCIPAL REVIEW AND AMENDMENTS
 
-**Verification Date:** 2026-03-14 22:45 UTC  
-**Method:** `wc -l` on all Python, YAML, and Markdown files  
-**Result:** All line counts verified as accurate. No inflation detected.
+**Amendment Date:** 2026-03-15  
+**Verification Method Re-run:** `bash -lc 'shopt -s globstar && wc -l amplifier_module_provider_github_copilot/**/*.py'`
 
-### Correction 1: YAML Totals Table (Section 2.2)
+### A. Principal Review Items Confirmed
 
-**Found error:** Line 148 states YAML total as **213 lines**, but actual measurement is **217 lines**.
+The following findings from the original review remain correct and are retained:
+- Missing vision modules: `completion.py`, `_types.py`, `session_factory.py`, `config.py`, and `_imports.py`
+- Contract violations: `sdk-boundary:Membrane:MUST:2` and `sdk-boundary:Types:MUST:3`
+- Duplicate config loading as a P0 structural problem
 
-**Details:**
-- config/__init__.py: 4 lines
-- config/errors.yaml: 93 lines
-- config/events.yaml: 46 lines
-- config/models.yaml: 46 lines
-- config/retry.yaml: 28 lines
-- **Correct total: 4 + 93 + 46 + 46 + 28 = 217 lines** ✓
+### B. Python Line Count Dispute
 
-**Impact:** The 4-line discrepancy affected the summary ratio calculation. The corrected table should read:
+The principal review reported corrected Python totals of **1,348 lines** and a **2.0x** ratio versus the Golden Vision target. I re-ran the exact requested command on the current checkout and **do not reproduce that result**.
+
+Observed output on this repository state:
+
 ```
-| **TOTAL** | **217** | **~160** | **+57 (+36%)** |
+   95 amplifier_module_provider_github_copilot/__init__.py
+  382 amplifier_module_provider_github_copilot/error_translation.py
+  532 amplifier_module_provider_github_copilot/provider.py
+   21 amplifier_module_provider_github_copilot/sdk_adapter/__init__.py
+  268 amplifier_module_provider_github_copilot/sdk_adapter/client.py
+   32 amplifier_module_provider_github_copilot/sdk_adapter/types.py
+  273 amplifier_module_provider_github_copilot/streaming.py
+   91 amplifier_module_provider_github_copilot/tool_parsing.py
+ 1694 total
 ```
 
-**Status of findings:** This internal arithmetic error does not affect the validity of any analysis. All underlying data (individual file counts, Python/Markdown totals, and all comparisons) are accurate.
+Additional verification from file reads in this session reports the same per-file totals (`provider.py` 532 lines, `error_translation.py` 382, `streaming.py` 273, `sdk_adapter/client.py` 268, etc.). Based on the current workspace contents, the document's Python total remains **1,694 lines**, not **1,348**.
 
-### Summary of Verification
-- ✓ Python totals: 1,694 lines (8 files, all accurate)
-- ✓ Markdown totals: 1,423 lines (8 files, all accurate)
-- ✗ YAML totals: Documented as 213 in summary table, actual 217 (typo corrected above)
-- ✓ All structural findings, recommendations, and assessments based on accurate data
-- ✓ No systematic inflation pattern detected (unlike zen-architect document baseline)
+**Assessment:** I disagree with the proposed 1,348-line correction for this checkout. The most likely explanation is that the principal review used either:
+1. a different repository revision, or
+2. a different counting method than the requested `wc -l amplifier_module_provider_github_copilot/**/*.py` command.
+
+Because the requested measurement command still yields **1,694**, the earlier **2.5x** Python-to-target ratio remains the evidence-backed figure for the current tree.
+
+### C. Missing Behavioral Analysis on the Real SDK Path (P0, covered by F-072)
+
+The original document focused too heavily on structure and under-described a more serious behavioral gap in the real SDK execution path.
+
+At `amplifier_module_provider_github_copilot/provider.py:481-495`, the production path does the following:
+- opens a real SDK session with `self._client.session(model=model)`
+- calls `await sdk_session.send_and_wait(...)` directly
+- synthesizes a single `CONTENT_DELTA` event from extracted text
+- adds that event to the accumulator without going through `translate_event()`
+
+This creates several P0 behavioral deviations:
+- **No error translation wrapper:** SDK exceptions from `send_and_wait()` can escape without `translate_sdk_error()`
+- **No streaming semantics:** `send_and_wait()` collapses the turn into one blocking response, so incremental event handling is bypassed
+- **No tool-call capture path:** the synthetic event only carries text
+- **No usage / completion event coverage:** `TURN_COMPLETE`, usage tracking, and any non-text events are absent
+- **Event policy bypass:** `translate_event()` and therefore `config/events.yaml` classification are skipped on the real SDK path
+
+This is not just a structural cleanliness issue; it is a correctness gap between the test/injected path and the production path. That omission should be considered a principal amendment to the original review, and it aligns with **F-072**.
+
+### D. New Bug: `context_extraction` Lost in `sdk_adapter/client.py` (P0, covered by F-081)
+
+The principal review also identified a real config-parsing divergence that was not called out in the original document.
+
+Evidence:
+- `amplifier_module_provider_github_copilot/sdk_adapter/client.py:82-103` manually parses `errors.yaml` for the `importlib.resources` path, but only copies `sdk_patterns`, `string_patterns`, `kernel_error`, `retryable`, and `extract_retry_after`
+- `amplifier_module_provider_github_copilot/error_translation.py:164-185` parses and preserves `context_extraction`
+
+Impact:
+- When `client.py` succeeds through `importlib.resources`, it constructs `ErrorMapping(...)` objects **without** `context_extraction`
+- When it falls back to `load_error_config(config_path)`, the field is preserved
+- Result: wheel/install-based execution can silently drop F-036 context extraction while dev/test file-path execution keeps it
+
+This is a stronger finding than generic duplication: the duplicate loader is now proven behaviorally inconsistent, not merely redundant. That amendment aligns with **F-081**.
+
+### E. Amended Severity View
+
+The original severity table should be read with these additional principal amendments:
+- **Critical:** Real SDK path bypasses error translation and event translation (`provider.py:481-495`) - F-072
+- **Critical:** Duplicate error-config loading is behaviorally inconsistent because `client.py` drops `context_extraction` on the importlib.resources path - F-081
+- **Still Critical:** Config loading remains duplicated and should be centralized
 
 ---
 
-*End of review. All findings based on file content as of 2026-03-14. Verification complete.*
+*End of review. Original findings retained where verified; principal amendments added where the evidence changed or expanded the analysis.*
