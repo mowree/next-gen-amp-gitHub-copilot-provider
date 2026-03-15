@@ -46,3 +46,6 @@ uv.lock
 
 # Shadow test artifacts
 shadow_test_output.log
+
+# Local forensic tools (not for distribution)
+.tool/
