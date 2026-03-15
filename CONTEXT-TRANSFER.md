@@ -10,6 +10,45 @@
 
 ---
 
+## Session 2026-03-15T23:56Z -- Phase 9 Sub-phase 1: Zero-Risk Cleanups (3 features implemented)
+
+### Executive Summary
+
+**THREE FEATURES IMPLEMENTED**: F-049, F-079, F-077 from Sub-phase 1 zero-risk cleanups.
+
+### Work Completed
+
+**F-049: Fix Architecture Test Paths** (IMPLEMENTED)
+- Changed `Path("src/amplifier_module_provider_github_copilot")` to `Path("amplifier_module_provider_github_copilot")` in both test files
+- Added `files_scanned` counter and assertion `assert files_scanned > 0` to prevent vacuous passes
+- Files modified: `tests/test_contract_deny_destroy.py`, `tests/test_sdk_client.py`
+
+**F-079: Add py.typed Marker** (IMPLEMENTED)
+- Created empty file `amplifier_module_provider_github_copilot/py.typed`
+- Package now PEP 561 compliant for downstream type checking
+
+**F-077: Delete Tombstone Test Files** (ALREADY DONE)
+- Files `tests/test_deny_hook_breach_detector.py` and `tests/test_ephemeral_session_wiring.py` do not exist
+- Already deleted in a previous session
+
+### State Updates
+
+- `epoch`: 39 → 40
+- F-049, F-079, F-077 marked `status: implemented`
+- `next_action`: Sub-phase 1 continues with F-084 and F-050
+
+### Build Verification
+
+- Unable to run pytest/ruff/pyright (tools not installed in this environment)
+- Human should run: `uv run pytest tests/test_contract_deny_destroy.py tests/test_sdk_client.py -v`
+
+### Next Steps
+
+1. Human commits changes with Amplifier co-author trailer
+2. Continue with F-084 (remove redundant Path import) and F-050 (mandatory deny hook installation)
+
+---
+
 ## Session 2026-03-15T05:53Z -- Blocker: Principal review of spec-reviewer-part3 document verified, but direct amendment remains outside operator scope
 
 ### Summary

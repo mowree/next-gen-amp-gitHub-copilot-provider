@@ -78,9 +78,10 @@ class TestArchitectureFitness:
 
     def test_no_sdk_imports_outside_adapter(self) -> None:
         """deny-destroy:NoExecution:MUST:3 - SDK imports only in sdk_adapter/."""
-        root = Path("src/amplifier_module_provider_github_copilot")
+        root = Path("amplifier_module_provider_github_copilot")
 
         violations: list[str] = []
+        files_scanned = 0
 
         for py_file in root.glob("*.py"):
             # Skip __init__.py which may re-export
@@ -92,6 +93,7 @@ class TestArchitectureFitness:
             except SyntaxError:
                 continue
 
+            files_scanned += 1
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
@@ -101,6 +103,7 @@ class TestArchitectureFitness:
                     if node.module and _is_sdk_import(node.module):
                         violations.append(f"{py_file.name}: from {node.module}")
 
+        assert files_scanned > 0, "No files found — check path"
         assert not violations, "SDK imports found outside sdk_adapter/:\n" + "\n".join(violations)
 
     def test_sdk_adapter_contains_sdk_imports(self) -> None:

@@ -188,9 +188,11 @@ class TestSDKIsolation:
         """Non-adapter Python modules must not import from 'copilot'."""
         from pathlib import Path
 
-        src_root = Path("src/amplifier_module_provider_github_copilot")
+        src_root = Path("amplifier_module_provider_github_copilot")
         violations = []
+        files_scanned = 0
         for py_file in src_root.glob("*.py"):
+            files_scanned += 1
             source = py_file.read_text()
             lines = [
                 ln
@@ -202,4 +204,5 @@ class TestSDKIsolation:
             if lines:
                 violations.append(py_file.name)
 
+        assert files_scanned > 0, "No files found — check path"
         assert violations == [], f"SDK imports found outside sdk_adapter/: {violations}"
