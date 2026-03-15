@@ -74,6 +74,14 @@ When providing review feedback:
 - Ask clarifying questions when requirements are ambiguous
 - Never apologize; correct and move forward
 
+### Amplifier Work Orders
+
+When asked to provide a response, reply, or work order for Amplifier:
+- Wrap the **entire response** in a single markdown code block (triple backticks)
+- This enables one-click copy from the chat window
+- Include all sections (scope, tasks, output, constraints) inside the code block
+- Never split the work order across multiple code blocks
+
 ## Git Push Machine Tracking
 
 When pushing to private branches or main, include the **origin machine** in commit messages:
