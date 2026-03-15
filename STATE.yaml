@@ -162,6 +162,10 @@ features:
     status: ready
     priority: P2
     source: principal-review
+  F-087-strengthen-complete-parameter-type:
+    status: ready
+    priority: P2
+    source: manual-review
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
