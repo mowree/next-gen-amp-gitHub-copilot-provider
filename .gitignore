@@ -48,3 +48,4 @@ uv.lock
 
 # Shadow test artifacts
 shadow_test_output.log
+mydocs/.mydocs-pull-logs/
