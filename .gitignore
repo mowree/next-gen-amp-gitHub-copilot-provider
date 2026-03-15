@@ -50,3 +50,14 @@ uv.lock
 shadow_test_output.log
 mydocs/.mydocs-pull-logs/
 add_tdd_section.ps1
+
+# Local SDK clone (intentional per copilot-instructions.md)
+copilot-sdk/
+
+# Temp files (orphaned from previous sessions)
+temp_*.sh
+temp_*.md
+run_validation.sh
+
+# VS Code local history
+.history/

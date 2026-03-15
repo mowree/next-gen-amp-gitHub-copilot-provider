@@ -104,6 +104,46 @@ When the user authorizes a push to private branch:
 1. Note the origin machine in commit message if not already present
 2. Use appropriate git credentials for the target remote
 
+## .tools/ Directory Convention
+
+The `.tools/` directory contains utility scripts for development and debugging.
+
+### Requirements for Scripts in .tools/
+
+Every script MUST include a header block with:
+```bash
+# =============================================================================
+# <script-name>.sh — <one-line description>
+# =============================================================================
+#
+# PURPOSE:
+#   <What this script does>
+#
+# WHEN TO USE:
+#   - <Use case 1>
+#   - <Use case 2>
+#
+# CREATED: <YYYY-MM-DD> (<context/source>)
+# MACHINE: <target environment - WSL, Windows, etc.>
+#
+# USAGE:
+#   ./.tools/<script-name>.sh [args]
+#
+# =============================================================================
+```
+
+### Current Tools
+
+| Script | Purpose | Environment |
+|--------|---------|-------------|
+| `validate-recipes.sh` | Validate .dev-machine recipes against bundle schema | WSL |
+
+### Creating New Tools
+
+1. Create script in `.tools/` with required header
+2. Add entry to table above
+3. Commit with message: `chore: add <tool-name> to .tools/ (from: <machine>)`
+
 ## Repository Context
 
 - **Remote**: https://github.com/mowree/next-gen-amp-gitHub-copilot-provider
