@@ -309,88 +309,10 @@ Amplifier MUST update this table when executing work items:
 | WI | Feature | Status | Commit | Notes |
 |----|---------|--------|--------|-------|
 | WI-001 | F-092 | _pending_ | | |
-| WI-002 | F-077 | _pending_ | | |
+| WI-002 | F-077 | **completed** | `56319c1` | 3 files deleted |
 | WI-003 | F-093 | _pending_ | | |
 | WI-004 | F-094 | _pending_ | | |
-| WI-005 | F-095 | _pending_ | | |
-| WI-006 | F-096 | _pending_ | | |
-
-**Status Values:** `pending` → `in_progress` → `completed` | `blocked`
-
----
-
-## Quality Gate Verification
-
-- [x] ConfigCapturingMock existence verified via `file_search`
-- [x] test_bug_fixes.py metrics verified via `Get-Content | Measure-Object`
-- [x] Pyright errors verified via `uv run pyright`
-- [x] Spec TDD sections scanned via `Get-ChildItem` + regex
-- [x] Tombstone files identified via line count filter
-- [x] F-XXX test files identified via filename pattern
-- [x] No reliance on doc claims without terminal verification
-
-**Test file:** `tests/test_<module_name>.py`
-
-Tests MUST:
-- Reference contract clause in docstring
-- Use `ConfigCapturingMock` for SDK boundary tests
-- Fail before implementation (Red phase)
-```
-
-### N/A Template (for WI-006)
-
-```markdown
-## 7. Test Strategy
-
-N/A — cleanup/refactor feature, no behavioral tests required.
-```
-
----
-
-## Part E: Contract Anchor Reference
-
-| Contract | File | Key Sections |
-|----------|------|--------------|
-| provider-protocol | contracts/provider-protocol.md | EP, Complete, Close |
-| sdk-boundary | contracts/sdk-boundary.md | Config, Types, Errors |
-| deny-destroy | contracts/deny-destroy.md | DenyHook, Sovereignty |
-| streaming-contract | contracts/streaming-contract.md | Accumulation, Types |
-| error-hierarchy | contracts/error-hierarchy.md | Types, Translation |
-| event-vocabulary | contracts/event-vocabulary.md | Classification, Events |
-| behaviors | contracts/behaviors.md | Retry, Session |
-
-**Anchor Format:** `<contract>:<Section>:<MUST|SHOULD|MAY>:<N>`
-
-**Example:** `deny-destroy:DenyHook:MUST:1`
-
----
-
-## Part F: Execution Order
-
-| Phase | Work Items | Dependencies | Parallel Safe |
-|-------|------------|--------------|---------------|
-| 1 | WI-002 (delete tombstones) | None | ✅ Yes |
-| 2 | WI-003 (rename test files) | None | ✅ Yes |
-| 3 | WI-005 (supersede placeholder) | None | ✅ Yes |
-| 4 | WI-001 (TDD retrofit) | None | ✅ Yes |
-| 5 | WI-006 (mark N/A specs) | None | ✅ Yes |
-| 6 | WI-004 (CCM migration) | WI-003 | ❌ After Phase 2 |
-
-**Phases 1-5 can run in parallel.** Phase 6 depends on Phase 2 completion.
-
----
-
-## Part G: Amplifier Response Required
-
-Amplifier MUST update this table when executing work items:
-
-| WI | Feature | Status | Commit | Notes |
-|----|---------|--------|--------|-------|
-| WI-001 | F-092 | _pending_ | | |
-| WI-002 | F-077 | _pending_ | | |
-| WI-003 | F-093 | _pending_ | | |
-| WI-004 | F-094 | _pending_ | | |
-| WI-005 | F-095 | _pending_ | | |
+| WI-005 | F-095 | **completed** | `56319c1` | Superseded to test_entry_point.py |
 | WI-006 | F-096 | _pending_ | | |
 
 **Status Values:** `pending` → `in_progress` → `completed` | `blocked`
