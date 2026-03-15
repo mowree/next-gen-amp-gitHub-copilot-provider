@@ -513,7 +513,7 @@ module_specs:
   sdk_adapter: specs/modules/sdk-adapter.md
   error_translation: specs/modules/error-translation.md
   session_factory: specs/modules/session-factory.md
-  streaming: specs/modules/completion.md
+  streaming: specs/modules/streaming.md
   tool_parsing: specs/modules/tool-parsing.md
 
 # =============================================================================

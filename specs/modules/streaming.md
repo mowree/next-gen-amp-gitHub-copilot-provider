@@ -1,8 +1,9 @@
-# Module Spec: Completion (Streaming)
+# Module Spec: Streaming
 
 **Module:** `amplifier_module_provider_github_copilot/streaming.py`
-**Contract:** `contracts/streaming-contract.md`
-**Target Size:** ~250 lines
+**Contracts:** `contracts/streaming-contract.md`, `contracts/event-vocabulary.md`
+**Config:** `config/events.yaml`
+**Target Size:** ~210 lines
 
 ---
 
@@ -113,8 +114,6 @@ def translate_event(sdk_event: Any, config: EventConfig) -> DomainEvent | None:
 
 ---
 
----
-
 ## Invariants
 
 1. **MUST:** Accumulate all deltas into complete response
@@ -144,4 +143,4 @@ streaming.py
 | Unit | Delta accumulation produces correct blocks |
 | Streaming | Event sequence produces expected response |
 | Timeout | Circuit breaker triggers at limits |
-| Contract | All streaming-contract.md MUST clauses tested |
+| Contract | All streaming-contract.md and event-vocabulary.md MUST clauses tested |

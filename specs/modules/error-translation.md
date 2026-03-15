@@ -3,7 +3,7 @@
 **Module:** `amplifier_module_provider_github_copilot/error_translation.py`
 **Contract:** `contracts/error-hierarchy.md`
 **Config:** `config/errors.yaml`
-**Target Size:** ~200 lines
+**Target Size:** ~300 lines
 
 ---
 

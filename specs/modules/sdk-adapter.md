@@ -17,7 +17,7 @@ The SDK Adapter is **THE MEMBRANE** — the only place in the codebase where SDK
 | File | Lines | Responsibility |
 |------|-------|----------------|
 | `__init__.py` | ~20 | Public exports |
-| `client.py` | ~250 | SDK client wrapper, deny hooks, session lifecycle |
+| `client.py` | ~220 | SDK client wrapper, deny hooks, session lifecycle |
 | `types.py` | ~40 | Domain types (SessionConfig, SDKSession) |
 
 ---
