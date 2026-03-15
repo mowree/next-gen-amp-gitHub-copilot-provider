@@ -163,7 +163,7 @@ SDK_BOUNDARY_PATTERNS = [
 | F-091 | F-091-ephemeral-session-invariant-tests.md | P1 | WI-001 |
 
 **Summary:**
-- **23 specs** need full TDD Section 7 retrofit
+- **24 specs** need full TDD Section 7 retrofit
 - **9 specs** should be marked `## 7. Test Strategy: N/A (cleanup/refactor)`
 
 ---
@@ -308,7 +308,7 @@ Amplifier MUST update this table when executing work items:
 
 | WI | Feature | Status | Commit | Notes |
 |----|---------|--------|--------|-------|
-| WI-001 | F-092 | _pending_ | | |
+| WI-001 | F-092 | **completed** | `e59c7bf` | 24 specs retrofitted |
 | WI-002 | F-077 | **completed** | `56319c1` | 3 files deleted |
 | WI-003 | F-093 | **completed** | `b7719ee` | 5 files renamed |
 | WI-004 | F-094 | **completed** | `7ef9fbc` | CCM migration done |
