@@ -311,7 +311,7 @@ Amplifier MUST update this table when executing work items:
 | WI-001 | F-092 | _pending_ | | |
 | WI-002 | F-077 | **completed** | `56319c1` | 3 files deleted |
 | WI-003 | F-093 | **completed** | `b7719ee` | 5 files renamed |
-| WI-004 | F-094 | _pending_ | | |
+| WI-004 | F-094 | **completed** | `7ef9fbc` | CCM migration done |
 | WI-005 | F-095 | **completed** | `56319c1` | Superseded to test_entry_point.py |
 | WI-006 | F-096 | _pending_ | | |
 
