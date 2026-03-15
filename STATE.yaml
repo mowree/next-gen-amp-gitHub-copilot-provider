@@ -1,9 +1,101 @@
-phase: 8
-phase_name: Phase 8 -- SDK Boundary Fixes and Testing Architecture
+phase: 9
+phase_name: Phase 9 -- Deep Review Remediation
 epoch: 39
-next_action: Phase 8 complete. Consider tagging v0.4.0 release
+next_action: "Phase 9: Deep Review Remediation - 23 features ready for implementation"
 blockers: []
-features: {}
+features:
+  F-049-fix-architecture-test-paths:
+    status: ready
+    priority: P0
+    source: deep-review/bug-hunter.md
+  F-050-mandatory-deny-hook-installation:
+    status: ready
+    priority: P1
+    source: deep-review/bug-hunter.md
+  F-051-defensive-event-config-loading:
+    status: ready
+    priority: P0
+    source: deep-review/bug-hunter.md
+  F-052-real-sdk-streaming-pipeline:
+    status: ready
+    priority: P0
+    source: deep-review/integration-specialist.md
+  F-053-unify-error-config-loading:
+    status: ready
+    priority: P1
+    source: deep-review/bug-hunter.md
+  F-054-response-extraction-recursion-guard:
+    status: ready
+    priority: P1
+    source: deep-review/bug-hunter.md
+  F-055-streaming-accumulator-completion-guard:
+    status: ready
+    priority: P1
+    source: deep-review/bug-hunter.md
+  F-056-sdk-client-failed-start-cleanup:
+    status: ready
+    priority: P1
+    source: deep-review/bug-hunter.md
+  F-057-provider-close-cleanup:
+    status: ready
+    priority: P1
+    source: deep-review/integration-specialist.md, deep-review/security-guardian.md
+  F-058-sdk-request-timeout-enforcement:
+    status: ready
+    priority: P1
+    source: deep-review/security-guardian.md
+  F-059-chatrequest-multi-turn-context:
+    status: ready
+    priority: P1
+    source: deep-review/bug-hunter.md
+  F-060-config-driven-retry:
+    status: ready
+    priority: P2
+    source: deep-review/integration-specialist.md
+  F-061-error-config-missing-mappings:
+    status: ready
+    priority: P2
+    source: deep-review/integration-specialist.md, deep-review/spec-reviewer-part3.md
+  F-062-architecture-test-hardening:
+    status: ready
+    priority: P2
+    source: deep-review/bug-hunter.md
+  F-063-sdk-boundary-structure:
+    status: ready
+    priority: P2
+    source: deep-review/spec-reviewer-part2.md, deep-review/integration-specialist.md
+  F-064-pypi-publishing-readiness:
+    status: ready
+    priority: P2
+    source: deep-review/foundation-expert.md
+  F-065-provider-decomposition:
+    status: ready
+    priority: P2
+    source: deep-review/spec-reviewer-part1.md
+  F-066-error-translation-safety:
+    status: ready
+    priority: P2
+    source: deep-review/bug-hunter.md, deep-review/security-guardian.md
+  F-067-test-quality-improvements:
+    status: ready
+    priority: P2
+    source: deep-review/bug-hunter.md
+  F-068-event-classification-validation:
+    status: ready
+    priority: P2
+    source: deep-review/bug-hunter.md
+  F-069-remove-complete-fn-dead-code:
+    status: ready
+    priority: P2
+    source: deep-review/code-intel.md
+  F-070-cleanup-deferred-imports:
+    status: ready
+    priority: P2
+    source: deep-review/code-intel.md
+  F-071-remove-unused-sessionconfig-fields:
+    status: ready
+    priority: P2
+    source: deep-review/code-intel.md
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
@@ -46,26 +138,6 @@ completed_features:
 - F-046-sdk-integration-testing-architecture
 - F-047-testing-course-correction
 - F-048-config-extraction
-- F-049-fix-architecture-test-paths
-- F-050-mandatory-deny-hook-installation
-- F-051-defensive-event-config-loading
-- F-052-real-sdk-streaming-pipeline
-- F-053-unify-error-config-loading
-- F-054-response-extraction-recursion-guard
-- F-055-streaming-accumulator-completion-guard
-- F-056-sdk-client-failed-start-cleanup
-- F-057-provider-close-cleanup
-- F-058-sdk-request-timeout-enforcement
-- F-059-chatrequest-multi-turn-context
-- F-060-config-driven-retry
-- F-061-error-config-missing-mappings
-- F-062-architecture-test-hardening
-- F-063-sdk-boundary-structure
-- F-064-pypi-publishing-readiness
-- F-065-provider-decomposition
-- F-066-error-translation-safety
-- F-067-test-quality-improvements
-- F-068-event-classification-validation
 architecture_spec:
   status: approved
   path: ./mydocs/mydocs/debates/GOLDEN_VISION_V2.md
@@ -73,9 +145,10 @@ module_specs: {}
 meta:
   project: provider-github-copilot
   created: '2026-03-08T22:09:54Z'
-  total_features_completed: 68
-  last_updated: '2026-03-14T23:11:36Z'
-  last_session: '2026-03-14T23:11:36Z'
+  total_features_completed: 48
+  last_updated: '2026-03-15T00:17:39Z'
+  last_session: '2026-03-15T00:17:39Z'
+  phase_9_started: '2026-03-15T00:17:39Z'
   phase_8_completed: '2026-03-14T17:32:00Z'
   phase_7_started: '2026-03-14T02:00:00Z'
   phase_4_completed: '2026-03-13T01:23:00Z'
@@ -103,4 +176,4 @@ meta:
     streaming architecture while returning kernel types from public methods.
 
     '
-last_session: '2026-03-14T17:34:22.150744+00:00'
+last_session: '2026-03-15T00:17:39Z'
