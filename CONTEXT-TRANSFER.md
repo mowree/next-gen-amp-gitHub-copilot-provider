@@ -10,6 +10,27 @@
 
 ---
 
+## Session 2026-03-15T05:12Z -- Blocker: Principal review of security-guardian document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-security-guardian.md` based on principal feedback.
+
+### Verified Evidence
+
+- `amplifier_module_provider_github_copilot/provider.py:481-488` is the real SDK path used by `GitHubCopilotProvider.complete()` and has no local `try/except` around `sdk_session.send_and_wait(...)`.
+- Because that path does not call `translate_sdk_error(...)`, raw SDK exceptions can escape the provider boundary instead of being wrapped into kernel/provider errors; this is the dominant P0 issue and aligns with existing ready spec `F-072-real-sdk-path-error-translation`.
+- The prior security review's Finding #5 was directionally correct about possible data leakage, but the root cause is the missing real-path error translation on the `send_and_wait(...)` path; any amended document should connect that finding back to the P0 bug above.
+- The principal review's assessment of the document quality is fair: the corrected Deny+Destroy verification remains valid, and the self-correcting methodology note is supported by the document text.
+- The timeout gap on the real blocking SDK path remains evidence-backed and should be tracked as a separate spec (`F-085`) rather than replacing the P0 error-translation issue.
+- The swallowed disconnect-failure handling remains evidence-backed and should be tracked separately as `F-086`.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-15T04:45Z -- Blocker: Principal review of python-dev document verified, but direct amendment remains outside operator scope
 
 ### Summary

@@ -478,3 +478,72 @@ internal_request = CompletionRequest(
 ## Final Verdict
 
 The corrected evidence does **not** support the prior claim that Deny+Destroy is simply "not fully enforced" at high severity. The code does implement the main controls: permission denial, built-in tool suppression, pre-tool hook registration when supported, and per-session disconnect. The strongest remaining risks are timeout enforcement, incomplete provider-level client shutdown, and degraded live verification under SDK API drift.
+
+---
+
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Reviewed by:** Principal-Level Developer  
+**Date:** 2026-03-15  
+**Document Rating:** 8/10 — Second-best in the review set
+
+### Verified Correct ✅
+
+Excellent self-correcting methodology. The following findings are verified accurate:
+
+1. **`deny_permission_request()` implemented at client.py:43-69** — VERIFIED
+2. **`available_tools=[]` enforced at client.py:216-220** — VERIFIED
+3. **`provider.close()` is no-op at provider.py:517-523** — VERIFIED
+4. **`client.close()` exists at client.py:258-268** — VERIFIED
+5. **Real SDK path has no timeout enforcement** — VERIFIED (zero matches for timeout)
+6. **Session disconnect failure swallowed at client.py:252-256** — VERIFIED
+7. **Self-correcting approach** — Excellent ("prior draft overstated...")
+
+### Critical Addition: Finding #0 (P0) 🚨
+
+**This review missed the dominant P0 bug that 4+ other reviews caught.**
+
+**Finding #0: Real SDK Path Propagates Raw Exceptions**
+
+**Location:** `provider.py:479-495`
+
+**Issue:** The `send_and_wait()` call has no try/except block:
+```python
+async with self._client.session(model=model) as sdk_session:
+    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+```
+
+If `send_and_wait()` raises ANY exception:
+- No `translate_sdk_error()` call
+- Raw SDK exception propagates to kernel
+- Contract provider-protocol.md violation
+
+**Security Impact:**
+- Information disclosure (raw SDK internals exposed in errors)
+- Contract violation (provider-protocol.md requires wrapped errors)
+- Integration failure (kernel may not handle SDK-specific exceptions)
+
+**Remediation:** F-072 spec covers this fix.
+
+### Root Cause Connection
+
+Finding #5 ("Error may leak sensitive data") was ON THE RIGHT TRACK but didn't connect to root cause. The root cause is Finding #0: **no try/except on the real SDK path**. Finding #5 should reference Finding #0.
+
+### Valuable New Findings (Unique to This Review)
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| No timeout on send_and_wait (Finding #2) | HIGH | **F-085 spec created** |
+| Disconnect failures swallowed (Finding #4) | MEDIUM | **F-086 spec created** |
+
+These are important availability and observability concerns that other reviews missed.
+
+### Summary of Specs from This Review
+
+- **F-072** (P0): Real SDK path error translation (referenced, already exists)
+- **F-085** (P1): Add timeout enforcement to real SDK path (NEW)
+- **F-086** (P2): Handle session disconnect failures properly (NEW)
+
+---
+
+*End of principal amendments. Original findings retained — excellent security methodology.*
