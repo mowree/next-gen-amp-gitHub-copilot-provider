@@ -334,3 +334,92 @@ External kernel types (amplifier_core):
 ## LSP Server Status
 
 The Pyright LSP server failed to start during this session due to a filesystem state issue (`/home/mowrim/.amplifier/lsp-servers/` directory missing). Analysis above is based on direct source inspection of all five modules. All symbol references, call sites, and data flows were manually traced from the actual source code.
+
+---
+
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Reviewed:** 2026-03-15  
+**Verdict:** One invariant in the Key Design Invariants table is **FALSE**. All other findings confirmed correct.
+
+---
+
+### FALSE INVARIANT: "SDK errors never leak"
+
+The document claimed:
+
+> | SDK errors never leak | Caught at `complete()` module-level + `client.session()` |
+
+**This is incorrect.** The real SDK execution path has no error translation coverage.
+
+#### Code Evidence
+
+**`provider.py` lines 477–495 — Real SDK path has NO try/except:**
+
+```python
+else:
+    # Real SDK path: use client wrapper
+    model = internal_request.model or "gpt-4o"
+    async with self._client.session(model=model) as sdk_session:
+        # NO try/except here
+        sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+        if sdk_response is not None:
+            content = extract_response_content(sdk_response)
+            text_event = DomainEvent(...)
+            accumulator.add(text_event)
+```
+
+**`client.py` lines 248–256 — `yield` block has only `finally`, no `except`:**
+
+```python
+try:
+    yield sdk_session          # <-- exceptions from send_and_wait() bubble from here
+finally:
+    if sdk_session is not None:
+        try:
+            await sdk_session.disconnect()
+        except Exception as disconnect_err:
+            logger.warning(...)
+```
+
+If `sdk_session.send_and_wait()` raises, the exception propagates uncaught through the `yield`, through `provider.py`, and up to the kernel as a raw SDK exception.
+
+#### What IS caught (corrected scope)
+
+| Site | What is caught | What is NOT covered |
+|------|---------------|---------------------|
+| `client.py:212,244,246` — `except Exception` before `yield` | `ImportError` (SDK missing), errors during `client.start()`, errors during `client.create_session()` | Errors during `send_and_wait()` after session is established |
+| `provider.py:272-284` — `complete()` module-level `except Exception` | All exceptions in the **test/`_complete_internal` path** | The real SDK `else` branch — this block is not reached from `GitHubCopilotProvider.complete()` directly |
+
+#### Corrected Invariants Table
+
+| Invariant | Where Enforced | Status |
+|-----------|---------------|--------|
+| SDK import isolation | Only `sdk_adapter/client.py` imports `copilot.*` | ✅ Correct |
+| Session always destroyed | `client.py` `finally: sdk_session.disconnect()` | ✅ Correct |
+| Tools always denied at SDK | Two hooks: `pre_tool_use` + `on_permission_request` | ✅ Correct |
+| SDK errors never leak | **FALSE** — real SDK path (`send_and_wait`) has no error translation | ❌ **BUG** |
+| No double-wrap of LLMError | `isinstance(e, LLMError)` check before translate | ✅ Correct (test path only) |
+| Config-driven mappings | `errors.yaml` + `events.yaml` — no hardcoded patterns | ✅ Correct |
+| Kernel types at boundary | `to_chat_response()` converts internal → `ChatResponse` | ✅ Correct |
+
+---
+
+### Root Cause Analysis
+
+The F-039/F-040 refactoring split `complete()` into two parallel paths:
+
+1. **Test path** (`sdk_create_fn` injected) → calls `_complete_internal()` → calls module-level `complete()` → **has** `except Exception` at lines 272-284 → errors translated ✅
+2. **Real SDK path** (`else` branch) → inline `async with self._client.session()` + `send_and_wait()` → **no** `except Exception` → errors bubble raw ❌
+
+The error handling was only implemented in the test path. The real SDK path was left unprotected, violating the contract in `error-hierarchy.md`:
+
+> "The provider MUST translate SDK errors into kernel error types"
+
+This is the same systemic gap identified in the `code-navigator-v2.md` review, confirming it is a structural issue introduced by the parallel-path refactoring, not an isolated oversight.
+
+---
+
+### Remediation
+
+**Spec F-072** covers the fix. The real SDK path in `GitHubCopilotProvider.complete()` (lines 477-495) requires a `try/except Exception` block wrapping the `send_and_wait()` call, with `translate_sdk_error()` applied before re-raising — matching the pattern already present in the test path at `provider.py:272-284`.
