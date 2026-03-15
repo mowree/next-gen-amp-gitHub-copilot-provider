@@ -164,7 +164,7 @@ SDK_BOUNDARY_PATTERNS = [
 
 **Summary:**
 - **23 specs** need full TDD Section 7 retrofit
-- **10 specs** should be marked `## 7. Test Strategy: N/A (cleanup/refactor)`
+- **9 specs** should be marked `## 7. Test Strategy: N/A (cleanup/refactor)`
 
 ---
 
@@ -313,7 +313,7 @@ Amplifier MUST update this table when executing work items:
 | WI-003 | F-093 | **completed** | `b7719ee` | 5 files renamed |
 | WI-004 | F-094 | **completed** | `7ef9fbc` | CCM migration done |
 | WI-005 | F-095 | **completed** | `56319c1` | Superseded to test_entry_point.py |
-| WI-006 | F-096 | _pending_ | | |
+| WI-006 | F-096 | **completed** | `231e0fe` | 9 specs marked N/A |
 
 **Status Values:** `pending` → `in_progress` → `completed` | `blocked`
 
