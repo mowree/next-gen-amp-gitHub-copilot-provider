@@ -538,10 +538,10 @@ blockers:
 ```yaml
 features:
   F-052-real-sdk-streaming-pipeline:
-    status: blocked
+    status: ready
     priority: P0
-    source: deep-review/integration-specialist.md
-    blocked_by: "SDK verification required - see AMPLIFIER-DIRECTIVE Part 5.3"
+    source: specs/features/F-052-real-sdk-streaming-pipeline.md
+    verified: "2026-03-15: SDK streaming pattern verified via copilot-sdk/python/e2e/test_streaming_fidelity.py"
   
   F-057-provider-close-cleanup:
     status: superseded
@@ -626,10 +626,11 @@ next_action: "Execute Phase 1: Delete src/, fix paths in contracts/tests, implem
 |---------|----------|-------------|-------|
 | **F-072** | P0 | Error translation in complete() | **IMPLEMENT FIRST** |
 | F-073 | P1 | Tests for F-072 | After F-072 |
+| **F-052** | P0 | Real SDK streaming pipeline | **PATTERN VERIFIED** |
 | F-051 | P0 | Event config safety | — |
 | F-050 | P1 | Deny hook enforcement | — |
 
-**F-052 is BLOCKED — do not implement**
+**F-052 is UNBLOCKED** — SDK streaming pattern verified via `copilot-sdk/python/e2e/test_streaming_fidelity.py`
 
 **EVIDENCE: provider.py lines 479-495 has NO try/except**
 ```python
@@ -715,7 +716,7 @@ async def close(self) -> None:
 | **F-065** | P2 | Extract completion.py/response.py |
 
 **CRITICAL:** F-065 MUST be LAST provider.py change. All 13 features touching provider.py must land first:
-- F-052 (blocked), F-054, F-059, F-065, F-067, F-069, F-070, F-072, F-078, F-082, F-084, F-085, F-087
+- F-052, F-054, F-059, F-065, F-067, F-069, F-070, F-072, F-078, F-082, F-084, F-085, F-087
 
 ---
 
@@ -739,7 +740,7 @@ async def close(self) -> None:
 
 | File | Feature Count | Features |
 |------|---------------|----------|
-| **provider.py** | 13 | F-052(blocked), F-054, F-059, F-065, F-067, F-069, F-070, F-072, F-078, F-082, F-084, F-085, F-087 |
+| **provider.py** | 13 | F-052, F-054, F-059, F-065, F-067, F-069, F-070, F-072, F-078, F-082, F-084, F-085, F-087 |
 | **sdk_adapter/client.py** | 6 | F-050, F-053, F-056, F-081, F-086, F-088 |
 | **sdk_adapter/types.py** | 2 | F-071(superseded), F-089 |
 | **config/** | 5 | F-074, F-075, F-078, F-060, F-061 |
@@ -907,7 +908,7 @@ Before the dev-machine proceeds, verify:
 | Contract paths fixed | ☐ | grep shows no `src/amplifier` in contracts/ |
 | F-072 spec amended | ☐ | Spec says `ProviderUnavailableError` |
 | F-073 spec amended | ☐ | Spec says `ProviderUnavailableError` |
-| F-052 marked blocked | ☐ | STATE.yaml shows `status: blocked` |
+| F-052 pattern verified | ☐ | STATE.yaml shows `status: ready`, spec has verified pattern |
 | F-049 scope expanded | ☐ | Spec includes contracts in scope |
 | F-071 marked superseded | ☐ | STATE.yaml shows `status: superseded` |
 | F-057 marked superseded | ☐ | STATE.yaml shows `status: superseded` |
@@ -944,7 +945,6 @@ If Amplifier disagrees with ANY decision in this directive:
 - Add defensive code beyond spec requirements
 
 **Amplifier MUST NOT:**
-- Implement F-052 until SDK verification complete
 - Implement F-057, F-058, F-071 (superseded)
 - Skip F-074 before other config features
 - Implement F-065 before all other provider.py features
