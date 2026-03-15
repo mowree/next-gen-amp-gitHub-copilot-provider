@@ -2,7 +2,14 @@
 
 **Authority:** Principal Engineering Review
 **Date:** 2026-03-15
-**Version:** 1.1 (F-052 Unblocked)
+**Version:** 1.2 (Expert Panel Corrections Applied)
+
+**Revision History:**
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-03-15 | Initial constitution |
+| 1.1 | 2026-03-15 | F-052 unblocked after SDK verification |
+| 1.2 | 2026-03-15 | Expert panel corrections: F-067→Phase 7, F-050→Phase 1, type refs verified |
 **Purpose:** Complete, self-contained directive for autonomous dev-machine execution
 
 ---
@@ -591,17 +598,20 @@ next_action: "Execute Phase 1: Delete src/, fix paths in contracts/tests, implem
 
 ---
 
-## Phase 1: Zero-Risk Cleanups (~1 iteration)
+## Phase 1: Zero-Risk Cleanups + Sovereignty (~1 iteration)
 
 | Feature | Priority | Description |
 |---------|----------|-------------|
 | **F-049** | P0 | Fix architecture test paths + contract paths |
+| **F-050** | P1 | Deny hook enforcement | **MOVED from Phase 3 (sovereignty invariant first)** |
 | F-077 | P3 | Delete tombstone test files |
 | F-079 | P2 | Add py.typed marker |
 | F-084 | P3 | Remove redundant Path import |
 
 **Dependencies:** None
-**Exit Criteria:** All tests pass, contracts have correct paths
+**Exit Criteria:** All tests pass, contracts have correct paths, deny hook enforced
+
+**EXPERT PANEL CORRECTION:** F-050 moved from Phase 3 to Phase 1 per zen-architect analysis — sovereignty invariant (deny hook) is foundational and must be established before any SDK integration work.
 
 ---
 
@@ -628,7 +638,7 @@ next_action: "Execute Phase 1: Delete src/, fix paths in contracts/tests, implem
 | F-073 | P1 | Tests for F-072 | After F-072 |
 | **F-052** | P0 | Real SDK streaming pipeline | **PATTERN VERIFIED** |
 | F-051 | P0 | Event config safety | — |
-| F-050 | P1 | Deny hook enforcement | — |
+| ~~F-050~~ | ~~P1~~ | ~~Deny hook enforcement~~ | **MOVED to Phase 1** |
 
 **F-052 is UNBLOCKED** — SDK streaming pattern verified via `copilot-sdk/python/e2e/test_streaming_fidelity.py`
 
@@ -700,12 +710,15 @@ async def close(self) -> None:
 
 | Feature | Priority | Description | Order |
 |---------|----------|-------------|-------|
+| **F-067** | P3 | Test quality improvements | **MOVED from Phase 9 (before F-065)** |
 | **F-088** | P2 | Create _imports.py SDK quarantine | First |
 | F-063 | P2 | Extend SDK quarantine | After F-088 |
 | F-069 | P2 | Remove complete_fn dead code | — |
 | F-070 | P2 | Cleanup deferred imports | — |
 | **F-089** | P2 | Align SessionConfig (absorbs F-071) | — |
 | F-087 | P2 | Strengthen complete parameter type | — |
+
+**EXPERT PANEL CORRECTION:** F-067 moved from Phase 9 to Phase 7 per integration-specialist analysis — test improvements must land before F-065 provider decomposition.
 
 ---
 
@@ -725,7 +738,7 @@ async def close(self) -> None:
 | Feature | Priority | Description |
 |---------|----------|-------------|
 | F-062 | P2 | Architecture test hardening |
-| F-067 | P3 | Test quality improvements |
+| ~~F-067~~ | ~~P3~~ | ~~Test quality improvements~~ **MOVED to Phase 7** |
 | F-076 | P3 | Async mock warning fix |
 | F-083 | P3 | Enum type fix |
 | F-091 | P1 | Ephemeral session tests |
