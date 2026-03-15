@@ -15,6 +15,40 @@ The test suite has been significantly strengthened by F-046/F-047 work. The crit
 
 ---
 
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Document rating:** 8/10 — comprehensive review with distinctive value, including independent discovery of DEF-001 (`TestArchitectureFitness` scanning the wrong path) and a useful analysis of `MagicMock` forgiveness risks.
+
+### Retracted finding
+
+- **RETRACTED:** the prior claim that `StreamingAccumulator.to_chat_response()` lacked dedicated tests was incorrect.
+- Verified coverage exists in `tests/test_f038_kernel_integration.py`:
+  - `test_to_chat_response_returns_kernel_type`
+  - `test_to_chat_response_uses_text_block`
+  - `test_to_chat_response_uses_thinking_block`
+- The coverage matrix should therefore treat `streaming:Response:MUST:1` as **✅ covered**, and the broader claim that the F-038 kernel conversion path had no dedicated tests is withdrawn.
+
+### Findings retained as valid
+
+- **KEEP:** **DEF-001** — `TestArchitectureFitness` scans `src/amplifier_module_provider_github_copilot`, but the real package is `amplifier_module_provider_github_copilot/`, so the quarantine test passes vacuously.
+- **KEEP:** **`contracts/behaviors.md` has zero behavioral coverage** — existing tests touch error patterns and config structure, not retry/circuit-breaker behavior.
+- **KEEP:** **Ephemeral session invariants are structure-tested only** — there is still no behavioral test proving that two `complete()` calls create distinct sessions with no reuse.
+- **KEEP:** `test_contract_events.py:98` constructs `DomainEvent(type="CONTENT_DELTA", ...)` with a `str` instead of `DomainEventType`.
+- **KEEP:** `_imports.py` is still missing even though the current SDK-boundary contract expects a single quarantine import file.
+
+### Missed observation added after principal review
+
+- **ADD:** the dominant P0 issue is not just that the real SDK path is under-tested; it is also **architecturally missing error translation entirely**.
+- In `amplifier_module_provider_github_copilot/provider.py` (real SDK path at lines 479-495 in this review), `sdk_session.send_and_wait(...)` is executed without a local `try/except` and without a call to `translate_sdk_error(...)`.
+- That means raw SDK exceptions can escape the provider boundary even if live-path tests are later added. This is a **code bug**, already aligned with **F-072**.
+
+### New specs from principal review
+
+- **F-090 (P1):** Add behavioral tests for `contracts/behaviors.md` coverage, especially retry policy and circuit breaker behavior.
+- **F-091 (P1):** Add ephemeral session invariant tests that prove two sessions are distinct and not reused.
+
+---
+
 ## Coverage Matrix: Module vs. Contract Clauses
 
 | Contract Anchor | Clause | Test File | Status |
@@ -57,13 +91,13 @@ The test suite has been significantly strengthened by F-046/F-047 work. The crit
 | **event-vocabulary:Consume:MUST:1** | CONSUME events processed internally | test_streaming.py | ✅ |
 | **event-vocabulary:Drop:MUST:1** | DROP events ignored | test_streaming.py | ✅ |
 | **event-vocabulary:FinishReason:MUST:1** | SDK reasons mapped correctly | test_contract_events.py | ✅ |
-| **streaming:ContentTypes:MUST:1** | Uses kernel content types | — | ⚠️ to_chat_response() untested |
+| **streaming:ContentTypes:MUST:1** | Uses kernel content types | test_f038_kernel_integration.py | ✅ |
 | **streaming:Accumulation:MUST:1** | Deltas accumulated in order | test_contract_streaming.py, test_streaming.py | ✅ |
 | **streaming:Accumulation:MUST:2** | Block boundaries maintained | test_contract_streaming.py, test_streaming.py | ✅ |
 | **streaming:ToolCapture:MUST:1** | Tool calls captured | test_contract_streaming.py, test_streaming.py | ✅ |
 | **streaming:ToolCapture:MUST:2** | Tool calls in final response | test_contract_streaming.py | ✅ |
 | **streaming:CircuitBreaker:MUST:1** | Respects hard limit | — | ❌ missing |
-| **streaming:Response:MUST:1** | Final response uses kernel types | — | ⚠️ to_chat_response() path untested |
+| **streaming:Response:MUST:1** | Final response uses kernel types | test_f038_kernel_integration.py | ✅ |
 | **sdk-boundary:Membrane:MUST:1** | All SDK imports in adapter only | test_contract_deny_destroy.py | ⚠️ BROKEN — scans nonexistent src/ path |
 | **sdk-boundary:Membrane:MUST:2** | Only _imports.py has SDK imports | — | ❌ _imports.py doesn't exist; client.py has SDK imports directly |
 | **sdk-boundary:Types:MUST:1** | No SDK types cross boundary | — | ❌ missing |
@@ -89,8 +123,8 @@ The test suite has been significantly strengthened by F-046/F-047 work. The crit
 | **behaviors:Models:MUST:2** | Raises NotFoundError for invalid | — | ❌ missing |
 
 **Summary:**
-- ✅ Fully covered: 35 clauses
-- ⚠️ Partially covered / broken: 10 clauses
+- ✅ Fully covered: 37 clauses
+- ⚠️ Partially covered / broken: 8 clauses
 - ❌ Not covered: 19 clauses
 
 ---
@@ -148,7 +182,7 @@ Minor observation: `test_contract_events.py::TestDomainEventTypes::test_domain_e
 
 **Gap — Circuit Breaker (CircuitBreaker:MUST:1)**: The contract references `config/retry.yaml::circuit_breaker.hard_turn_limit`. There's no test that verifies the provider raises `ProviderUnavailableError(retryable=False)` when turn count exceeds the hard limit. The streaming accumulator does not appear to track or enforce this limit.
 
-**Gap — `to_chat_response()` kernel type conversion**: The `StreamingAccumulator.to_chat_response()` method (streaming.py lines 109-166) converts internal state to kernel `ChatResponse` using `TextBlock`, `ThinkingBlock`, `ToolCall`, and `Usage` from `amplifier_core`. This path has **no dedicated tests**. The F-038 kernel type migration could have introduced regressions here that no test would catch.
+**Amendment — `to_chat_response()` kernel type conversion**: The prior claim here was incorrect. `tests/test_f038_kernel_integration.py` includes dedicated tests for `StreamingAccumulator.to_chat_response()` returning a kernel `ChatResponse` and using both `TextBlock` and `ThinkingBlock`. Remaining gaps, if pursued, are narrower edge cases such as tool-call payloads, usage propagation, and empty-content behavior.
 
 ### 1.7 Behaviors Contract (`contracts/behaviors.md`)
 
@@ -179,12 +213,12 @@ Branches:
 
 ### 2.2 `provider.py` — `GitHubCopilotProvider.complete()`
 
-**Two code paths, one untested:**
+**Two code paths, one under-tested and structurally unsafe:**
 
 1. **Test injection path** (`sdk_create_fn is not None`) — tested via `sdk_create_fn` kwarg in test infrastructure
-2. **Real SDK path** (`self._client.session()`) — **untested without live credentials**
+2. **Real SDK path** (`self._client.session()`) — **untested without live credentials and missing local error translation**
 
-The real SDK path (lines 480-495) uses `send_and_wait()` with content extraction. This entire branch is a live-only path with no unit test coverage. Any regression here would only be caught by live tests or the shadow test.
+The real SDK path (lines 480-495) uses `send_and_wait()` with content extraction. It is not only a live-only branch with no unit test coverage; it also lacks a local `try/except` and does not call `translate_sdk_error(...)`, so raw SDK exceptions can escape the provider boundary. This is the dominant P0 bug tracked as **F-072**.
 
 ### 2.3 `provider.py` — `_load_models_config()`
 
@@ -396,7 +430,7 @@ This tests Python enum construction, not behavior. If `DomainEventType.CONTENT_D
 | `complete()` creates new session per call (two calls → two distinct sessions) | HIGH | deny-destroy:Ephemeral:MUST:1 |
 | `complete()` session is destroyed after returning (disconnect called) | HIGH | deny-destroy:Ephemeral:MUST:2 |
 | `complete()` state is not shared between calls | MEDIUM | deny-destroy:Ephemeral:MUST:4 |
-| `to_chat_response()` produces correct kernel `ChatResponse` | HIGH | streaming:Response:MUST:1 |
+| Additional `to_chat_response()` edge cases (tool calls, usage, empty content) | MEDIUM | deeper coverage beyond existing F-038 kernel conversion tests |
 | `list_models()` with empty models config → fallback single model | LOW | edge case |
 | `_load_models_config()` when YAML parse fails | LOW | error path |
 
@@ -414,10 +448,8 @@ This tests Python enum construction, not behavior. If `DomainEventType.CONTENT_D
 
 | Missing Test | Priority | Why |
 |---|---|---|
-| `to_chat_response()` with text content → correct `TextBlock` | CRITICAL | F-038 migration untested |
-| `to_chat_response()` with thinking content → correct `ThinkingBlock` | HIGH | F-038 migration |
-| `to_chat_response()` with tool calls → correct `ToolCall` list | HIGH | F-038 migration |
-| `to_chat_response()` with usage → correct `Usage` object | MEDIUM | F-038 migration |
+| `to_chat_response()` with tool calls → correct `ToolCall` list | HIGH | Additional edge coverage beyond existing F-038 text/thinking conversion tests |
+| `to_chat_response()` with usage → correct `Usage` object | MEDIUM | Additional edge coverage beyond existing F-038 conversion tests |
 | `to_chat_response()` with no content → empty content list (not error) | MEDIUM | Edge case |
 | Circuit breaker hard limit raises `ProviderUnavailableError` | HIGH | behaviors:CircuitBreaker:MUST:2 |
 
@@ -509,11 +541,11 @@ event = DomainEvent(type="CONTENT_DELTA", data={"text": "test"})
 
 ### P1 — Critical Missing Behavioral Tests
 
-3. **`to_chat_response()` kernel type tests** — F-038 was a major migration. `StreamingAccumulator.to_chat_response()` produces the `ChatResponse` that goes to Amplifier's kernel. If `TextBlock`/`ThinkingBlock`/`ToolCall` conversion is wrong, every completion silently misbehaves. No current test catches this.
+3. **Ephemeral session tests** — Test that calling `complete()` twice creates two separate sessions, and that session is disconnected after each call. These are the core deny-destroy:Ephemeral invariants.
 
-4. **Ephemeral session tests** — Test that calling `complete()` twice creates two separate sessions, and that session is disconnected after each call. These are the core deny-destroy:Ephemeral invariants.
+4. **`provider-protocol:complete:MUST:3` (session destruction)** — Add a test using `ConfigCapturingMock` that verifies `disconnect()` was called after `complete()` exits the session context manager.
 
-5. **`provider-protocol:complete:MUST:3` (session destruction)** — Add a test using `ConfigCapturingMock` that verifies `disconnect()` was called after `complete()` exits the session context manager.
+5. **Behavioral tests for `contracts/behaviors.md`** — Add dedicated retry and circuit-breaker behavior tests. This aligns with new spec **F-090**.
 
 ### P2 — High-Value Missing Tests
 
@@ -521,7 +553,7 @@ event = DomainEvent(type="CONTENT_DELTA", data={"text": "test"})
 
 7. **Retry behavior tests** — Any test for the retry policy. These may also reveal that retry logic lives in the kernel (amplifier_core), not in this module — in which case, the `behaviors.md` contract may be aspirational.
 
-8. **`provider-protocol:complete:MUST:4`** — Two sequential `complete()` calls with different prompts return independent responses (state isolation).
+8. **`provider-protocol:complete:MUST:4`** — Two sequential `complete()` calls with different prompts return independent responses (state isolation). This aligns with new spec **F-091**.
 
 ### P3 — Quality Improvements
 
@@ -554,7 +586,7 @@ event = DomainEvent(type="CONTENT_DELTA", data={"text": "test"})
 | test_f035_error_types.py | F-035 feature | error-hierarchy | Not read |
 | test_f036_error_context.py | F-036 context extraction | error-hierarchy | Not read |
 | test_f037_observability.py | F-037 logging | tool_parsing | Not read |
-| test_f038_kernel_integration.py | F-038 kernel types | streaming | Not read |
+| test_f038_kernel_integration.py | F-038 kernel types | streaming | ✅ Verified dedicated to_chat_response tests |
 | test_f043_sdk_response.py | F-043 response extraction | sdk-response | Not read |
 | test_foundation_integration.py | Kernel integration | provider-protocol | Not read |
 | test_integration.py | End-to-end | All | Not read |

@@ -176,6 +176,14 @@ features:
     status: ready
     priority: P2
     source: manual-review
+  F-090-behavioral-tests-for-behaviors-contract:
+    status: ready
+    priority: P1
+    source: manual-review
+  F-091-ephemeral-session-invariant-tests:
+    status: ready
+    priority: P1
+    source: manual-review
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
