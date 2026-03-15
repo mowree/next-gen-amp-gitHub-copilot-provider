@@ -19,6 +19,7 @@ from amplifier_module_provider_github_copilot.error_translation import (
 from amplifier_module_provider_github_copilot.sdk_adapter.client import (
     CopilotClientWrapper,
 )
+from tests.fixtures.config_capture import ConfigCapturingMock
 
 
 class TestSDKImportError:
@@ -101,48 +102,40 @@ class TestDoubleTranslationGuard:
 
 
 class TestSystemMessageStructure:
-    """AC-6: system_message parameter structure."""
+    """AC-6: system_message parameter structure.
+
+    Contract: sdk-boundary:Config:MUST:3 (session config is dict)
+    Migrated to ConfigCapturingMock per WI-004.
+    """
 
     @pytest.mark.asyncio
     async def test_session_system_message_structure(self) -> None:
-        """system_message is passed with correct structure."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.client import (
-            CopilotClientWrapper,
-        )
+        """system_message is passed with correct structure.
 
-        mock_session = MagicMock()
-        mock_session.disconnect = AsyncMock()
-
-        mock_client = AsyncMock()
-        mock_client.create_session = AsyncMock(return_value=mock_session)
-
+        Contract: sdk-boundary:Config:MUST:3
+        """
+        mock_client = ConfigCapturingMock()
         wrapper = CopilotClientWrapper(sdk_client=mock_client)
+
         async with wrapper.session(system_message="Be helpful"):
             pass
 
-        call_args = mock_client.create_session.call_args
-        config = call_args[0][0]  # First positional arg is the config dict
+        config = mock_client.last_config
         # F-044: Changed from "append" to "replace" to give Amplifier control over persona
         assert config["system_message"] == {"mode": "replace", "content": "Be helpful"}
 
     @pytest.mark.asyncio
     async def test_session_without_system_message(self) -> None:
-        """Session config omits system_message when not provided."""
-        from amplifier_module_provider_github_copilot.sdk_adapter.client import (
-            CopilotClientWrapper,
-        )
+        """Session config omits system_message when not provided.
 
-        mock_session = MagicMock()
-        mock_session.disconnect = AsyncMock()
-
-        mock_client = AsyncMock()
-        mock_client.create_session = AsyncMock(return_value=mock_session)
-
+        Contract: sdk-boundary:Config:MUST:3
+        """
+        mock_client = ConfigCapturingMock()
         wrapper = CopilotClientWrapper(sdk_client=mock_client)
+
         async with wrapper.session(model="gpt-4"):
             pass
 
-        call_args = mock_client.create_session.call_args
-        config = call_args[0][0]
+        config = mock_client.last_config
         assert "system_message" not in config
         assert config["model"] == "gpt-4"
