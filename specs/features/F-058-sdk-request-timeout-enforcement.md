@@ -22,9 +22,14 @@ The real SDK path in `provider.py:481-483` calls `send_and_wait()` with no timeo
 ## Files to Modify
 - `amplifier_module_provider_github_copilot/provider.py` (SDK call paths)
 
+## Contract Traceability
+- `contracts/provider-protocol.md` — provider must handle timeouts gracefully
+- `contracts/error-hierarchy.md` — `LLMTimeoutError` is a defined kernel error type
+
 ## Tests Required
-- Test: SDK call exceeding timeout raises `LLMTimeoutError`
-- Test: normal calls within timeout succeed
+- `tests/test_timeout_enforcement.py` (new) or additions to `tests/test_provider.py`:
+  - Test: SDK call exceeding timeout raises `LLMTimeoutError`
+  - Test: normal calls within timeout succeed
 
 ## Not In Scope
 - Concurrency limiting

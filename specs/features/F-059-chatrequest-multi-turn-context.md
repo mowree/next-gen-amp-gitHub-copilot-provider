@@ -24,11 +24,15 @@
 ## Files to Modify
 - `amplifier_module_provider_github_copilot/provider.py` (lines 443-458)
 
+## Contract Traceability
+- `contracts/provider-protocol.md` — `complete()` must handle ChatRequest content types
+
 ## Tests Required
-- Test: multi-turn request with user + assistant + tool_result messages
-- Test: ThinkingContent blocks are included
-- Test: ToolCallContent blocks are included
-- Test: role boundaries are preserved
+- `tests/test_multi_turn_context.py` (new):
+  - Test: multi-turn request with user + assistant + tool_result messages
+  - Test: ThinkingContent blocks are included
+  - Test: ToolCallContent blocks are included
+  - Test: role boundaries are preserved
 
 ## Not In Scope
 - Structured SDK message passing (depends on F-052 streaming pipeline)

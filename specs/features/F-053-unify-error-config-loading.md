@@ -26,8 +26,12 @@ This is a direct instance of the F-044/F-045 pattern: duplicate parsing logic di
 - `amplifier_module_provider_github_copilot/error_translation.py` (if `load_error_config` needs to support importlib)
 
 ## Tests Required
-- Test: error config loaded via importlib includes `context_extraction` fields
-- Test: error config loaded via file path still works (regression)
+- `tests/test_error_config_loading.py` (new) or additions to `tests/test_error_translation.py`:
+  - Test: error config loaded via importlib includes `context_extraction` fields
+  - Test: error config loaded via file path still works (regression)
+
+## Contract Traceability
+- `contracts/error-hierarchy.md` — error config must produce correct kernel error types
 
 ## Not In Scope
 - Changing error translation logic

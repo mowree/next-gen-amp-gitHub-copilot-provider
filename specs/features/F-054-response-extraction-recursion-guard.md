@@ -23,8 +23,9 @@
 - `amplifier_module_provider_github_copilot/provider.py` (lines 121-157)
 
 ## Tests Required
-- Test: object with `.data.data.data` chain terminates safely
-- Test: normal response extraction still works (regression)
+- `tests/test_response_extraction.py` (new) or additions to `tests/test_provider.py`:
+  - Test: object with `.data.data.data` chain terminates safely
+  - Test: normal response extraction still works (regression)
 
 ## Not In Scope
 - Changing what attributes are checked

@@ -35,6 +35,10 @@ Several test quality issues identified:
 - Test: mount() with broken provider init → returns None
 - Improved existing tests (spec= on mocks, deny hook verify)
 
+## Contract Traceability
+- `contracts/provider-protocol.md` — mount() behavior is part of provider lifecycle
+- `contracts/deny-destroy.md` — deny hook must be verified on concurrent sessions
+
 ## Not In Scope
 - Rewriting test architecture
 - Adding new test frameworks

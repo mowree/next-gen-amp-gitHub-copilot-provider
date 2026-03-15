@@ -21,9 +21,14 @@
 ## Files to Modify
 - `amplifier_module_provider_github_copilot/provider.py` (lines 517-523)
 
+## Contract Traceability
+- `contracts/sdk-boundary.md` — provider must clean up SDK resources on close
+- `contracts/provider-protocol.md` — `close()` is part of the provider lifecycle
+
 ## Tests Required
-- Test: `provider.close()` calls `client.close()`
-- Test: `provider.close()` is safe when client not initialized
+- `tests/test_provider_lifecycle.py` (new) or additions to `tests/test_provider.py`:
+  - Test: `provider.close()` calls `client.close()`
+  - Test: `provider.close()` is safe when client not initialized
 
 ## Not In Scope
 - Connection pooling

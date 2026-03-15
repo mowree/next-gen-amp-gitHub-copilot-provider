@@ -25,9 +25,13 @@
 - `amplifier_module_provider_github_copilot/streaming.py` (lines 211-212)
 
 ## Tests Required
-- Test: bridge entry missing `sdk_type` → `ConfigurationError` with message
-- Test: bridge entry with unknown `domain_type` → `ConfigurationError` with message
-- Test: valid config loads correctly (regression guard)
+- `tests/test_event_config_loading.py` (new) or additions to `tests/test_streaming.py`:
+  - Test: bridge entry missing `sdk_type` → `ConfigurationError` with message
+  - Test: bridge entry with unknown `domain_type` → `ConfigurationError` with message
+  - Test: valid config loads correctly (regression guard)
+
+## Contract Traceability
+- `contracts/event-vocabulary.md` — event config loading must produce valid domain event types
 
 ## Not In Scope
 - Refactoring `load_event_config()` beyond defensive loading

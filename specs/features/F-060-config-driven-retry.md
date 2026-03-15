@@ -27,10 +27,14 @@
 - New: retry config loading utility (could be in `streaming.py` or new `retry.py`)
 
 ## Tests Required
-- Test: retryable error retries up to max_attempts
-- Test: non-retryable error fails immediately
-- Test: backoff delay increases between retries
-- Test: all retries exhausted raises the last error
+- `tests/test_retry.py` (new):
+  - Test: retryable error retries up to max_attempts
+  - Test: non-retryable error fails immediately
+  - Test: backoff delay increases between retries
+  - Test: all retries exhausted raises the last error
+
+## Contract Traceability
+- `contracts/error-hierarchy.md` — `retryable` flag must drive retry behavior
 
 ## Not In Scope
 - Circuit breaker implementation (separate feature)

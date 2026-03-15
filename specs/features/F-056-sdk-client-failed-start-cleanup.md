@@ -21,9 +21,13 @@ In `client.py:199-214`, if `await self._owned_client.start()` raises, `self._own
 ## Files to Modify
 - `amplifier_module_provider_github_copilot/sdk_adapter/client.py` (lines 199-214)
 
+## Contract Traceability
+- `contracts/sdk-boundary.md` — client lifecycle must be resilient to start failures
+
 ## Tests Required
-- Test: `start()` raises → `_owned_client` is None → next call retries
-- Test: `start()` succeeds → normal behavior (regression)
+- `tests/test_sdk_client.py` (additions):
+  - Test: `start()` raises → `_owned_client` is None → next call retries
+  - Test: `start()` succeeds → normal behavior (regression)
 
 ## Not In Scope
 - Retry logic for client start

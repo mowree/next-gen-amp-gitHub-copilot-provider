@@ -29,9 +29,14 @@ The real SDK path in `GitHubCopilotProvider.complete()` (provider.py:479-498) us
 - `amplifier_module_provider_github_copilot/provider.py` (lines 479-498, `GitHubCopilotProvider.complete()`)
 
 ## Tests Required
-- Integration test: real SDK path produces correct event sequence
-- Test: tool definitions are passed to SDK session
-- Test: streaming events are translated through the pipeline
+- `tests/test_real_sdk_streaming.py` (new):
+  - Integration test: real SDK path produces correct event sequence
+  - Test: tool definitions are passed to SDK session
+  - Test: streaming events are translated through the pipeline
+
+## Contract Traceability
+- `contracts/streaming-contract.md` — streaming pipeline must emit correct event sequence
+- `contracts/event-vocabulary.md` — events must use defined domain event types
 
 ## Not In Scope
 - Changing the event translation logic itself

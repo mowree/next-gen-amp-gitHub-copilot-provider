@@ -28,6 +28,9 @@ Multiple architecture/contract tests have structural weaknesses:
 ## Tests Required
 - Existing tests should be more robust (self-testing)
 
+## Contract Traceability
+- `contracts/deny-destroy.md` — deny hook sovereignty must be enforced by architecture tests
+
 ## Not In Scope
 - Adding new contract tests
 - Config schema validation

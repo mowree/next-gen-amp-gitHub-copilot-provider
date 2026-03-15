@@ -27,10 +27,14 @@ Additionally, raw exception messages are logged without sanitization (security-g
 - `amplifier_module_provider_github_copilot/error_translation.py` (lines 235-237, 336-350)
 - `amplifier_module_provider_github_copilot/__init__.py` (log sanitization)
 
+## Contract Traceability
+- `contracts/error-hierarchy.md` — error translation must correctly map to kernel error types
+
 ## Tests Required
-- Test: exact type matching (no false positives)
-- Test: kernel error with non-standard constructor doesn't crash
-- Test: negative matching assertions
+- `tests/test_error_translation.py` (additions):
+  - Test: exact type matching (no false positives)
+  - Test: kernel error with non-standard constructor doesn't crash
+  - Test: negative matching assertions
 
 ## Not In Scope
 - Adding new error mappings (see F-061)

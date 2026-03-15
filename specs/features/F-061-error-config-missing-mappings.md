@@ -27,9 +27,13 @@ Additionally, the unknown-error fallback is `retryable=True`, while the Golden V
 - `config/errors.yaml`
 - `amplifier_module_provider_github_copilot/error_translation.py` (add `AbortError` to `KERNEL_ERROR_MAP` if not present)
 
+## Contract Traceability
+- `contracts/error-hierarchy.md` — all SDK errors must map to defined kernel error types
+
 ## Tests Required
-- Test: abort-like SDK error produces `AbortError(retryable=False)`
-- Test: session create failure produces appropriate error type
+- `tests/test_error_translation.py` (additions):
+  - Test: abort-like SDK error produces `AbortError(retryable=False)`
+  - Test: session create failure produces appropriate error type
 
 ## Not In Scope
 - Changing the error translation algorithm

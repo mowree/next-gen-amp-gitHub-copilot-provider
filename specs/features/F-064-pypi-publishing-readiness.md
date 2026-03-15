@@ -34,8 +34,9 @@ The package cannot be correctly installed from PyPI due to:
 - `bundle.md` (update source)
 
 ## Tests Required
-- Test: config loads from package-relative path
-- Smoke test: `pip install .` in clean venv
+- `tests/test_config_loading.py` (new) or additions to existing config tests:
+  - Test: config loads from package-relative path
+  - Smoke test: `pip install .` in clean venv
 
 ## Not In Scope
 - Actual PyPI publishing

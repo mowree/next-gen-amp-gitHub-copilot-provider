@@ -28,7 +28,10 @@
 
 ## Tests Required
 - All existing tests must pass (refactor, not behavior change)
-- Import tests updated for new module locations
+- Import tests updated for new module locations in `tests/test_contract_protocol.py`
+
+## Contract Traceability
+- `contracts/provider-protocol.md` — provider must maintain protocol compliance after decomposition
 
 ## Not In Scope
 - Changing behavior of any existing function

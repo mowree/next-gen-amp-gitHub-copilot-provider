@@ -1,7 +1,7 @@
 # F-050: Mandatory Deny Hook Installation
 
 **Status:** ready
-**Priority:** P0
+**Priority:** P1
 **Source:** deep-review/bug-hunter.md
 **Defect ID:** DEF-003
 
@@ -28,6 +28,9 @@ Both `provider.py:256-257` and `client.py:241-243` install the deny hook conditi
 - `tests/test_deny_hook_mandatory.py` or additions to existing deny-hook tests:
   - Test: session without `register_pre_tool_use_hook` → raises `ProviderUnavailableError`
   - Test: session with `register_pre_tool_use_hook` → hook registered (existing behavior)
+
+## Contract Traceability
+- `contracts/deny-destroy.md` — `DenyHook:MUST:1`: "MUST install a preToolUse deny hook on every SDK session"
 
 ## Not In Scope
 - Changing the deny hook logic itself

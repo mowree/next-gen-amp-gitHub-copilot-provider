@@ -32,6 +32,9 @@ The `sdk_adapter/` directory structure diverges from the contract (`contracts/sd
 ## Tests Required
 - Architecture test: no `from copilot` or `import copilot` outside `_imports.py`
 
+## Contract Traceability
+- `contracts/sdk-boundary.md` — SDK boundary structure and import quarantine rules
+
 ## Not In Scope
 - Moving `error_translation.py`/`streaming.py` into `sdk_adapter/`
 - Implementing UUID-based SessionHandle (larger refactor)

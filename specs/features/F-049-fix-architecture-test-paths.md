@@ -27,6 +27,10 @@ Both architecture fitness tests (`test_contract_deny_destroy.py:81` and `test_sd
 - Existing tests should now actually scan files
 - Verify tests catch a planted violation (manual check)
 
+## Contract Traceability
+- `contracts/sdk-boundary.md` — architecture tests enforce SDK import quarantine
+- `contracts/deny-destroy.md` — architecture tests enforce deny hook sovereignty
+
 ## Not In Scope
 - Refactoring the architecture fitness tests beyond path fix
 - Adding new contract enforcement tests

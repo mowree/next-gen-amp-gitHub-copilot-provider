@@ -20,9 +20,13 @@
 ## Files to Modify
 - `amplifier_module_provider_github_copilot/streaming.py` (`load_event_config()`)
 
+## Contract Traceability
+- `contracts/event-vocabulary.md` — event classification must be unambiguous
+
 ## Tests Required
-- Test: overlapping event type in bridge + consume → `ConfigurationError`
-- Test: clean config loads without error (regression)
+- `tests/test_event_classification.py` (new) or additions to `tests/test_streaming.py`:
+  - Test: overlapping event type in bridge + consume → `ConfigurationError`
+  - Test: clean config loads without error (regression)
 
 ## Not In Scope
 - Changing classification priority logic

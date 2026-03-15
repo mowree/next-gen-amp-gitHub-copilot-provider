@@ -20,10 +20,14 @@
 ## Files to Modify
 - `amplifier_module_provider_github_copilot/streaming.py` (line 78, `add()` method)
 
+## Contract Traceability
+- `contracts/streaming-contract.md` — accumulator must respect completion semantics
+
 ## Tests Required
-- Test: CONTENT_DELTA after TURN_COMPLETE is ignored
-- Test: CONTENT_DELTA after ERROR is ignored
-- Test: normal accumulation sequence works (regression)
+- `tests/test_streaming_accumulator.py` (new) or additions to `tests/test_streaming.py`:
+  - Test: CONTENT_DELTA after TURN_COMPLETE is ignored
+  - Test: CONTENT_DELTA after ERROR is ignored
+  - Test: normal accumulation sequence works (regression)
 
 ## Not In Scope
 - Logging late events
