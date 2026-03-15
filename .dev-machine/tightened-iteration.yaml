@@ -619,6 +619,37 @@ steps:
     on_error: "fail"
 
   # ---------------------------------------------------------------------------
+  # GATE 2.5: Contract Coverage Check
+  #
+  # Ensures SDK boundary tests have contract anchors in docstrings.
+  # Prevents F-044/F-045 regression: tests that verify OBSERVED behavior
+  # instead of REQUIRED behavior.
+  # ---------------------------------------------------------------------------
+  - id: "contract-coverage-gate"
+    type: "bash"
+    command: |
+      cd /workspace 2>/dev/null || cd /home/mowrim/projects/next-get-provider-github-copilot
+      echo "=== GATE 2.5: Contract Coverage Check ==="
+      
+      if [ -f ".dev-machine/enforcement/check-contract-coverage.py" ]; then
+        python3 .dev-machine/enforcement/check-contract-coverage.py --json
+        COVERAGE_EXIT=$?
+        if [ "$COVERAGE_EXIT" -ne 0 ]; then
+          echo "FAIL: SDK boundary tests missing contract anchors"
+          echo '{"gate": "FAIL", "reason": "SDK boundary tests without contract anchors"}'
+          exit 1
+        fi
+        echo '{"gate": "pass", "contract_coverage": "all boundary tests have anchors"}'
+      else
+        echo "SKIP: check-contract-coverage.py not found"
+        echo '{"gate": "skip", "reason": "enforcement script not found"}'
+      fi
+    output: "contract_coverage_result"
+    parse_json: true
+    timeout: 120
+    on_error: "fail"
+
+  # ---------------------------------------------------------------------------
   # GATE 3: Enforcement scan (LOC / hardcoded policy / MagicMock abuse)
   #
   # Three sub-checks run without short-circuit (all run even if one fails).
@@ -717,44 +748,26 @@ steps:
 
       # -------------------------------------------------------------------
       # MAGICMOCK ABUSE DETECTOR
-      # At the SDK boundary, bare MagicMock() accepts any call without
-      # validation. This is the root cause of F-044 and F-045 surviving.
-      # Detect bare MagicMock without spec= at SDK-touching test files.
+      # Uses standalone script for complete pattern coverage (6 patterns)
+      # including the critical F-044 "mode".*"append" regression check.
       # -------------------------------------------------------------------
-      MAGICMOCK_ABUSE_PATTERNS = [
-          # Bare MagicMock() without spec= -- silently accepts anything
-          (r'MagicMock\(\)', "bare MagicMock() without spec= at SDK boundary"),
-          # AsyncMock returning MagicMock -- compound mock abuse
-          (r'AsyncMock\(return_value=MagicMock\(\)\)', "AsyncMock wrapping MagicMock at SDK boundary"),
-          # create_session mocked with bare AsyncMock -- won't capture config
-          (r'create_session\s*=\s*AsyncMock\(\)', "create_session must use ConfigCapturingMock, not AsyncMock"),
-      ]
-
-      tests_dir = Path("tests")
-      # Only scan SDK boundary test files (not all tests)
-      sdk_test_patterns = ["test_sdk*", "test_client*", "test_session*", "test_boundary*"]
-      sdk_test_files = []
-      for pat in sdk_test_patterns:
-          sdk_test_files.extend(tests_dir.glob(pat))
-
-      for tf in sdk_test_files:
-          try:
-              content = tf.read_text()
-              for pattern, message in MAGICMOCK_ABUSE_PATTERNS:
-                  matches = list(re.finditer(pattern, content))
-                  for m in matches:
-                      line_num = content[:m.start()].count('\n') + 1
-                      results["magicmock_abuse"]["violations"].append({
-                          "file": str(tf),
-                          "line": line_num,
-                          "match": m.group()[:80],
-                          "message": message,
-                      })
-          except Exception:
-              pass
-
-      if results["magicmock_abuse"]["violations"]:
-          results["magicmock_abuse"]["status"] = "FAIL"  # hard fail -- this is the root cause of F-044/F-045
+      try:
+          mock_result = subprocess.run(
+              ["python3", ".dev-machine/enforcement/check-magicmock-abuse.py", "tests/", "--json"],
+              capture_output=True, text=True, timeout=60
+          )
+          if mock_result.returncode != 0:
+              results["magicmock_abuse"]["status"] = "FAIL"
+              results["magicmock_abuse"]["violations"].append({
+                  "source": "standalone-script",
+                  "message": "check-magicmock-abuse.py found violations",
+                  "details": mock_result.stdout[:500] if mock_result.stdout else mock_result.stderr[:500]
+              })
+      except Exception as e:
+          results["magicmock_abuse"]["violations"].append({
+              "source": "standalone-script",
+              "message": f"Failed to run check-magicmock-abuse.py: {e}",
+          })
 
       # -------------------------------------------------------------------
       # Aggregate

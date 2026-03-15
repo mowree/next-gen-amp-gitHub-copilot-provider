@@ -58,7 +58,25 @@
 - [Package/library dependencies needed]
 - [Or "No new dependencies"]
 
-## 7. Notes
+## 7. Test Strategy (TDD)
+
+Write these tests BEFORE implementation:
+
+| Test | Type | What it verifies | Contract Anchor |
+|------|------|------------------|-----------------|
+| `test_<name>_happy_path` | Unit | [primary behavior] | `<contract>:<Section>:MUST:N` |
+| `test_<name>_error_case` | Unit | [error handling] | `<contract>:<Section>:MUST:N` |
+| `test_<name>_edge_case` | Unit | [boundary conditions] | `<contract>:<Section>:SHOULD:N` |
+
+**Contract anchor format:** `contract-name:Section:MUST:N`  
+Example: `sdk-boundary:Config:MUST:2`, `deny-destroy:ToolSuppression:MUST:1`
+
+Tests MUST:
+- Reference a contract clause in docstring (prevents F-044 regression)
+- Use realistic fixtures from `tests/fixtures/`
+- Use `ConfigCapturingMock` for SDK boundary tests (not bare MagicMock)
+
+## 8. Notes
 
 - [Implementation caveats]
 - [Future work deferred]

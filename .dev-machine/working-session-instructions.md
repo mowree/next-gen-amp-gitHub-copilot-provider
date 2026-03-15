@@ -139,7 +139,56 @@ features:
 
 Also update `meta.total_features_completed` and `meta.last_updated`.
 
-### 9. Record Decisions
+### 9. Drift Report (Before Stopping)
+
+Before ending your session, report drift against specifications:
+
+**Module Spec Drift:**
+```bash
+# For each module you touched, compare Target Size to actual
+python3 << 'EOF'
+import yaml
+from pathlib import Path
+
+state = yaml.safe_load(open("./STATE.yaml"))
+module_map = {
+    "provider": "amplifier_module_provider_github_copilot/provider.py",
+    "streaming": "amplifier_module_provider_github_copilot/streaming.py",
+    "error_translation": "amplifier_module_provider_github_copilot/error_translation.py",
+    "tool_parsing": "amplifier_module_provider_github_copilot/tool_parsing.py",
+    "sdk_adapter": "amplifier_module_provider_github_copilot/sdk_adapter/",
+    "session_factory": "amplifier_module_provider_github_copilot/sdk_adapter/client.py",
+}
+for name, spec_path in state.get("module_specs", {}).items():
+    spec = Path(spec_path).read_text()
+    target = "?"
+    for line in spec.split("\n"):
+        if "Target Size:" in line:
+            target = line.split("~")[1].split()[0] if "~" in line else "?"
+            break
+    if name in module_map:
+        path = Path(module_map[name])
+        if path.is_dir():
+            actual = sum(len(f.read_text().splitlines()) for f in path.glob("*.py"))
+        else:
+            actual = len(path.read_text().splitlines()) if path.exists() else 0
+        drift = abs(actual - int(target)) / int(target) * 100 if target.isdigit() else 0
+        if drift > 10:
+            print(f"⚠️ {name}: spec says ~{target}, actual {actual} ({drift:.0f}% drift)")
+EOF
+```
+
+**Contract Compliance:**
+- List any contract clauses (MUST/SHOULD) you relied on during implementation
+- Note if any contract wording was ambiguous
+
+**Feature Spec Alignment:**
+- Confirm implementation matches all acceptance criteria in the feature spec
+- Note any deviations or clarifications needed
+
+Record drift findings in `./CONTEXT-TRANSFER.md` under "Drift Notes".
+
+### 10. Record Decisions
 
 If you made any design decisions not already covered by the specs, immediately
 record them in `./CONTEXT-TRANSFER.md` under "Recent Decisions".
