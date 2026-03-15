@@ -1,0 +1,45 @@
+
+suprovisr 
+
+~/projects/next-get-provider-github-copilot
+amplifier resume 09b8f308
+
+Dev Machine
+
+mowrim@CPC-mowri-NI3I1:~/projects/next-get-provider-github-copilot$ amplifier
+Bundle 'dev-machine' prepared successfully
+╭──────────────────────────────────────────────────────────────────────╮
+│ Amplifier Interactive Session                                        │
+│ Session ID: 8daa005e-eec0-42ec-9605-6beb584ede7e                     │
+│ amplifier 2026.03.08-9172a58 | core 1.0.11                           │
+│ Bundle: dev-machine | Provider: GitHub Copilot SDK | claude-opus-4.5 │
+│ Commands: /help | Multi-line: Ctrl-J | Exit: Ctrl-D                  │
+╰──────────────────────────────────────────────────────────────────────╯
+
+~/projects/next-get-provider-github-copilot
+amplifier resume 8daa005e
+
+
+3-12-26 - 4:57pm 
+
+mowrim@CPC-mowri-NI3I1:~/projects/next-get-provider-github-copilot$ ./.dev-machine/docker-run.sh
+🐳 Dev-Machine Docker Runner
+Project: /home/mowrim/projects/next-get-provider-github-copilot
+
+🚀 Starting autonomous dev-machine...
+   Recipe: .dev-machine/build.yaml
+   Output will appear below:
+─────────────────────────────────────────────────
+Installing provider modules...
+  Installing provider-anthropic... ✓
+  Installing provider-gemini... ✓
+  Installing provider-github-copilot... ✓
+  Installing provider-ollama... ✓
+  Installing provider-openai... ✓
+  Installing provider-vllm... ✓
+  Installing provider-azure-openai... ✓
+
+Bundle 'foundation' prepared successfully
+
+Session ID: 227b740b-bcf3-427a-b8bf-06ad3dc89b23
+Bundle: foundation | Provider: GitHub Copilot SDK | claude-opus-4.5

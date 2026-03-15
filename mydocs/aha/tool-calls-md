@@ -1,0 +1,99 @@
+Amplifier:
+
+Analysis: What the Next-Gen Provider Handles vs. Doesn't Handle
+
+Based on my review of the architecture (GOLDEN_VISION_V2.md) and implementation (error_translation.py, contracts/behaviors.md):
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+✅ What Next-Gen Provider HANDLES
+
+
+ Issue                           How It's Handled                                             Evidence
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ SDK error translation           Config-driven pattern matching in errors.yaml                error_translation.py lines 1-17, F-035
+ Circuit breaker infinite loops  hard_turn_limit + ProviderUnavailableError(retryable=False)  behaviors.md lines 63-86
+ Retry policy                    YAML config with max_attempts, backoff, jitter               behaviors.md lines 18-40
+ Error retryability              Each error type has explicit retryable flag                  behaviors.md lines 43-59
+
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+❌ What Next-Gen Provider DOES NOT HANDLE
+
+
+ Issue                                       Why Not                                     Where It Should Be Fixed
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Empty tool calls from LLM (e.g., read_file  Provider only translates SDK→Kernel. Tool   amplifier-core orchestrator or tool
+ {})                                         call validation is orchestrator             executor
+                                             responsibility
+ Malformed tool calls (missing required      Same — provider doesn't see tool calls      amplifier-core tool validation
+ params)
+ Retry without learning                      Provider doesn't control LLM prompting      amplifier-core orchestrator or agent
+                                             strategy                                    instructions
+ LLM generation instability                  Provider is downstream of model output      Model prompts, system messages, or
+                                                                                         guardrails
+
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+The Architectural Boundary
+
+From GOLDEN_VISION_V2.md (Principle 1):
+
+▌ "The provider's job is translation — converting between the Amplifier protocol and the Copilot SDK... It does not manage retry
+▌ logic (kernel policy), context windows (orchestrator concern), tool execution (always denied)"
+
+The empty read_file {} calls you saw are tool execution validation failures, not provider failures. The provider's Deny + Destroy
+pattern means it never even sees these tool calls — it denies ALL tool execution from the SDK.
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Where "Retry Without Learning" Should Be Fixed
+
+
+ Component                      Can Fix?  How
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Provider                       ❌ No     Provider only translates; doesn't see retry decisions
+ Orchestrator (amplifier-core)  ✅ Yes    Track failed tool patterns, inject error context into next prompt
+ Agent Instructions             ✅ Yes    Add "verify parameters before calling" rules to agent descriptions
+ Foundation Bundle              ✅ Yes    Add tool call validation hook
+
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Recommendation for amplifier-core
+
+The fix should be in amplifier-core or foundation behaviors, not the provider:
+
+
+ # In orchestrator or tool executor:
+ def validate_tool_call(tool_call: ToolCall) -> ToolResult | None:
+     """Reject malformed tool calls BEFORE execution."""
+     tool_schema = get_tool_schema(tool_call.name)
+     missing_params = [p for p in tool_schema.required if p not in tool_call.arguments]
+
+     if missing_params:
+         # Return error WITHOUT executing — don't waste API calls
+         return ToolResult(
+             error=f"Missing required parameters: {missing_params}. "
+                   f"Tool {tool_call.name} requires: {tool_schema.required}"
+         )
+     return None  # Valid, proceed with execution
+
+
+-------------------------------------------------------------------------------------------------------------------------------------
+
+Summary
+
+
+ Question                                               Answer
+ ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Does next-gen provider handle empty tool calls?        No — out of scope (translation layer)
+ Does next-gen provider handle retry-without-learning?  No — orchestrator concern
+ Is this a gap in F-035?                                No — F-035 is about error TYPE routing
+ Should we open an issue?                               Yes, on amplifier-core — for tool call pre-validation
+
+
+The errors you saw are upstream problems (model hallucinations + missing validation) that flow through the system. The provider
+correctly translates whatever the SDK produces, but the garbage came from the LLM generation, not the SDK or provider.
