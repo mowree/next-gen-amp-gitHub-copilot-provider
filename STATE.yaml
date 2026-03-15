@@ -96,6 +96,14 @@ features:
     status: ready
     priority: P2
     source: deep-review/code-intel.md
+  F-072-real-sdk-path-error-translation:
+    status: ready
+    priority: P0
+    source: deep-review/code-navigator-v2.md
+  F-073-real-sdk-path-error-test:
+    status: ready
+    priority: P1
+    source: deep-review/code-navigator-v2.md
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation

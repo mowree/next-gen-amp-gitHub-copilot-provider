@@ -307,6 +307,113 @@ Layer 2: session.register_pre_tool_use_hook()  client.py:242
 
 ---
 
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Review Date:** 2026-03-15  
+**Reviewer:** Principal-level developer  
+**Status:** One critical finding confirmed; all other findings verified correct
+
+---
+
+### Verified Correct (Principal Confirmed)
+
+All findings in this document were confirmed accurate except the error flow analysis below.
+
+---
+
+### CRITICAL AMENDMENT: Error Translation Gap in Real SDK Path
+
+#### Finding
+
+The original Flow 3 (Error Flow) diagram and accompanying analysis was **incomplete**. It correctly documented where `translate_sdk_error` *is* called, but failed to identify that `send_and_wait()` — the core operation of the real SDK path — has **no error translation**.
+
+#### Evidence (Code-Verified)
+
+**`client.py` lines 248–256 — the `yield` block:**
+
+```python
+try:
+    yield sdk_session          # send_and_wait() executes here in caller
+finally:
+    if sdk_session is not None:
+        try:
+            await sdk_session.disconnect()
+        except Exception as disconnect_err:
+            logger.warning(...)
+```
+
+This `try/finally` has **no `except` clause**. Any exception raised by `sdk_session.send_and_wait()` propagates through the `finally` block (which only disconnects) and surfaces to the kernel untranslated.
+
+**`client.py` lines 234–246 — what IS covered:**
+
+```python
+sdk_session = None
+try:
+    sdk_session = await client.create_session(session_config)   # ← covered
+    sdk_session.register_pre_tool_use_hook(create_deny_hook())  # ← covered
+except Exception as e:
+    error_config = self._get_error_config()
+    raise translate_sdk_error(e, error_config) from e
+```
+
+This `try/except` only wraps session *creation*, not session *use*.
+
+**`provider.py` lines 477–498 — real SDK path call site:**
+
+```python
+async with self._client.session(model=model) as sdk_session:
+    sdk_response = await sdk_session.send_and_wait({"prompt": ...})  # ← NO try/except here
+    ...
+```
+
+No try/except wraps `send_and_wait()` at the call site either.
+
+#### Corrected Error Coverage Map
+
+```
+client.py — translate_sdk_error coverage:
+
+  ImportError (SDK not installed)        lines 203-211   ✅ translated → ProviderUnavailableError
+  Exception during CopilotClient()       lines 212-214   ✅ translated → LLMError subclass
+  Exception during client.start()        lines 212-214   ✅ translated → LLMError subclass
+  Exception during create_session()      lines 244-246   ✅ translated → LLMError subclass
+  Exception during register hook         lines 244-246   ✅ translated → LLMError subclass
+
+  ─────────────────────────────────────────────────────────────────────────
+  Exception during send_and_wait()       lines 248-256   ❌ NOT translated → raw SDK exception
+  ─────────────────────────────────────────────────────────────────────────
+```
+
+#### Contract Violated
+
+`error-hierarchy.md`: "The provider MUST translate SDK errors into kernel error types"
+
+Raw SDK exceptions from `send_and_wait()` propagate directly to the kernel.
+
+---
+
+### Root Cause Analysis: F-044/F-045 Pattern
+
+This is a **feature propagation failure** — a feature implemented for one path that was not carried forward when a second path was added.
+
+The module-level `complete()` function (test/streaming path) was the original implementation. It has a complete `try/except` at lines 271-285:
+
+```python
+except Exception as e:
+    if isinstance(e, LLMError):
+        raise
+    kernel_error = translate_sdk_error(e, error_config, ...)
+    raise kernel_error from e
+```
+
+When `GitHubCopilotProvider.complete()` was introduced (F-039) to add the real SDK path via `CopilotClientWrapper.session()`, error translation was applied to session *creation* (matching the pattern at lines 212-214 and 244-246), but the `yield sdk_session` block — which is where `send_and_wait()` actually runs — was not wrapped.
+
+The same pattern appears with F-044 (system message) and F-045 (tool disabling): features implemented in the `session()` setup code were not systematically verified against the full call lifetime. Error translation during the active session call was similarly missed.
+
+**Fix required:** Add `except Exception` around `yield sdk_session` in `CopilotClientWrapper.session()` to catch and translate `send_and_wait()` errors, or add a try/except in `GitHubCopilotProvider.complete()` around the `async with` block.
+
+---
+
 ## Module Dependency Graph (LSP-confirmed)
 
 ```

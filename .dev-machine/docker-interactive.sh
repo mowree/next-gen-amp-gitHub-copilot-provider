@@ -88,7 +88,8 @@ echo "      ✓ Settings pre-seeded"
 
 # Step 5: Register our shadow test bundle
 echo "[5/5] Registering shadow test bundle..."
-amplifier bundle add copilot-provider-shadow-test /workspace/.dev-machine/shadow-test-bundle.md 2>&1 | head -5 || true
+amplifier bundle remove copilot-provider-shadow-test 2>&1 || true
+amplifier bundle add /workspace/.dev-machine/shadow-test-bundle.md 2>&1 | head -5 || true
 echo "      ✓ Bundle registered"
 
 echo ""
