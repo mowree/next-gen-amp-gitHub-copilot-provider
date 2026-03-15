@@ -300,3 +300,49 @@ Same issue as `config/` — `contracts/` is outside the Python package. If the b
 | Behavior composition | N/A | Correctly not a behavior |
 
 **Bottom line:** The bundle structure and pattern compliance are excellent. The main gap is PyPI packaging — specifically the `config/` directory location and missing project metadata. Fix those and this is ready to publish.
+
+---
+
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Reviewed by:** Principal-Level Developer  
+**Date:** 2026-03-15
+
+### Critical Correction: Provider Protocol `complete()` Should Be FAIL
+
+**Original Rating:** PASS  
+**Corrected Rating:** **FAIL**
+
+**Evidence:** The real SDK path at `GitHubCopilotProvider.complete()` lines 477-497 has **NO try/except**. If `sdk_session.send_and_wait()` raises, raw SDK exceptions bubble up to the kernel.
+
+**Contract Violated:** error-hierarchy.md — "The provider MUST translate SDK errors into kernel error types"
+
+**Root Cause:** Dual-path architecture from F-039/F-040 refactoring. Test path (module-level `complete()`) has error handling. Real SDK path (`GitHubCopilotProvider.complete()`) does not.
+
+**Remediation:** F-072 spec covers this fix.
+
+### Contracts Distribution Clarification
+
+The `bundle.md` references:
+```yaml
+context:
+  include:
+    - contracts/provider-protocol.md
+    - contracts/deny-destroy.md
+```
+
+**Status:** These are consumed at bundle-load time for agent context injection. They **SHOULD** be packaged in the wheel if the provider is distributed as a standalone package. However, since this provider is typically loaded as part of a bundle composition, the contracts may be resolved from the bundle's source rather than the wheel.
+
+**Recommendation:** For PyPI distribution, include contracts in the wheel via Option A (move inside package).
+
+### New Specs from This Review
+
+- **F-079** (P2): Add `py.typed` marker file for type-checking consumers
+- **F-080** (P2): Add missing PyPI metadata (authors, keywords, classifiers, urls)
+
+### Verified Correct
+
+The foundation-expert agent confirmed all findings from the principal review:
+- Config packaging issue is P0 (F-074 covers this)
+- Missing PyPI metadata blocks publishing
+- py.typed marker needed for external type checking

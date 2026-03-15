@@ -10,6 +10,26 @@
 
 ---
 
+## Session 2026-03-15T02:26Z -- Blocker: Principal review of foundation-expert document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-foundation-expert.md` based on principal feedback.
+
+### Verified Evidence
+
+- `amplifier_module_provider_github_copilot/provider.py:481-488` is the real SDK path used by `GitHubCopilotProvider.complete()` and has no local `try/except` around `sdk_session.send_and_wait(...)` or `extract_response_content(...)`.
+- Because that path lacks `translate_sdk_error(...)`, raw SDK exceptions can escape the provider boundary; the foundation review's provider-protocol table should mark `complete(request, **kwargs)` as FAIL, not PASS.
+- `STATE.yaml` already tracks the remediation as `F-072-real-sdk-path-error-translation` and the principal review also requested references to `F-079` (`py.typed`) and `F-080` (PyPI metadata), but those two specs are not present in the current state file.
+- `bundle.md` includes `contracts/provider-protocol.md` and `contracts/deny-destroy.md` via `context.include`, while `pyproject.toml` packages only `amplifier_module_provider_github_copilot`; therefore those contract files are outside the wheel unless explicitly included as distribution artifacts or moved under packaged bundle contents.
+- For local source and git-based bundle loading, the relative `contracts/...` paths can resolve from the repository root; for PyPI distribution, they should be treated as required packaged bundle assets, not documentation-only files.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-15T01:32Z -- Blocker: Direct document amendment requested outside recipe
 
 ### Summary

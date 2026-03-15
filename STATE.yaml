@@ -5,6 +5,7 @@ next_action: "Phase 9: Deep Review Remediation - 23 features ready for implement
 blockers:
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-code-quality-reviewer.md, but operator sessions in this repo must not modify repo files outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
   - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-core-expert.md. Verified the feedback: the real SDK path at provider.py:481-488 has no try/except or translate_sdk_error() call, so raw SDK exceptions can escape; fallback ProviderInfo defaults also omit required defaults.context_window. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
+  - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-foundation-expert.md. Verified the feedback: GitHubCopilotProvider.complete() real SDK path at provider.py:481-488 has no try/except or translate_sdk_error() call, so provider-protocol complete() must be FAIL, not PASS; bundle.md context.include references contracts/provider-protocol.md and contracts/deny-destroy.md, and because pyproject.toml packages only amplifier_module_provider_github_copilot, those contracts are outside the wheel unless separately included. Per operator-session policy, this document cannot be edited directly outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
 features:
   F-049-fix-architecture-test-paths:
     status: ready
@@ -126,6 +127,14 @@ features:
     status: ready
     priority: P1
     source: deep-review/core-expert.md
+  F-079-add-py-typed-marker:
+    status: ready
+    priority: P2
+    source: packaging-review
+  F-080-add-missing-pypi-metadata:
+    status: ready
+    priority: P2
+    source: packaging-review
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation
