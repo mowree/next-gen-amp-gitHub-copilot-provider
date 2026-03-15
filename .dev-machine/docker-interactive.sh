@@ -69,7 +69,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 packages = [
     ("amplifier-core", "amplifier_core"),
-    ("github-copilot-sdk", "github_copilot_sdk"),
+    ("github-copilot-sdk", "github_copilot"),
     ("amplifier-module-provider-github-copilot", "amplifier_module_provider_github_copilot"),
 ]
 
