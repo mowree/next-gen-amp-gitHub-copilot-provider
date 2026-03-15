@@ -103,6 +103,56 @@ provider-github-copilot/
 └── tests/                    # Test suite (256 tests)
 ```
 
+## Private vs Public Repository
+
+This provider is developed in a **private repository** and may later be published to a public repository. The following folders are **private-only** and must be excluded when publishing:
+
+| Folder | Purpose | Public? |
+|--------|---------|---------|
+| `reference-only/` | SDK reference documentation | ❌ Private |
+| `mydocs/` | Internal analysis, deep reviews, directives | ❌ Private |
+| `.tool/` | Forensic analysis tools (F-045 compliance) | ❌ Private |
+| `copilot-sdk/` | SDK source (gitignored, local reference) | ❌ Local only |
+
+### Publishing to Public Repository
+
+When publishing to a public repo:
+
+1. **Create a `.gitignore` in the public repo** that ignores:
+   ```
+   reference-only/
+   mydocs/
+   .tool/
+   ```
+
+2. **Or use a clean export**:
+   ```bash
+   # Export only public files
+   git archive --format=tar HEAD | tar -x -C /path/to/public-repo
+   rm -rf /path/to/public-repo/{reference-only,mydocs,.tool}
+   ```
+
+3. **Verify no private content** before pushing:
+   ```bash
+   # Should return empty
+   ls -d reference-only mydocs .tool 2>/dev/null
+   ```
+
+### .tool/ Contents (Private)
+
+The `.tool/` directory contains forensic analysis tools developed during F-045 compliance testing:
+
+| Tool | Purpose |
+|------|---------|
+| `f045_compliance_suite.py` | F-045 built-in tool suppression tests |
+| `hidden_tool_prober.py` | Detect SDK built-in tools |
+| `evidence_collector.py` | Gather compliance evidence |
+| `deep_log_scanner.py` | Log forensics |
+| `analyze_session.py` | Session event analysis |
+| `negative_test_suite.py` | Negative case testing |
+
+These tools verify that the provider correctly suppresses SDK built-in tools per the deny-destroy contract.
+
 ## Contributing
 
 ### Workflow

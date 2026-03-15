@@ -38,6 +38,10 @@ Thumbs.db
 
 # Project-specific exclusions
 # Note: These are kept in the PRIVATE repo but excluded from PUBLIC distribution
+# When publishing to public repo, add these to public .gitignore:
+#   - reference-only/    (SDK reference documentation)
+#   - mydocs/            (internal analysis and deep reviews)
+#   - .tool/             (forensic analysis tools for F-045 compliance)
 reference-only/
 mydocs/
 
@@ -46,6 +50,3 @@ uv.lock
 
 # Shadow test artifacts
 shadow_test_output.log
-
-# Local forensic tools (not for distribution)
-.tool/
