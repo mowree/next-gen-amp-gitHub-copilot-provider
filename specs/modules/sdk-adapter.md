@@ -47,8 +47,10 @@ __all__ = [
 class SessionConfig:
     """Configuration for creating an SDK session."""
     model: str
-    system_prompt: str | None = None
+    system_message: str | None = None  # Note: "system_message" per contract, not "system_prompt"
     max_tokens: int | None = None
+    tools: list[Any] | None = None  # Tool definitions for the session
+    reasoning_effort: str | None = None  # "low", "medium", "high"
 ```
 
 ### SDKSession

@@ -112,6 +112,11 @@ def deny_permission_request(request: Any, invocation: dict[str, str]) -> Any:
 3. **MUST NOT:** Reuse sessions across calls
 4. **MUST NOT:** Accumulate state in sessions
 
+### Tool Suppression (F-045)
+1. **MUST:** Pass `available_tools=[]` when creating SDK session
+2. **MUST:** Suppress tool availability at session creation, not just execution
+3. **MUST NOT:** Allow SDK to see any tool definitions
+
 ---
 
 ## Dependencies

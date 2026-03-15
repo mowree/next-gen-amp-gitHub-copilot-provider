@@ -68,7 +68,7 @@ SDK Event Stream
     │   └─→ DROP: Ignore
     │
     └─→ Final ChatResponse
-        ├─→ content: [TextContent, ThinkingContent, ToolCallContent...]
+        ├─→ content: [TextBlock, ThinkingBlock, ToolCall...]
         ├─→ tool_calls: [ToolCall...]
         └─→ usage: {token counts}
 ```
@@ -80,7 +80,7 @@ SDK Event Stream
 ### MUST Constraints
 
 1. **MUST** accumulate text deltas in order
-2. **MUST** use kernel content types (`TextContent`, `ThinkingContent`, `ToolCallContent`)
+2. **MUST** use kernel message types (`TextBlock`, `ThinkingBlock`, `ToolCall`)
 3. **MUST** maintain block boundaries
 4. **MUST** handle out-of-order deltas gracefully
 5. **MUST NOT** lose deltas during accumulation

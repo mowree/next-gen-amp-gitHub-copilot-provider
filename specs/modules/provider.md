@@ -16,7 +16,7 @@ The thin orchestrator implementing the 5-method Amplifier Provider Protocol. Coo
 
 ```python
 # Kernel types from amplifier_core
-from amplifier_core import ChatResponse, ModelInfo, ProviderInfo, ToolCall
+from amplifier_core import ChatRequest, ChatResponse, ModelInfo, ProviderInfo, ToolCall
 
 class CopilotProvider(Protocol):
     @property

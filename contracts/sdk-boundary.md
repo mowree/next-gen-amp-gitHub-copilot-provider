@@ -132,7 +132,7 @@ def translate_sdk_event(sdk_event: Any, config: EventConfig) -> DomainEvent | No
 ### Error Translation
 
 ```python
-def translate_sdk_error(exc: Exception, config: ErrorConfig) -> CopilotProviderError:
+def translate_sdk_error(exc: Exception, config: ErrorConfig) -> LLMError:
     """
     Translate SDK exception to domain exception.
     
