@@ -2,7 +2,8 @@ phase: 9
 phase_name: Phase 9 -- Deep Review Remediation
 epoch: 39
 next_action: "Phase 9: Deep Review Remediation - 23 features ready for implementation"
-blockers: []
+blockers:
+  - "2026-03-15: Principal review requested direct amendment of mydocs/deep-review/2026-03-14-code-quality-reviewer.md, but operator sessions in this repo must not modify repo files outside recipe-managed work. Need a .dev-machine recipe path or explicit policy override."
 features:
   F-049-fix-architecture-test-paths:
     status: ready
@@ -104,6 +105,22 @@ features:
     status: ready
     priority: P1
     source: deep-review/code-navigator-v2.md
+  F-074-config-not-in-wheel:
+    status: ready
+    priority: P0
+    source: deep-review/code-quality-reviewer.md
+  F-075-retry-yaml-dead-config:
+    status: ready
+    priority: P2
+    source: deep-review/code-quality-reviewer.md
+  F-076-fix-async-mock-warning:
+    status: ready
+    priority: P2
+    source: deep-review/code-quality-reviewer.md
+  F-077-delete-tombstone-test-files:
+    status: ready
+    priority: P3
+    source: deep-review/code-quality-reviewer.md
 completed_features:
 - F-001-sdk-adapter-skeleton
 - F-002-error-translation

@@ -182,3 +182,42 @@ If this provider is run inside the expected Amplifier-controlled environment and
 | Dependencies | 7/10 |
 
 **Overall weighted impression:** **6.5/10**
+
+---
+
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Reviewed by:** Principal-Level Developer  
+**Date:** 2026-03-15
+
+### Severity Corrections
+
+| Category | Original Score | Corrected Score | Reason |
+|----------|---------------|-----------------|--------|
+| Config Management | 5/10 | **3/10** | This is P0 wheel-packaging failure, not "fragility" |
+| Overall Score | 6.5/10 | **5.5/10** | Adjusted for P0 packaging bug severity |
+
+### Config Packaging Bug — Upgraded to P0
+
+The document correctly identified config path fragility but **underrated its severity**.
+
+**Evidence Chain:**
+1. `pyproject.toml` packages ONLY `amplifier_module_provider_github_copilot`
+2. `config/` directory is **NOT** included in wheel build
+3. `_load_error_config_once()` tries `resources.files("config")` — **FAILS in wheel**
+4. Fallback to `Path(__file__).parent.parent.parent.parent / "config"` — **FAILS in installed wheel**
+5. Final fallback to `ErrorConfig()` — **NO ERROR TRANSLATION**
+
+**Impact:** When installed from wheel, **ALL SDK errors pass through untranslated** because errors.yaml is missing.
+
+### Additional Bugs Discovered During Review
+
+1. **retry.yaml exists but never loaded** — Config file exists at `config/retry.yaml`, no code loads it (P2)
+2. **Async mock warning root cause** — `register_pre_tool_use_hook` receives async hook but mock doesn't handle it (P2)
+
+### Remediation Specs
+
+- **F-074** (P0): Config not included in wheel — move config inside package
+- **F-075** (P2): Wire retry.yaml to code or remove dead config
+- **F-076** (P2): Fix async mock warning in tests
+- **F-077** (P3): Delete tombstone test files

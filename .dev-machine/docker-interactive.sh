@@ -43,25 +43,24 @@ PROVIDER_SOURCE="${1:-local}"
 echo "=== Initializing Amplifier Environment ==="
 echo ""
 
-# Step 1: Install SDK
+# Step 1: Install SDK to system Python (where amplifier-core is installed)
 echo "[1/5] Installing github-copilot-sdk..."
-uv pip install --python "$TOOL_VENV/bin/python" "github-copilot-sdk>=0.1.32,<0.2.0" -q
+pip install "github-copilot-sdk>=0.1.32,<0.2.0" -q
 echo "      ✓ SDK installed"
 
-# Step 2: Install provider
+# Step 2: Install provider to system Python
 echo "[2/5] Installing provider ($PROVIDER_SOURCE)..."
 if [ "$PROVIDER_SOURCE" = "local" ]; then
-    uv pip install --python "$TOOL_VENV/bin/python" -e /workspace -q
+    pip install -e /workspace -q
     echo "      ✓ Local provider installed (editable)"
 else
-    uv pip install --python "$TOOL_VENV/bin/python" \
-      "git+https://github.com/microsoft/amplifier-module-provider-github-copilot@main" -q
+    pip install "git+https://github.com/microsoft/amplifier-module-provider-github-copilot@main" -q
     echo "      ✓ Published provider installed"
 fi
 
-# Step 3: Verify installation
+# Step 3: Verify installation using system Python
 echo "[3/5] Verifying installation..."
-"$TOOL_VENV/bin/python" -c "
+python -c "
 import amplifier_module_provider_github_copilot
 print('      ✓ Provider module importable')
 from amplifier_module_provider_github_copilot.provider import GitHubCopilotProvider

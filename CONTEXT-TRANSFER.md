@@ -10,6 +10,26 @@
 
 ---
 
+## Session 2026-03-15T01:32Z -- Blocker: Direct document amendment requested outside recipe
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-code-quality-reviewer.md` based on principal feedback.
+
+### Verified Evidence
+
+- `pyproject.toml` packages only `amplifier_module_provider_github_copilot`, while `config/` is outside the wheel package.
+- `sdk_adapter/client.py::_load_error_config_once()` first tries `resources.files("config")`, then a source-tree-relative filesystem fallback, then falls back to `ErrorConfig()`.
+- In an installed wheel, both config-loading paths can fail, leaving YAML error mappings unavailable and allowing untranslated SDK errors to pass through default handling.
+- `config/retry.yaml` exists but no reviewed code path in this session showed it being loaded.
+- Fresh pytest warnings previously cited in the review are consistent with async mock/hook handling around `register_pre_tool_use_hook()` and the asyncio marker usage in `tests/test_permission_handler.py`.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-14T17:32Z -- F-047 + F-048 Implemented (Phase 8 Complete)
 
 ### Executive Summary
