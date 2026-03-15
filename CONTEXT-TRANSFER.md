@@ -10,6 +10,26 @@
 
 ---
 
+## Session 2026-03-15T03:10Z -- Blocker: Principal review of integration-specialist document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-integration-specialist.md` based on principal feedback.
+
+### Verified Evidence
+
+- `amplifier_module_provider_github_copilot/provider.py:481-488` is the real SDK path used by `GitHubCopilotProvider.complete()` and has no local `try/except` around `sdk_session.send_and_wait(...)`.
+- That means the real SDK path bypasses not only event translation but also error translation: if `send_and_wait(...)` raises, the exception can escape untranslated instead of flowing through `translate_sdk_error(...)`. This matches existing remediation spec `F-072-real-sdk-path-error-translation`.
+- `amplifier_module_provider_github_copilot/provider.py:517-523` defines `provider.close()` as a no-op, while `amplifier_module_provider_github_copilot/sdk_adapter/client.py:258-268` has a working client close path; this should be tracked as a separate P1 cleanup spec.
+- `STATE.yaml` already tracks related ready specs including `F-072-real-sdk-path-error-translation` and `F-075-retry-yaml-dead-config`; this session added `F-082-wire-provider-close-to-client-close` as ready/P1 for the provider shutdown wiring gap.
+- The integration review's executive summary should frame only the real SDK path bypass as genuine P0 production-breaking behavior; retry dead config and provider close leakage are real issues but not the same severity class.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-15T02:26Z -- Blocker: Principal review of foundation-expert document verified, but direct amendment remains outside operator scope
 
 ### Summary

@@ -494,3 +494,53 @@ There is zero retry logic in `provider.py`, `streaming.py`, or `sdk_adapter/clie
 **Summary:** Of the claimed "3 production-breaking issues," **1 is genuinely production-breaking** (Issue #1: real SDK path bypasses event pipeline). Issues #2 and #3 are real bugs/gaps but do not cause the provider to stop working — they are resource leaks and missing features respectively.
 
 *Verification performed 2026-03-14 against actual source files.*
+
+---
+
+## PRINCIPAL REVIEW AND AMENDMENTS
+
+**Reviewed by:** Principal-Level Developer  
+**Date:** 2026-03-15  
+**Document Rating:** 9/10 — Best in the review set
+
+### Verified Correct ✅
+
+The following findings are confirmed accurate and demonstrate excellent integration analysis:
+
+1. **Real SDK path uses `send_and_wait()`, bypasses event pipeline** — CONFIRMED P0 at provider.py:479-495
+2. **`provider.close()` is no-op, never calls `_client.close()`** — CONFIRMED at lines 517-523
+3. **client.py HAS working `close()` implementation** — CONFIRMED at lines 258-268
+4. **retry.yaml exists but no code consumes it** — CONFIRMED, F-075 spec exists
+5. **Self-verification section** — Excellent intellectual honesty in re-checking claims
+
+### Critical Addition: Missing Error Translation Gap 🚨
+
+**Original Document:** Catches that real path bypasses EVENT translation ✓  
+**Amendment:** Real SDK path ALSO bypasses ERROR translation
+
+**Evidence:**
+```python
+# provider.py:481-483 — NO try/except
+async with self._client.session(model=model) as sdk_session:
+    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+```
+
+If `send_and_wait()` throws, the exception propagates **untranslated** to the kernel. This is P0.
+
+**Remediation:** F-072 spec covers this fix.
+
+### New Bug Identified: provider.close() No-Op (P1)
+
+The document correctly identified that `provider.close()` is a no-op while `client.close()` exists and works. This is a resource leak / cleanup issue.
+
+**Remediation:** F-082 spec created — Wire provider.close() to call client.close()
+
+### Summary of Specs from This Review
+
+- **F-072** (P0): Real SDK path error/event translation (referenced, already exists)
+- **F-075** (P1): Wire retry.yaml (referenced, already exists)
+- **F-082** (P1): Wire provider.close() to client.close() (NEW)
+
+---
+
+*End of principal amendments. Original findings retained — excellent integration analysis.*
