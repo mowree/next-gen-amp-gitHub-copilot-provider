@@ -10,6 +10,26 @@
 
 ---
 
+## Session 2026-03-15T05:53Z -- Blocker: Principal review of spec-reviewer-part3 document verified, but direct amendment remains outside operator scope
+
+### Summary
+
+Human requested amendments to `mydocs/deep-review/2026-03-14-spec-reviewer-part3.md` based on principal feedback.
+
+### Verified Evidence
+
+- `contracts/error-hierarchy.md` is the authoritative contract for this review scope. It explicitly requires unknown errors to fall through to `ProviderUnavailableError(retryable=True)` (`default.kernel_error: ProviderUnavailableError`, `retryable: true`), so the prior document's fallback-divergence claim is incorrect and should be retracted in any future amendment.
+- The same contract explicitly includes `AbortError` and `ContextLengthError` in the hierarchy and mapping sections, so a blanket claim that `AbortError` does not exist in the contract is not supported by the current file; however, `SessionCreateError` and `SessionDestroyError` are not contract-defined kernel error types.
+- `config/events.yaml` documents `system_notification` with an inline SDK-version note, so this remains a valid but low-severity/P3 observation rather than a primary compliance issue.
+- `amplifier_module_provider_github_copilot/provider.py` real SDK path still calls `sdk_session.send_and_wait(...)` without local `try/except` or `translate_sdk_error(...)`, so the config-driven error mapping is not consumed on that runtime path. This missed observation aligns with ready spec `F-072-real-sdk-path-error-translation`.
+- The methodology correction is valid: spec reviews must compare implementation against authoritative contract files first, not aspirational design documents.
+
+### Action
+
+Per repo protocol for operator sessions, no direct document edit was made. This needs recipe-managed execution or an explicit override to the machine process.
+
+---
+
 ## Session 2026-03-15T05:40Z -- Blocker: Principal review of spec-reviewer-part2 document verified, but direct amendment remains outside operator scope
 
 ### Summary

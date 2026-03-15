@@ -28,3 +28,11 @@ Limited to `mydocs/debates/GOLDEN_VISION_V2.md` (YAML config requirements sectio
 - Revisit fallback retryability for unmapped errors.
 - Either document `system_notification` as an intentional spec update or remove it.
 - Split/simplify `config/errors.yaml` if the `<=50 line` config-file goal is still being enforced.
+
+### PRINCIPAL REVIEW AND AMENDMENTS
+- **Document rating:** 5/10 — Made factual errors about what the spec requires.
+- **RETRACT:** The prior claim that the unknown-error fallback diverges from spec is incorrect. `contracts/error-hierarchy.md` explicitly requires unknown errors to fall through to `ProviderUnavailableError` with `retryable: true`, and `config/errors.yaml` matches that contract.
+- **RETRACT:** The prior claim about missing `AbortError` / `SessionCreateError` / `SessionDestroyError` was not contract-grounded as written. `SessionCreateError` and `SessionDestroyError` are not defined in `contracts/error-hierarchy.md`, so they should not have been treated as required config entries. The review methodology error was relying on non-authoritative design intent instead of the contract; any `AbortError` concern must be evaluated strictly against the contract text actually present.
+- **KEEP:** The `system_notification` finding remains valid, but only as a minor/P3 observation because `config/events.yaml` documents it inline as `SDK v0.1.33` behavior.
+- **ADD:** Missed observation — the config is not consumed on the real SDK path. In `amplifier_module_provider_github_copilot/provider.py`, the real path calls `sdk_session.send_and_wait({"prompt": internal_request.prompt})` without local `try/except` or `translate_sdk_error(...)`, so the configured error-mapping policy is bypassed there. This aligns with **F-072**.
+- **Methodology issue:** Future spec reviews must compare implementation against the authoritative contract files first and treat aspirational design documents as secondary context, not as the contract of record.
