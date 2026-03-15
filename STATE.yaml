@@ -508,7 +508,12 @@ completed_features:
 architecture_spec:
   status: approved
   path: ./mydocs/debates/GOLDEN_VISION_V2.md
-module_specs: {}
+module_specs:
+  provider: specs/modules/provider.md
+  sdk_adapter: specs/modules/sdk-adapter.md
+  error_translation: specs/modules/error-translation.md
+  session_factory: specs/modules/session-factory.md
+  streaming: specs/modules/completion.md
 
 # =============================================================================
 # Expert Panel References (read-only guidance for working sessions)

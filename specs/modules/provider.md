@@ -1,8 +1,8 @@
 # Module Spec: Provider
 
-**Module:** `src/provider_github_copilot/provider.py`
+**Module:** `amplifier_module_provider_github_copilot/provider.py`
 **Contract:** `contracts/provider-protocol.md`
-**Target Size:** ~120 lines
+**Target Size:** ~400 lines
 
 ---
 
@@ -15,6 +15,9 @@ The thin orchestrator implementing the 5-method Amplifier Provider Protocol. Coo
 ## Public API (Provider Protocol)
 
 ```python
+# Kernel types from amplifier_core
+from amplifier_core import ChatResponse, ModelInfo, ProviderInfo, ToolCall
+
 class CopilotProvider(Protocol):
     @property
     def name(self) -> str:
@@ -29,8 +32,7 @@ class CopilotProvider(Protocol):
     async def complete(
         self,
         request: ChatRequest,
-        *,
-        on_content: Callable[[ContentDelta], None] | None = None,
+        **kwargs,
     ) -> ChatResponse:
         """
         Execute LLM completion.
@@ -39,7 +41,7 @@ class CopilotProvider(Protocol):
         Tool calls are captured and returned, NOT executed.
         """
     
-    def parse_tool_calls(self, response: ChatResponse) -> list[ToolCallBlock]:
+    def parse_tool_calls(self, response: ChatResponse) -> list[ToolCall]:
         """Extract tool calls from response for orchestrator."""
 ```
 
@@ -50,22 +52,22 @@ class CopilotProvider(Protocol):
 ```
                      ┌─────────────────┐
                      │   provider.py   │
-                     │ (thin orchestrator)
+                     │ (orchestrator)  │
                      └────────┬────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
         │                     │                     │
         ▼                     ▼                     ▼
 ┌───────────────┐    ┌───────────────┐    ┌───────────────┐
-│session_factory│    │  completion   │    │ tool_parsing  │
-│               │    │               │    │               │
+│  sdk_adapter/ │    │   streaming   │    │ tool_parsing  │
+│   client.py   │    │               │    │               │
 └───────────────┘    └───────────────┘    └───────────────┘
-        │                     │
-        ▼                     ▼
-┌───────────────┐    ┌───────────────┐
-│  sdk_adapter  │    │   streaming   │
-│ (THE MEMBRANE)│    │               │
-└───────────────┘    └───────────────┘
+        │
+        ▼
+┌───────────────┐
+│error_translation│
+│               │
+└───────────────┘
 ```
 
 ---
@@ -74,14 +76,16 @@ class CopilotProvider(Protocol):
 
 ```python
 async def complete(self, request: ChatRequest, **kwargs) -> ChatResponse:
-    # 1. Create ephemeral session (with deny hook)
-    async with create_ephemeral_session(self.client, config) as session:
-        # 2. Delegate to completion lifecycle
-        response = await execute_completion(session, request, streaming=True)
+    # 1. Create SDK session via CopilotClientWrapper
+    # 2. Install deny hooks (create_deny_hook, deny_permission_request)
+    # 3. Send request and accumulate streaming response
+    accumulator = StreamingAccumulator()
+    async for event in session.events():
+        domain_event = translate_event(event, config)
+        accumulator.add(domain_event)
     
-    # 3. Session destroyed on context exit
-    # 4. Return response (tool calls captured, not executed)
-    return response
+    # 4. Convert accumulated response to kernel ChatResponse
+    return accumulator.to_chat_response()
 ```
 
 ---
@@ -89,10 +93,10 @@ async def complete(self, request: ChatRequest, **kwargs) -> ChatResponse:
 ## Invariants
 
 1. **MUST:** Implement all 5 Provider Protocol methods
-2. **MUST:** Create new session per complete() call (via session_factory)
+2. **MUST:** Create new session per complete() call (via CopilotClientWrapper)
 3. **MUST:** Return tool calls to orchestrator (NOT execute them)
-4. **MUST:** Be a thin orchestrator (~120 lines, no complex logic)
-5. **MUST NOT:** Import SDK types (use sdk_adapter only)
+4. **MUST:** Delegate complex logic to streaming, error_translation, tool_parsing
+5. **MUST NOT:** Import SDK types directly (use sdk_adapter only)
 
 ---
 
@@ -100,9 +104,10 @@ async def complete(self, request: ChatRequest, **kwargs) -> ChatResponse:
 
 ```
 provider.py
-├── imports: session_factory, completion, tool_parsing
-├── uses: CopilotClient (injected)
-├── implements: Provider Protocol (from amplifier-core)
+├── imports: error_translation, sdk_adapter.client, sdk_adapter.types, streaming, tool_parsing
+├── uses: CopilotClientWrapper (from sdk_adapter/client.py)
+├── types: ProviderInfo, ModelInfo, ChatResponse, ToolCall (from amplifier_core)
+├── implements: Provider Protocol
 └── enforces: provider-protocol.md contract
 ```
 

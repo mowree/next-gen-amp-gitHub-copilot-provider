@@ -1,42 +1,45 @@
 # Module Spec: Session Factory
 
-**Module:** `src/provider_github_copilot/session_factory.py`
+**Module:** `amplifier_module_provider_github_copilot/sdk_adapter/client.py`
 **Contract:** `contracts/deny-destroy.md`
-**Target Size:** ~100 lines
+**Target Size:** ~250 lines
 
 ---
 
 ## Purpose
 
-Creates ephemeral SDK sessions with the deny hook installed. Implements the core Deny + Destroy pattern.
+Creates ephemeral SDK sessions with deny hooks installed. Implements the Deny + Destroy pattern via CopilotClientWrapper.
 
 ---
 
 ## Public API
 
 ```python
-@asynccontextmanager
-async def create_ephemeral_session(
-    client: CopilotClient,
-    config: SessionConfig,
-) -> AsyncIterator[SessionHandle]:
-    """
-    Create an ephemeral session with deny hook.
+class CopilotClientWrapper:
+    """Wrapper around copilot.CopilotClient with lifecycle management."""
     
-    Contract: deny-destroy.md
-    
-    - MUST install preToolUse deny hook
-    - MUST destroy session on context exit
-    - MUST NOT allow session reuse
-    """
-    
-def make_deny_all_hook() -> Callable:
-    """
-    Create the deny hook for tool execution.
-    
-    Returns a hook that denies ALL tool execution requests.
-    This is non-configurable per deny-destroy.md.
-    """
+    @asynccontextmanager
+    async def session(
+        self,
+        model: str | None = None,
+        *,
+        system_message: str | None = None,
+    ) -> AsyncIterator[Any]:
+        """
+        Create an ephemeral session with proper cleanup.
+        
+        Contract: deny-destroy.md
+        
+        - MUST install deny_permission_request handler
+        - MUST destroy session on context exit
+        - MUST NOT allow session reuse
+        """
+
+def create_deny_hook() -> Callable[[Any, Any], Awaitable[dict[str, str]]]:
+    """Create async deny hook for SDK pre_tool_use callback."""
+
+def deny_permission_request(request: Any, invocation: dict[str, str]) -> Any:
+    """Deny all permission requests at source (F-033)."""
 ```
 
 ---
@@ -47,10 +50,11 @@ def make_deny_all_hook() -> Callable:
 complete() called
     │
     ▼
-create_ephemeral_session()
+CopilotClientWrapper.session()
     │
-    ├── Create SDK session with deny hook
-    ├── Yield SessionHandle (UUID)
+    ├── Get or create SDK client (with deny_permission_request)
+    ├── Create SDK session with streaming=True
+    ├── Yield raw SDK session
     │
     ▼
 [Session used for one turn]
@@ -58,7 +62,7 @@ create_ephemeral_session()
     ▼
 Context manager exits
     │
-    └── Session destroyed (resources released)
+    └── Session disconnected (resources released)
 ```
 
 ---
@@ -66,19 +70,31 @@ Context manager exits
 ## Deny Hook Implementation
 
 ```python
-def make_deny_all_hook():
+DENY_ALL: dict[str, str] = {
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Amplifier sovereignty - tools executed by kernel only",
+}
+
+def create_deny_hook() -> Callable[[Any, Any], Awaitable[dict[str, str]]]:
+    """Create async deny hook for SDK pre_tool_use callback."""
+    async def deny(input_data: Any, invocation: Any) -> dict[str, str]:
+        return DENY_ALL
+    return deny
+
+def deny_permission_request(request: Any, invocation: dict[str, str]) -> Any:
     """
-    The deny hook — NON-CONFIGURABLE.
+    Deny all permission requests at source.
     
-    This is mechanism, not policy. No YAML knob.
-    Per GOLDEN_VISION_V2.md Non-Negotiable Constraint #6.
+    F-033: SDK v0.1.33 requires on_permission_request handler.
+    This is the FIRST line of defense. preToolUse deny hook is the second.
+    
+    Contract: contracts/deny-destroy.md
     """
-    def deny_all(tool_request):
-        return {
-            "action": "DENY",
-            "reason": "Amplifier orchestrator handles tool execution"
-        }
-    return deny_all
+    from copilot.types import PermissionRequestResult
+    return PermissionRequestResult(
+        kind="denied-by-rules",
+        message="Amplifier orchestrator controls all operations",
+    )
 ```
 
 ---
@@ -86,13 +102,13 @@ def make_deny_all_hook():
 ## Invariants (from deny-destroy.md)
 
 ### Hook Installation
-1. **MUST:** Install preToolUse deny hook on every session
-2. **MUST:** Hook returns DENY for all tool requests
-3. **MUST NOT:** Have any configuration to disable the hook
+1. **MUST:** Install deny_permission_request on client creation
+2. **MUST:** Hook returns "denied-by-rules" for all permission requests
+3. **MUST NOT:** Have any configuration to disable the hooks
 
 ### Session Ephemerality
 1. **MUST:** Create new session per complete() call
-2. **MUST:** Destroy session after first turn
+2. **MUST:** Disconnect session after context exit
 3. **MUST NOT:** Reuse sessions across calls
 4. **MUST NOT:** Accumulate state in sessions
 
@@ -101,9 +117,10 @@ def make_deny_all_hook():
 ## Dependencies
 
 ```
-session_factory.py
-├── imports: sdk_adapter.SessionHandle, sdk_adapter.SessionConfig
-├── uses: CopilotClient (from client.py)
+sdk_adapter/client.py
+├── imports: copilot.CopilotClient, copilot.types.PermissionRequestResult
+├── imports: ../error_translation (for error config)
+├── uses: deny_permission_request, create_deny_hook
 └── enforces: deny-destroy.md contract
 ```
 

@@ -1,51 +1,61 @@
 # Module Spec: Error Translation
 
-**Module:** `src/provider_github_copilot/error_translation.py`
+**Module:** `amplifier_module_provider_github_copilot/error_translation.py`
 **Contract:** `contracts/error-hierarchy.md`
 **Config:** `config/errors.yaml`
-**Target Size:** ~80 lines
+**Target Size:** ~200 lines
 
 ---
 
 ## Purpose
 
-Config-driven translation from SDK exceptions to domain exceptions. The Python code contains NO hardcoded error mappings — all mappings live in YAML.
+Config-driven translation from SDK exceptions to kernel error types. The Python code contains NO hardcoded error mappings — all mappings live in YAML.
 
 ---
 
 ## Public API
 
 ```python
+from amplifier_core.llm_errors import LLMError
+
 def translate_sdk_error(
     exc: Exception,
     config: ErrorConfig,
-) -> CopilotProviderError:
+) -> LLMError:
     """
-    Translate SDK exception to domain exception.
+    Translate SDK exception to kernel error type.
     
     Contract: error-hierarchy.md
     
     - MUST NOT raise (always returns)
-    - MUST preserve original in .original attribute
+    - MUST preserve original in error attributes
     - MUST use config patterns (no hardcoded mappings)
-    - MUST fall through to CopilotProviderError(retryable=False)
+    - MUST fall through to ProviderUnavailableError
     """
 ```
 
 ---
 
-## Domain Exception Hierarchy
+## Kernel Error Hierarchy
+
+All errors from `amplifier_core.llm_errors`:
 
 ```
-CopilotProviderError (base, retryable=False)
-├── CopilotAuthError (retryable=False, always)
-├── CopilotRateLimitError (retryable=True, retry_after extracted)
-├── CopilotTimeoutError (retryable=True)
-├── CopilotContentFilterError (retryable=False)
-├── CopilotSessionError (retryable=True)
-├── CopilotModelNotFoundError (retryable=False)
-├── CopilotSubprocessError (retryable=True)
-└── CopilotCircuitBreakerError (retryable=False)
+LLMError (base)
+├── AuthenticationError (HTTP 401/403)
+│   └── AccessDeniedError (HTTP 403 - permission denied)
+├── RateLimitError (HTTP 429, retryable=True)
+│   └── QuotaExceededError (billing limit, retryable=False)
+├── LLMTimeoutError (retryable=True)
+├── ContentFilterError (safety filter)
+├── ProviderUnavailableError (HTTP 5xx, retryable=True)
+├── ContextLengthError (token limit)
+├── InvalidRequestError (malformed request)
+├── NotFoundError (model not found)
+├── StreamError (streaming failure)
+├── InvalidToolCallError (tool call parsing)
+├── ConfigurationError (config error)
+└── AbortError (user abort)
 ```
 
 ---
@@ -58,18 +68,18 @@ version: "1.0"
 error_mappings:
   - sdk_patterns: ["AuthenticationError", "InvalidTokenError"]
     string_patterns: ["401", "403"]
-    domain_error: CopilotAuthError
+    kernel_error: AuthenticationError
     retryable: false
 
   - sdk_patterns: ["RateLimitError", "QuotaExceededError"]
     string_patterns: ["429"]
-    domain_error: CopilotRateLimitError
+    kernel_error: RateLimitError
     retryable: true
     extract_retry_after: true
 
 default:
-  domain_error: CopilotProviderError
-  retryable: false
+  kernel_error: ProviderUnavailableError
+  retryable: true
 ```
 
 ---
@@ -77,32 +87,36 @@ default:
 ## Implementation Pattern
 
 ```python
-DOMAIN_ERROR_MAP = {
-    "CopilotAuthError": CopilotAuthError,
-    "CopilotRateLimitError": CopilotRateLimitError,
-    # ... all domain errors
+from amplifier_core.llm_errors import LLMError, ProviderUnavailableError
+
+KERNEL_ERROR_MAP: dict[str, type[LLMError]] = {
+    "AuthenticationError": AuthenticationError,
+    "RateLimitError": RateLimitError,
+    "ProviderUnavailableError": ProviderUnavailableError,
+    # ... all kernel error types
 }
 
-def translate_sdk_error(exc: Exception, config: ErrorConfig) -> CopilotProviderError:
+def translate_sdk_error(exc: Exception, config: ErrorConfig) -> LLMError:
     exc_type = type(exc).__name__
     exc_message = str(exc)
     
     for mapping in config.error_mappings:
         if _matches(exc_type, exc_message, mapping):
-            return _create_domain_error(mapping, exc)
+            return _create_kernel_error(mapping, exc)
     
     # Fallback
-    return CopilotProviderError(str(exc), retryable=False, original=exc)
+    return ProviderUnavailableError(str(exc))
 ```
 
 ---
 
 ## Invariants
 
-1. **MUST NOT:** Raise — always return a domain exception
-2. **MUST:** Preserve original exception in `.original`
+1. **MUST NOT:** Raise — always return a kernel error type
+2. **MUST:** Use kernel error types from `amplifier_core.llm_errors`
 3. **MUST:** Use config patterns for all matching
-4. **MUST NOT:** Hardcode any error type mappings in Python
+4. **MUST NOT:** Define custom error types (use kernel types only)
+5. **MUST:** Fall through to ProviderUnavailableError
 
 ---
 
@@ -110,7 +124,7 @@ def translate_sdk_error(exc: Exception, config: ErrorConfig) -> CopilotProviderE
 
 | Tier | Tests |
 |------|-------|
-| Unit | Each domain error type has correct attributes |
-| Config | Config mappings produce expected domain errors |
-| Property | Random exceptions always return a domain error |
+| Unit | Each kernel error type maps correctly |
+| Config | Config mappings produce expected kernel errors |
+| Property | Random exceptions always return a kernel error |
 | Contract | Each MUST clause in error-hierarchy.md tested |

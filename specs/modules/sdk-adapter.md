@@ -1,14 +1,14 @@
 # Module Spec: SDK Adapter
 
-**Module:** `src/provider_github_copilot/sdk_adapter/`
+**Module:** `amplifier_module_provider_github_copilot/sdk_adapter/`
 **Contract:** `contracts/sdk-boundary.md`
-**Target Size:** ~200 lines total
+**Target Size:** ~300 lines total
 
 ---
 
 ## Purpose
 
-The SDK Adapter is **THE MEMBRANE** — the only place in the codebase where SDK imports are allowed. It translates between SDK types and domain types.
+The SDK Adapter is **THE MEMBRANE** — the only place in the codebase where SDK imports are allowed. It wraps the Copilot SDK client and provides domain types.
 
 ---
 
@@ -16,10 +16,9 @@ The SDK Adapter is **THE MEMBRANE** — the only place in the codebase where SDK
 
 | File | Lines | Responsibility |
 |------|-------|----------------|
-| `__init__.py` | ~10 | Public exports |
-| `types.py` | ~80 | SDK → domain type translation |
-| `events.py` | ~60 | Config-driven event translation |
-| `errors.py` | ~50 | Config-driven error translation |
+| `__init__.py` | ~20 | Public exports |
+| `client.py` | ~250 | SDK client wrapper, deny hooks, session lifecycle |
+| `types.py` | ~40 | Domain types (SessionConfig, SDKSession) |
 
 ---
 
@@ -28,16 +27,13 @@ The SDK Adapter is **THE MEMBRANE** — the only place in the codebase where SDK
 ```python
 # sdk_adapter/__init__.py
 
-from .types import SessionHandle, DomainEvent, SessionConfig
-from .events import translate_sdk_event
-from .errors import translate_sdk_error
+from .client import CopilotClientWrapper, create_deny_hook
+from .types import SessionConfig
 
 __all__ = [
-    "SessionHandle",
-    "DomainEvent", 
+    "CopilotClientWrapper",
     "SessionConfig",
-    "translate_sdk_event",
-    "translate_sdk_error",
+    "create_deny_hook",
 ]
 ```
 
@@ -45,50 +41,53 @@ __all__ = [
 
 ## Key Types
 
-### SessionHandle
-```python
-# Opaque handle — UUID string, NOT an SDK session reference
-SessionHandle = str
-```
-
-### DomainEvent
-```python
-@dataclass
-class DomainEvent:
-    type: str  # CONTENT_DELTA, TOOL_CALL, USAGE_UPDATE, etc.
-    data: dict[str, Any]
-```
-
 ### SessionConfig
 ```python
 @dataclass
 class SessionConfig:
+    """Configuration for creating an SDK session."""
     model: str
-    system_message: str | None
-    tools: list[ToolDefinition] | None
-    reasoning_effort: str | None  # "low", "medium", "high"
+    system_prompt: str | None = None
+    max_tokens: int | None = None
+```
+
+### SDKSession
+```python
+# Opaque type alias — domain code should not access SDK session internals
+SDKSession = Any
+```
+
+### Deny Hooks
+```python
+def create_deny_hook() -> Callable[[Any, Any], Awaitable[dict[str, str]]]:
+    """Async deny hook for SDK pre_tool_use callback."""
+
+def deny_permission_request(request: Any, invocation: dict[str, str]) -> Any:
+    """Deny all permission requests at source (F-033)."""
 ```
 
 ---
 
 ## Translation Strategy
 
-**Decompose, don't wrap:**
-- A `copilot.Message` becomes a `list[ContentBlock]`, not a `MessageWrapper(sdk_message)`
-- SDK sessions become `SessionHandle` (UUID string), not SDK references
+**Wrap with deny hooks:**
+- All SDK sessions get deny hooks installed automatically
+- `create_deny_hook()` returns DENY for all tool execution requests
+- `deny_permission_request()` denies all permission requests at source
 
-**Config-driven mappings:**
-- `events.py` reads `config/events.yaml` for event classification
-- `errors.py` reads `config/errors.yaml` for error mapping
+**Note:** Error and event translation live in separate modules:
+- `error_translation.py` (at package root)
+- `streaming.py` (at package root)
 
 ---
 
 ## Invariants
 
-1. **MUST NOT:** Export any SDK types
+1. **MUST NOT:** Export any SDK types (SDKSession is opaque Any)
 2. **MUST NOT:** Allow SDK imports outside this package
-3. **MUST:** All translation functions are pure (no side effects)
-4. **MUST:** Use config for all mappings (no hardcoded tables)
+3. **MUST:** Install deny hooks on every session creation
+4. **MUST:** Return DENY for all tool execution requests
+5. **MUST:** Deny all permission requests at source
 
 ---
 
@@ -96,9 +95,9 @@ class SessionConfig:
 
 ```
 sdk_adapter/
-├── imports: @github/copilot-sdk (THE ONLY PLACE)
-├── reads: config/errors.yaml, config/events.yaml
-└── exports: Domain types only
+├── imports: copilot (THE ONLY PLACE that imports SDK)
+├── imports: ../error_translation (for error config loading)
+└── exports: CopilotClientWrapper, SessionConfig, create_deny_hook
 ```
 
 ---
