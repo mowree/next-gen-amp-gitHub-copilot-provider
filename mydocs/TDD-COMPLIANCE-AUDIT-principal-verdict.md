@@ -226,6 +226,18 @@ def test_package_has_version() -> None:
 | WI-005 | F-095 | Supersede test_placeholder.py → test_entry_point.py | tests/*.py | 10 min | **NOT_STARTED** | _Amplifier_ |
 | WI-006 | F-096 | Mark 10 cleanup specs as N/A for TDD | specs/features/F-0*.md | 15 min | **NOT_STARTED** | _Amplifier_ |
 
+### Workflow Note
+
+WI-001 is a **spec preparation** task. After completion:
+- F-049 to F-091 remain in `ready` status with enhanced TDD sections
+- Autonomous machine picks up F-049+ and follows TDD cycle:
+  1. Read TDD Section 7 from spec
+  2. Write failing tests (Red)
+  3. Implement feature (Green)
+  4. Refactor
+
+**WI-001 does NOT write tests or code** — it enables TDD-compliant execution of pending features.
+
 ### TDD Section 7 Template (for WI-001)
 
 ```markdown
