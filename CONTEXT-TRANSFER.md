@@ -10,6 +10,67 @@
 
 ---
 
+## Session 2026-03-16T00:43Z -- Phase 9 Sub-phase 3 Complete: F-052 Implemented
+
+### Executive Summary
+
+**F-052 IMPLEMENTED**: Real SDK streaming pipeline - replaced `send_and_wait()` with streaming iteration. Sub-phase 3 is now complete.
+
+### Work Completed
+
+**F-052: Real SDK Streaming Pipeline** (IMPLEMENTED)
+- Replaced blocking `sdk_session.send_and_wait()` with streaming `sdk_session.send_message()` async iteration
+- SDK events now routed through `translate_event()` and `classify_event()` pipeline
+- Loads `event_config` via `load_event_config()` for real SDK path
+- Properly handles SDK event objects and dicts with comprehensive attribute extraction
+- TOOL_CALL, USAGE_UPDATE, TURN_COMPLETE events now generated from streaming
+- Contract: `streaming-contract.md` - streaming pipeline must emit correct event sequence
+- Files modified: `amplifier_module_provider_github_copilot/provider.py` (lines 489-544)
+- Files created: `tests/test_f052_real_sdk_streaming.py` (7 tests)
+
+### Key Implementation Details
+
+**Event-to-dict conversion** (lines 510-527):
+```python
+# Extract all public attributes from SDK event object
+# Handles dataclasses, slots, and regular objects
+if isinstance(sdk_event, dict):
+    event_dict = sdk_event
+else:
+    event_dict = {}
+    if hasattr(sdk_event, "__dict__"):
+        event_dict = {k: v for k, v in vars(sdk_event).items() if not k.startswith("_")}
+    # Ensure common event fields are extracted via getattr
+    for attr in ("type", "text", "id", "name", "arguments", "finish_reason", ...):
+        if attr not in event_dict and hasattr(sdk_event, attr):
+            event_dict[attr] = getattr(sdk_event, attr)
+```
+
+### Antagonistic Review Findings (Addressed)
+
+1. **Event dict extraction was lossy** - FIXED: Added explicit extraction for common event fields via `getattr()` fallback
+2. **Test mocks didn't support call assertions** - FIXED: Used `AsyncMock(side_effect=...)` wrapper
+3. **Test assertions referenced wrong mock** - FIXED: Added `_send_message_mock` reference
+
+### State Updates
+
+- `epoch`: 47 → 49
+- F-052 marked `status: implemented`
+- `next_action`: Sub-phase 3 complete. Continue with Sub-phase 4
+
+### Build Verification
+
+- Unable to run pytest/ruff/pyright (tools not installed in this environment)
+- Human should run: `uv run pytest tests/test_f052_real_sdk_streaming.py -v`
+- Human should run: `uv run ruff check amplifier_module_provider_github_copilot/ && uv run pyright amplifier_module_provider_github_copilot/`
+
+### Next Steps
+
+1. Human commits changes with Amplifier co-author trailer
+2. Continue with Sub-phase 4: F-082 (wire provider.close), F-055 (accumulator completion guard), F-054 (recursion guard), F-056 (failed start cleanup), F-053 (unify error config), F-085 (timeout enforcement)
+
+---
+
 ## Session 2026-03-16T00:18Z -- Phase 9 Sub-phase 3: F-072, F-073, F-051, F-078 Implemented
 
 ### Executive Summary

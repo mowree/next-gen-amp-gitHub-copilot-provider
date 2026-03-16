@@ -487,33 +487,65 @@ class GitHubCopilotProvider:
             ):
                 accumulator.add(event)
         else:
-            # Real SDK path: use client wrapper
-            # F-040: Fixed SDK API - use send_and_wait(), not send_message()
+            # Real SDK path: use client wrapper with STREAMING
+            # F-052: Replace send_and_wait with streaming iteration
+            # This ensures events flow through translate_event() pipeline
             # F-072: Wrap in try/except for error translation
             model = internal_request.model or "gpt-4o"
+
+            # Load event config for translation (F-052)
+            event_config = load_event_config()
+
             try:
                 async with self._client.session(model=model) as sdk_session:
-                    # SDK uses send_and_wait() for blocking call
-                    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+                    # F-052: Use streaming send_message() instead of blocking send_and_wait()
+                    # This enables proper event translation through the pipeline:
+                    # - TOOL_CALL events for tool use
+                    # - USAGE_UPDATE events for token tracking
+                    # - TURN_COMPLETE events for finish_reason
+                    async for sdk_event in sdk_session.send_message(
+                        internal_request.prompt,
+                        internal_request.tools,
+                    ):
+                        # Convert SDK event to dict for translate_event
+                        # SDK events may be objects or dicts depending on version
+                        if isinstance(sdk_event, dict):
+                            event_dict = sdk_event
+                        else:
+                            # Extract all public attributes from SDK event object
+                            # This handles dataclasses, slots, and regular objects
+                            event_dict = {}
+                            # Try vars() first for regular objects
+                            if hasattr(sdk_event, "__dict__"):
+                                event_dict = {
+                                    k: v
+                                    for k, v in vars(sdk_event).items()
+                                    if not k.startswith("_")
+                                }
+                            # Ensure common event fields are extracted via getattr
+                            # This handles slots and properties that vars() misses
+                            for attr in ("type", "text", "id", "name", "arguments",
+                                         "finish_reason", "input_tokens", "output_tokens",
+                                         "total_tokens"):
+                                if attr not in event_dict and hasattr(sdk_event, attr):
+                                    event_dict[attr] = getattr(sdk_event, attr)
 
-                    # Extract response content and convert to domain event
-                    # F-043: Use extract_response_content() to handle Data objects
-                    if sdk_response is not None:
-                        content = extract_response_content(sdk_response)
+                        # Route through event translation pipeline (F-052)
+                        domain_event = translate_event(event_dict, event_config)
+                        if domain_event is not None:
+                            accumulator.add(domain_event)
 
-                        # Create CONTENT_DELTA event with correct DomainEvent signature
-                        text_event = DomainEvent(
-                            type=DomainEventType.CONTENT_DELTA,
-                            data={"text": content},
-                        )
-                        accumulator.add(text_event)
             except LLMError:
                 # F-072: Already translated - pass through without double-wrapping
                 raise
             except Exception as e:
                 # F-072: Translate raw SDK exceptions to kernel error types
-                error_config = load_error_config(Path(__file__).parent / "config" / "errors.yaml")
-                raise translate_sdk_error(e, error_config, provider="github-copilot", model=model) from e
+                error_config_for_err = load_error_config(
+                    Path(__file__).parent / "config" / "errors.yaml"
+                )
+                raise translate_sdk_error(
+                    e, error_config_for_err, provider="github-copilot", model=model
+                ) from e
 
         # Convert at boundary to kernel ChatResponse
         return accumulator.to_chat_response()

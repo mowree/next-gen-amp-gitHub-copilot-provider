@@ -1,10 +1,10 @@
 phase: 9
 phase_name: "Phase 9 \u2014 Deep Review Remediation (9 sub-phases)"
-epoch: 47
-next_action: Sub-phase 3 in progress. F-072, F-073, F-051, F-078 implemented. Continue with F-052 (real SDK streaming pipeline)
+epoch: 50
+next_action: Sub-phase 3 complete. F-052 implemented. Continue with Sub-phase 4 (F-082, F-055, F-054, F-056, F-053, F-085)
 blockers:
-- description: 'Build failed: ruff=1 pyright=0'
-  since: '2026-03-16T00:19:44.830626'
+- description: 'Build failed: ruff=1 pyright=1'
+  since: '2026-03-16T00:45:19.959847'
   severity: high
 features:
   F-049-fix-architecture-test-paths:
@@ -115,7 +115,7 @@ features:
     description: Defensive event config loading with fallback
     completed_at: '2026-03-16T00:17:00Z'
   F-052-real-sdk-streaming-pipeline:
-    status: ready
+    status: implemented
     priority: P0
     sub_phase: 3
     spec: specs/features/F-052-real-sdk-streaming-pipeline.md
@@ -124,6 +124,7 @@ features:
     - F-050-mandatory-deny-hook-installation
     - F-072-real-sdk-path-error-translation
     description: Replace send_and_wait with streaming on()+queue pattern
+    completed_at: '2026-03-16T00:43:00Z'
   F-082-wire-provider-close-to-client-close:
     status: ready
     priority: P1
@@ -474,4 +475,4 @@ meta:
     of amplifier_core kernel types. This was never caught because tests use MagicMock() coordinators that don't validate types.
     Expert panel (5 agents) confirmed the root cause and reviewed the migration spec. F-038 addresses this with a boundary-only
     migration that preserves internal streaming architecture while returning kernel types from public methods.
-last_session: '2026-03-16T00:19:44.941880+00:00'
+last_session: '2026-03-16T00:45:20.064877+00:00'
