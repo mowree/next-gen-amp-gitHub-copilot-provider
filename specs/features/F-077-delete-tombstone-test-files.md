@@ -1,6 +1,6 @@
 # F-077: Delete Tombstone Test Files
 
-**Status:** ready
+**Status:** implemented
 **Priority:** P3
 **Source:** deep-review/code-quality-reviewer.md
 
