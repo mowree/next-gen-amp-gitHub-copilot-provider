@@ -73,19 +73,35 @@ def _load_error_config_once() -> ErrorConfig:
     """Load error config with fallback path resolution.
 
     F-022 AC-4: Fix config path fragility.
+    F-074: Config now lives inside wheel at amplifier_module_provider_github_copilot.config
+    F-081: Now parses context_extraction field (matching error_translation.py)
+
     Tries importlib.resources first, then falls back to file path.
     """
     from pathlib import Path
 
-    from ..error_translation import load_error_config
+    from ..error_translation import ContextExtraction, load_error_config
 
-    # Try importlib.resources first
+    # Try importlib.resources first (F-074: use package-internal config)
     try:
-        config_text = resources.files("config").joinpath("errors.yaml").read_text(encoding="utf-8")
+        config_text = (
+            resources.files("amplifier_module_provider_github_copilot.config")
+            .joinpath("errors.yaml")
+            .read_text(encoding="utf-8")
+        )
         data = yaml.safe_load(config_text)
         if data:
             mappings: list[ErrorMapping] = []
             for mapping_data in data.get("error_mappings", []):
+                # F-081: Parse context_extraction (matching error_translation.py)
+                context_extraction: list[ContextExtraction] = []
+                for ce_data in mapping_data.get("context_extraction", []):
+                    context_extraction.append(
+                        ContextExtraction(
+                            pattern=ce_data.get("pattern", ""),
+                            field=ce_data.get("field", ""),
+                        )
+                    )
                 mappings.append(
                     ErrorMapping(
                         sdk_patterns=mapping_data.get("sdk_patterns", []),
@@ -93,6 +109,7 @@ def _load_error_config_once() -> ErrorConfig:
                         kernel_error=mapping_data.get("kernel_error", "ProviderUnavailableError"),
                         retryable=mapping_data.get("retryable", True),
                         extract_retry_after=mapping_data.get("extract_retry_after", False),
+                        context_extraction=context_extraction,
                     )
                 )
             default = data.get("default", {})
@@ -105,8 +122,9 @@ def _load_error_config_once() -> ErrorConfig:
         logger.debug("importlib.resources failed, trying file path: %s", e)
 
     # Fall back to file path (works in dev/test)
+    # F-074: Updated path to new location inside package
     try:
-        config_path = Path(__file__).parent.parent.parent.parent / "config" / "errors.yaml"
+        config_path = Path(__file__).parent.parent / "config" / "errors.yaml"
         return load_error_config(config_path)
     except Exception as e:
         logger.warning("Failed to load error config: %s", e)

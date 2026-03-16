@@ -1,0 +1,46 @@
+# config/models.yaml
+# Provider identity and model catalog policy
+# Contract: contracts/provider-protocol.md
+# Feature: F-048
+
+version: "1.0"
+
+provider:
+  id: github-copilot
+  display_name: "GitHub Copilot SDK"
+  # Auth token env vars in priority order (first non-empty wins)
+  # Priority: Copilot agent mode > recommended > CLI compat > Actions compat
+  credential_env_vars:
+    - COPILOT_AGENT_TOKEN    # Copilot agent mode
+    - COPILOT_GITHUB_TOKEN   # Official recommended
+    - GH_TOKEN               # GitHub CLI compatible
+    - GITHUB_TOKEN           # GitHub Actions compatible
+  capabilities:
+    - streaming
+    - tool_use
+  defaults:
+    model: gpt-4o
+    max_tokens: 4096
+    temperature: 0.7
+    timeout: 60
+    context_window: 200000
+    max_output_tokens: 32000
+
+models:
+  - id: gpt-4
+    display_name: "GPT-4"
+    context_window: 128000
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tool_use
+    defaults: {}
+
+  - id: gpt-4o
+    display_name: "GPT-4o"
+    context_window: 128000
+    max_output_tokens: 4096
+    capabilities:
+      - streaming
+      - tool_use
+    defaults: {}

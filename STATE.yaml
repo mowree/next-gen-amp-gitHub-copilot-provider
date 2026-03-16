@@ -1,7 +1,7 @@
 phase: 9
 phase_name: "Phase 9 \u2014 Deep Review Remediation (9 sub-phases)"
-epoch: 43
-next_action: Sub-phase 1 complete. Continue with Sub-phase 2 (F-074, F-081)
+epoch: 45
+next_action: Sub-phase 2 complete. Continue with Sub-phase 3 (F-072, F-073, F-051, F-052)
 blockers: []
 features:
   F-049-fix-architecture-test-paths:
@@ -51,7 +51,7 @@ features:
     description: "Establish sovereignty invariant \u2014 deny hook on every SDK session"
     completed_at: '2026-03-16T00:00:00Z'
   F-074-config-not-in-wheel:
-    status: ready
+    status: implemented
     priority: P0
     sub_phase: 2
     spec: specs/features/F-074-config-not-in-wheel.md
@@ -59,8 +59,9 @@ features:
     depends_on:
     - F-049-fix-architecture-test-paths
     description: "Move config into wheel \u2014 CRITICAL foundation for all config features"
+    completed_at: '2026-03-16T00:15:00Z'
   F-081-fix-context-extraction-in-client-error-loading:
-    status: ready
+    status: implemented
     priority: P0
     sub_phase: 2
     spec: specs/features/F-081-fix-context-extraction-in-client-error-loading.md
@@ -68,6 +69,7 @@ features:
     depends_on:
     - F-049-fix-architecture-test-paths
     description: Fix context_extraction parsing in _load_error_config_once()
+    completed_at: '2026-03-16T00:15:00Z'
   F-078-add-context-window-to-fallback-config:
     status: ready
     priority: P1
@@ -456,4 +458,4 @@ meta:
     of amplifier_core kernel types. This was never caught because tests use MagicMock() coordinators that don't validate types.
     Expert panel (5 agents) confirmed the root cause and reviewed the migration spec. F-038 addresses this with a boundary-only
     migration that preserves internal streaming architecture while returning kernel types from public methods.
-last_session: '2026-03-15T23:59:54.936721+00:00'
+last_session: '2026-03-16T00:10:30.009368+00:00'

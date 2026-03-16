@@ -1,0 +1,93 @@
+# Error Translation Policy
+# Contract: contracts/error-hierarchy.md
+# 
+# This file defines SDK error → kernel error mappings.
+# The Python code consumes this config; it does not hardcode mappings.
+#
+# See GOLDEN_VISION_V2.md for the target structure.
+
+version: "1.0"
+
+error_mappings:
+  # P0: Circuit breaker - MUST be FIRST (before timeout pattern)
+  # Prevents false positive match on "timeout" substring
+  - sdk_patterns: ["CircuitBreakerError"]
+    string_patterns: ["circuit breaker", "> max=", "Circuit breaker TRIPPED"]
+    kernel_error: ProviderUnavailableError
+    retryable: false
+
+  - sdk_patterns: ["AuthenticationError", "InvalidTokenError", "PermissionDeniedError"]
+    string_patterns: ["401", "403", "unauthorized", "permission denied"]
+    kernel_error: AuthenticationError
+    retryable: false
+
+  - sdk_patterns: ["RateLimitError"]
+    string_patterns: ["429", "rate limit"]
+    kernel_error: RateLimitError
+    retryable: true
+    extract_retry_after: true
+
+  - sdk_patterns: ["QuotaExceededError"]
+    string_patterns: ["quota exceeded", "billing"]
+    kernel_error: QuotaExceededError
+    retryable: false
+
+  - sdk_patterns: ["TimeoutError", "RequestTimeoutError"]
+    string_patterns: ["timeout", "timed out"]
+    kernel_error: LLMTimeoutError
+    retryable: true
+
+  - sdk_patterns: ["ContentFilterError", "SafetyError"]
+    string_patterns: ["content filter", "safety", "blocked"]
+    kernel_error: ContentFilterError
+    retryable: false
+
+  - sdk_patterns: ["ConnectionError", "ProcessExitedError"]
+    string_patterns: ["connection refused", "process exited", "connection error"]
+    kernel_error: NetworkError
+    retryable: true
+
+  - sdk_patterns: ["ModelNotFoundError"]
+    string_patterns: ["model not found", "404"]
+    kernel_error: NotFoundError
+    retryable: false
+
+  # P1: Context/token limit errors
+  - sdk_patterns: ["ContextLengthError"]
+    string_patterns: ["413", "token count", "exceeds the limit", "context length", "too many tokens"]
+    kernel_error: ContextLengthError
+    retryable: false
+
+  # P2: Stream interruption errors
+  - sdk_patterns: ["StreamError"]
+    string_patterns: ["GOAWAY", "broken pipe", "connection reset", "stream terminated"]
+    kernel_error: StreamError
+    retryable: true
+
+  # P3: Tool-related errors
+  - sdk_patterns: ["InvalidToolCallError"]
+    string_patterns: ["tool conflict", "fake tool", "missing tool result", "conflicts with a built-in"]
+    kernel_error: InvalidToolCallError
+    retryable: false
+    # F-036: Context extraction for better debugging
+    context_extraction:
+      - pattern: "tool '([^']+)'"
+        field: tool_name
+      - pattern: "(built-in|external|missing)"
+        field: conflict_type
+
+  # P4: Model/provider configuration errors
+  - sdk_patterns: ["ConfigurationError"]
+    string_patterns: ["does not support", "configuration error", "not configured"]
+    kernel_error: ConfigurationError
+    retryable: false
+    # F-036: Context extraction for better debugging
+    context_extraction:
+      - pattern: "model '([^']+)'"
+        field: model_name
+      - pattern: "feature '([^']+)'"
+        field: feature_name
+
+default:
+  kernel_error: ProviderUnavailableError
+  retryable: true

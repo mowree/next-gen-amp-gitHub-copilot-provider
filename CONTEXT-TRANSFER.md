@@ -10,6 +10,54 @@
 
 ---
 
+## Session 2026-03-16T00:15Z -- Phase 9 Sub-phase 2: F-074 + F-081 Implemented
+
+### Executive Summary
+
+**TWO P0 FEATURES IMPLEMENTED**: F-074 (move config into wheel) and F-081 (fix context_extraction parsing). Sub-phase 2 is now complete.
+
+### Work Completed
+
+**F-074: Config Not Included in Wheel** (IMPLEMENTED)
+- Created `amplifier_module_provider_github_copilot/config/` directory
+- Copied all config YAML files (errors.yaml, events.yaml, models.yaml) into package
+- Added `__init__.py` for importlib.resources compatibility
+- Updated `client.py` to use `resources.files("amplifier_module_provider_github_copilot.config")`
+- Updated `client.py` fallback path from `.parent.parent.parent.parent` to `.parent.parent`
+- Updated `provider.py` config path from `.parent.parent` to `.parent`
+- Updated `streaming.py` config path from `.parent.parent` to `.parent`
+- Updated `tests/test_config_loading.py` paths to new location
+- Files modified: 4 source files, 4 config files added, 1 test file
+
+**F-081: Fix context_extraction in Client Error Loading** (IMPLEMENTED)
+- Added `ContextExtraction` import to `client.py`
+- Added context_extraction parsing loop matching `error_translation.py` implementation
+- Passes `context_extraction=context_extraction` to `ErrorMapping()` constructor
+- Files modified: `amplifier_module_provider_github_copilot/sdk_adapter/client.py`
+
+### State Updates
+
+- `epoch`: 43 → 44
+- F-074, F-081 marked `status: implemented`
+- `next_action`: Sub-phase 2 complete. Continue with Sub-phase 3 (F-072, F-073, F-051, F-052)
+
+### Build Verification
+
+- Unable to run pytest/ruff/pyright (tools not installed in this environment)
+- Human should run: `uv run pytest tests/ -v`
+- Human should run: `uv run ruff check amplifier_module_provider_github_copilot/ && uv run pyright amplifier_module_provider_github_copilot/`
+
+### Key Design Decision
+
+**Config inside wheel**: Config files now live at `amplifier_module_provider_github_copilot/config/` inside the wheel package. This ensures `importlib.resources.files()` can locate them when installed from wheel, fixing the silent fallback to default config that caused all SDK errors to pass through untranslated.
+
+### Next Steps
+
+1. Human commits changes with Amplifier co-author trailer
+2. Continue with Sub-phase 3: F-072 (real SDK path error translation), F-073 (error test), F-051 (defensive event config), F-052 (streaming pipeline)
+
+---
+
 ## Session 2026-03-16T00:00Z -- Phase 9 Sub-phase 1: F-084 + F-050 Implemented
 
 ### Executive Summary

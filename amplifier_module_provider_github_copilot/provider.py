@@ -76,12 +76,15 @@ class ProviderConfig:
 def _load_models_config() -> ProviderConfig:
     """Load provider and model policy from config/models.yaml.
 
-    Feature: F-048
+    Feature: F-048, F-074
 
     Falls back to minimal hardcoded defaults if file is missing.
     (Graceful degradation — same pattern as load_event_config.)
+
+    F-074: Config now lives inside wheel at amplifier_module_provider_github_copilot/config/
     """
-    config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+    # F-074: Config moved inside package
+    config_path = Path(__file__).parent / "config" / "models.yaml"
     if not config_path.exists():
         return _default_provider_config()
 
@@ -230,10 +233,8 @@ async def complete(
 
     error_config = config.error_config
     if error_config is None:
-        # provider.py is at amplifier_module_provider_github_copilot/provider.py
-        # config is at config/errors.yaml (2 levels up)
-        package_root = Path(__file__).parent.parent
-        error_config = load_error_config(package_root / "config" / "errors.yaml")
+        # F-074: Config moved inside package at amplifier_module_provider_github_copilot/config/
+        error_config = load_error_config(Path(__file__).parent / "config" / "errors.yaml")
 
     # Create session config
     session_config = config.session_config or SessionConfig(model=request.model or "gpt-4")

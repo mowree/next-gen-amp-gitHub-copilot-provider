@@ -187,12 +187,11 @@ def load_event_config(config_path: str | Path | None = None) -> EventConfig:
     """Load event classification config from YAML. Defaults to config/events.yaml.
 
     AC-1 (F-021): Gracefully handles missing files by returning default config.
+    F-074: Config now lives inside wheel at amplifier_module_provider_github_copilot/config/
     """
     if config_path is None:
-        # streaming.py is at amplifier_module_provider_github_copilot/streaming.py
-        # config is at config/events.yaml (2 levels up)
-        package_root = Path(__file__).parent.parent
-        config_path = str(package_root / "config" / "events.yaml")
+        # F-074: Config moved inside package at amplifier_module_provider_github_copilot/config/
+        config_path = str(Path(__file__).parent / "config" / "events.yaml")
 
     path = Path(config_path)
     if not path.exists():

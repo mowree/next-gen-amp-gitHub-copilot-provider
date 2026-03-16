@@ -1,0 +1,46 @@
+# Event Bridge Classification
+# Contract: contracts/event-vocabulary.md
+version: "1.0"
+
+event_classifications:
+  bridge:
+    - sdk_type: text_delta
+      domain_type: CONTENT_DELTA
+      block_type: TEXT
+    - sdk_type: thinking_delta
+      domain_type: CONTENT_DELTA
+      block_type: THINKING
+    - sdk_type: tool_use_complete
+      domain_type: TOOL_CALL
+    - sdk_type: message_complete
+      domain_type: TURN_COMPLETE
+    - sdk_type: usage_update
+      domain_type: USAGE_UPDATE
+    - sdk_type: session_idle
+      domain_type: SESSION_IDLE
+    - sdk_type: error
+      domain_type: ERROR
+
+  consume:
+    - tool_use_start
+    - tool_use_delta
+    - session_created
+    - session_destroyed
+    - usage
+    - system_notification  # SDK v0.1.33 - log internally, don't forward
+
+  drop:
+    - tool_result_*
+    - mcp_*
+    - permission_*
+    - context_*
+    - heartbeat
+    - debug_*
+
+finish_reason_map:
+  end_turn: STOP
+  stop: STOP
+  tool_use: TOOL_USE
+  max_tokens: LENGTH
+  content_filter: CONTENT_FILTER
+  _default: ERROR

@@ -126,7 +126,7 @@ class TestModelsYamlSchemaCompliance:
         """Models YAML has version field."""
         import yaml
 
-        config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+        config_path = Path(__file__).parent.parent / "amplifier_module_provider_github_copilot" / "config" / "models.yaml"
         with config_path.open() as f:
             data = yaml.safe_load(f)
         assert "version" in data
@@ -136,7 +136,7 @@ class TestModelsYamlSchemaCompliance:
         """Models YAML provider.id equals github-copilot."""
         import yaml
 
-        config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+        config_path = Path(__file__).parent.parent / "amplifier_module_provider_github_copilot" / "config" / "models.yaml"
         with config_path.open() as f:
             data = yaml.safe_load(f)
         assert data["provider"]["id"] == "github-copilot"
@@ -145,7 +145,7 @@ class TestModelsYamlSchemaCompliance:
         """Models YAML has non-empty models list."""
         import yaml
 
-        config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+        config_path = Path(__file__).parent.parent / "amplifier_module_provider_github_copilot" / "config" / "models.yaml"
         with config_path.open() as f:
             data = yaml.safe_load(f)
         assert isinstance(data["models"], list)
@@ -155,7 +155,7 @@ class TestModelsYamlSchemaCompliance:
         """Each model in YAML has required fields."""
         import yaml
 
-        config_path = Path(__file__).parent.parent / "config" / "models.yaml"
+        config_path = Path(__file__).parent.parent / "amplifier_module_provider_github_copilot" / "config" / "models.yaml"
         with config_path.open() as f:
             data = yaml.safe_load(f)
 
