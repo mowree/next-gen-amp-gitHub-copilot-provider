@@ -378,11 +378,11 @@ features:
     - F-074-config-not-in-wheel
     - F-080-add-missing-pypi-metadata
     description: "PyPI publishing readiness \u2014 LAST feature (terminal)"
-  F-097-update-default-model-to-claude-opus-45:
+  F-092-update-default-model-to-claude-opus-45:
     status: ready
     priority: P1
     sub_phase: 2
-    spec: specs/features/F-097-update-default-model-to-claude-opus-45.md
+    spec: specs/features/F-092-update-default-model-to-claude-opus-45.md
     source: sdk-model-discovery
     depends_on:
     - F-078-add-context-window-to-fallback-config

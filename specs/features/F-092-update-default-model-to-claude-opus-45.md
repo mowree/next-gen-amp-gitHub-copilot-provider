@@ -1,4 +1,4 @@
-# F-097: Update Default Model to claude-opus-4.5
+# F-092: Update Default Model to claude-opus-4.5
 
 ## 1. Overview
 
