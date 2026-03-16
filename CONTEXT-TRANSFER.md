@@ -10,6 +10,67 @@
 
 ---
 
+## Session 2026-03-16T00:18Z -- Phase 9 Sub-phase 3: F-072, F-073, F-051, F-078 Implemented
+
+### Executive Summary
+
+**FOUR FEATURES IMPLEMENTED**: F-078 (context_window fallback), F-072 (real SDK path error translation), F-073 (tests for F-072), F-051 (defensive event config loading). Sub-phase 3 is now in progress; F-052 remains for next session.
+
+### Work Completed
+
+**F-078: Add context_window to Fallback Config** (IMPLEMENTED)
+- Added `"context_window": 128000` to `_default_provider_config()` defaults
+- Contract: `provider-protocol.md` requires `defaults.context_window` for budget calculation
+- Files modified: `amplifier_module_provider_github_copilot/provider.py`
+
+**F-072: Real SDK Path Error Translation** (IMPLEMENTED)
+- Wrapped real SDK path (`async with self._client.session()`) in try/except
+- Added `LLMError` import to provider.py
+- Already-translated `LLMError` subclasses pass through unchanged (no double-wrapping)
+- Raw SDK exceptions are translated via `translate_sdk_error()`
+- Contract: `error-hierarchy.md` — "The provider MUST translate SDK errors into kernel error types"
+- Files modified: `amplifier_module_provider_github_copilot/provider.py`
+
+**F-073: Tests for Real SDK Path Error Translation** (IMPLEMENTED)
+- Created `tests/test_f072_sdk_error_translation.py` with 6 tests
+- Tests cover: TimeoutError → LLMTimeoutError, PermissionError → AuthenticationError
+- Tests cover: RuntimeError → ProviderUnavailableError, LLMError passthrough
+- Also includes F-078 fallback config tests
+- Files created: `tests/test_f072_sdk_error_translation.py`
+
+**F-051: Defensive Event Config Loading** (IMPLEMENTED)
+- Wrapped bridge mapping parsing with try/except and clear error messages
+- Missing `sdk_type` → ConfigurationError with "missing required 'sdk_type' key"
+- Missing `domain_type` → ConfigurationError with entry context
+- Unknown enum value → ConfigurationError listing valid types
+- Files modified: `amplifier_module_provider_github_copilot/streaming.py`
+- Files created: `tests/test_f051_event_config_loading.py`
+
+### State Updates
+
+- `epoch`: 45 → 46
+- F-078, F-072, F-073, F-051 marked `status: implemented`
+- `next_action`: Continue with F-052 (real SDK streaming pipeline)
+
+### Build Verification
+
+- Unable to run pytest/ruff/pyright (tools not installed in this environment)
+- Human should run: `uv run pytest tests/test_f072_sdk_error_translation.py tests/test_f051_event_config_loading.py -v`
+- Human should run: `uv run ruff check amplifier_module_provider_github_copilot/ && uv run pyright amplifier_module_provider_github_copilot/`
+
+### Key Design Decisions
+
+1. **Error translation in real SDK path**: The try/except block catches `LLMError` first to pass through already-translated errors, then catches generic `Exception` and translates via `translate_sdk_error()`.
+
+2. **ConfigurationError for malformed YAML**: F-051 raises `ConfigurationError` (from `amplifier_core.llm_errors`) instead of allowing cryptic `KeyError` tracebacks. Error messages include entry index and sdk_type for debugging.
+
+### Next Steps
+
+1. Human commits changes with Amplifier co-author trailer
+2. Continue with F-052: real SDK streaming pipeline (replace `send_and_wait` with streaming)
+
+---
+
 ## Session 2026-03-16T00:15Z -- Phase 9 Sub-phase 2: F-074 + F-081 Implemented
 
 ### Executive Summary

@@ -1,8 +1,11 @@
 phase: 9
 phase_name: "Phase 9 \u2014 Deep Review Remediation (9 sub-phases)"
-epoch: 45
-next_action: Sub-phase 2 complete. Continue with Sub-phase 3 (F-072, F-073, F-051, F-052)
-blockers: []
+epoch: 47
+next_action: Sub-phase 3 in progress. F-072, F-073, F-051, F-078 implemented. Continue with F-052 (real SDK streaming pipeline)
+blockers:
+- description: 'Build failed: ruff=1 pyright=0'
+  since: '2026-03-16T00:19:44.830626'
+  severity: high
 features:
   F-049-fix-architecture-test-paths:
     status: implemented
@@ -71,7 +74,7 @@ features:
     description: Fix context_extraction parsing in _load_error_config_once()
     completed_at: '2026-03-16T00:15:00Z'
   F-078-add-context-window-to-fallback-config:
-    status: ready
+    status: implemented
     priority: P1
     sub_phase: 2
     spec: specs/features/F-078-add-context-window-to-fallback-config.md
@@ -79,8 +82,9 @@ features:
     depends_on:
     - F-074-config-not-in-wheel
     description: Add context_window to fallback ProviderInfo config
+    completed_at: '2026-03-16T00:17:00Z'
   F-072-real-sdk-path-error-translation:
-    status: ready
+    status: implemented
     priority: P0
     sub_phase: 3
     spec: specs/features/F-072-real-sdk-path-error-translation.md
@@ -89,8 +93,9 @@ features:
     - F-050-mandatory-deny-hook-installation
     - F-074-config-not-in-wheel
     description: Add try/except + translate_sdk_error to real SDK path
+    completed_at: '2026-03-16T00:17:00Z'
   F-073-real-sdk-path-error-test:
-    status: ready
+    status: implemented
     priority: P1
     sub_phase: 3
     spec: specs/features/F-073-real-sdk-path-error-test.md
@@ -98,8 +103,9 @@ features:
     depends_on:
     - F-072-real-sdk-path-error-translation
     description: Tests for F-072 error translation on real SDK path
+    completed_at: '2026-03-16T00:17:00Z'
   F-051-defensive-event-config-loading:
-    status: ready
+    status: implemented
     priority: P0
     sub_phase: 3
     spec: specs/features/F-051-defensive-event-config-loading.md
@@ -107,6 +113,7 @@ features:
     depends_on:
     - F-074-config-not-in-wheel
     description: Defensive event config loading with fallback
+    completed_at: '2026-03-16T00:17:00Z'
   F-052-real-sdk-streaming-pipeline:
     status: ready
     priority: P0
@@ -458,4 +465,4 @@ meta:
     of amplifier_core kernel types. This was never caught because tests use MagicMock() coordinators that don't validate types.
     Expert panel (5 agents) confirmed the root cause and reviewed the migration spec. F-038 addresses this with a boundary-only
     migration that preserves internal streaming architecture while returning kernel types from public methods.
-last_session: '2026-03-16T00:10:30.009368+00:00'
+last_session: '2026-03-16T00:19:44.941880+00:00'

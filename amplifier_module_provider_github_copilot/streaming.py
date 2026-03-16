@@ -206,10 +206,34 @@ def load_event_config(config_path: str | Path | None = None) -> EventConfig:
     classifications = raw.get("event_classifications", {})
 
     bridge_mappings: dict[str, tuple[DomainEventType, str | None]] = {}
-    for mapping in classifications.get("bridge", []):
-        sdk_type = mapping["sdk_type"]
-        domain_type = DomainEventType[mapping["domain_type"]]
-        bridge_mappings[sdk_type] = (domain_type, mapping.get("block_type"))
+    for i, mapping in enumerate(classifications.get("bridge", [])):
+        # F-051: Defensive parsing with clear error messages
+        try:
+            sdk_type = mapping.get("sdk_type")
+            if sdk_type is None:
+                raise ValueError(f"Bridge mapping {i} missing required 'sdk_type' key")
+
+            domain_type_str = mapping.get("domain_type")
+            if domain_type_str is None:
+                raise ValueError(f"Bridge mapping {i} (sdk_type={sdk_type}) missing required 'domain_type' key")
+
+            try:
+                domain_type = DomainEventType[domain_type_str]
+            except KeyError:
+                raise ValueError(
+                    f"Bridge mapping {i} (sdk_type={sdk_type}) has unknown domain_type '{domain_type_str}'. "
+                    f"Valid types: {[t.name for t in DomainEventType]}"
+                )
+
+            bridge_mappings[sdk_type] = (domain_type, mapping.get("block_type"))
+        except ValueError as e:
+            # F-051: Re-raise as ConfigurationError with context
+            from .error_translation import ConfigurationError
+
+            raise ConfigurationError(
+                f"Invalid event config in events.yaml: {e}",
+                provider="github-copilot",
+            ) from e
 
     # Load finish_reason_map (AC-5)
     finish_reason_map = raw.get("finish_reason_map", {})

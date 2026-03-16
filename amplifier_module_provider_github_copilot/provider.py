@@ -34,6 +34,7 @@ from amplifier_core import ChatResponse, ModelInfo, ProviderInfo, ToolCall
 
 from .error_translation import (
     ErrorConfig,
+    LLMError,
     load_error_config,
     translate_sdk_error,
 )
@@ -110,13 +111,16 @@ def _load_models_config() -> ProviderConfig:
 
 
 def _default_provider_config() -> ProviderConfig:
-    """Minimal fallback config for environments without config files."""
+    """Minimal fallback config for environments without config files.
+
+    F-078: Must include context_window for budget calculation per provider-protocol.md
+    """
     return ProviderConfig(
         provider_id="github-copilot",
         display_name="GitHub Copilot SDK",
         credential_env_vars=["COPILOT_GITHUB_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"],
         capabilities=["streaming", "tool_use"],
-        defaults={"model": "gpt-4o", "max_tokens": 4096},
+        defaults={"model": "gpt-4o", "max_tokens": 4096, "context_window": 128000},
         models=[],
     )
 
@@ -485,22 +489,31 @@ class GitHubCopilotProvider:
         else:
             # Real SDK path: use client wrapper
             # F-040: Fixed SDK API - use send_and_wait(), not send_message()
+            # F-072: Wrap in try/except for error translation
             model = internal_request.model or "gpt-4o"
-            async with self._client.session(model=model) as sdk_session:
-                # SDK uses send_and_wait() for blocking call
-                sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
+            try:
+                async with self._client.session(model=model) as sdk_session:
+                    # SDK uses send_and_wait() for blocking call
+                    sdk_response = await sdk_session.send_and_wait({"prompt": internal_request.prompt})
 
-                # Extract response content and convert to domain event
-                # F-043: Use extract_response_content() to handle Data objects
-                if sdk_response is not None:
-                    content = extract_response_content(sdk_response)
+                    # Extract response content and convert to domain event
+                    # F-043: Use extract_response_content() to handle Data objects
+                    if sdk_response is not None:
+                        content = extract_response_content(sdk_response)
 
-                    # Create CONTENT_DELTA event with correct DomainEvent signature
-                    text_event = DomainEvent(
-                        type=DomainEventType.CONTENT_DELTA,
-                        data={"text": content},
-                    )
-                    accumulator.add(text_event)
+                        # Create CONTENT_DELTA event with correct DomainEvent signature
+                        text_event = DomainEvent(
+                            type=DomainEventType.CONTENT_DELTA,
+                            data={"text": content},
+                        )
+                        accumulator.add(text_event)
+            except LLMError:
+                # F-072: Already translated - pass through without double-wrapping
+                raise
+            except Exception as e:
+                # F-072: Translate raw SDK exceptions to kernel error types
+                error_config = load_error_config(Path(__file__).parent / "config" / "errors.yaml")
+                raise translate_sdk_error(e, error_config, provider="github-copilot", model=model) from e
 
         # Convert at boundary to kernel ChatResponse
         return accumulator.to_chat_response()
